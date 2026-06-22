@@ -1,0 +1,15 @@
+# Default owner.
+*                               @ChelseaKR
+
+# Safety-critical guardrails — changes require an ADR and owner review.
+/src/sprout/guards.py           @ChelseaKR
+/src/sprout/confidence.py       @ChelseaKR
+/src/sprout/eval/               @ChelseaKR
+/tests/test_rag.py              @ChelseaKR
+/tests/test_eval_suites.py      @ChelseaKR
+
+# CI, supply chain, and governance.
+/.github/                       @ChelseaKR
+/docs/adr/                      @ChelseaKR
+/SECURITY.md                    @ChelseaKR
+/DEFINITION_OF_DONE.md          @ChelseaKR

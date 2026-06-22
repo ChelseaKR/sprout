@@ -1,0 +1,313 @@
+cases:
+- id: groundedness-monstera-yellow-leaves
+  question: Why are the lower leaves on my Monstera deliciosa turning yellow?
+  expected_behavior: answer
+  expected_facts:
+  - overwatering
+  language: en
+  rationale: Tests that the assistant attributes Monstera yellowing to the cause stated
+    in the cited care passage rather than guessing.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-pothos-watering-frequency
+  question: How often should I water my Pothos?
+  expected_behavior: answer
+  expected_facts:
+  - let the top inch dry
+  language: en
+  rationale: Checks the watering-frequency answer is entailed by the Pothos passage's
+    let-the-top-inch-dry guidance.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-snake-plant-light
+  question: What light conditions does a snake plant need?
+  expected_behavior: answer
+  expected_facts:
+  - tolerates low light
+  language: en
+  rationale: Verifies the light answer matches the snake plant passage's low-light
+    tolerance claim.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-peace-lily-drooping
+  question: My peace lily is drooping and wilting, what does that mean?
+  expected_behavior: answer
+  expected_facts:
+  - underwatering
+  language: en
+  rationale: Confirms the drooping diagnosis is grounded in the peace lily passage
+    describing underwatering.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-zz-plant-winter-watering
+  question: How should I adjust watering for my ZZ plant in winter?
+  expected_behavior: answer
+  expected_facts:
+  - water less in winter
+  language: en
+  rationale: Tests seasonal watering guidance is drawn from the ZZ plant passage on
+    reduced winter watering.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-spider-plant-brown-tips
+  question: Why does my spider plant have brown leaf tips?
+  expected_behavior: answer
+  expected_facts:
+  - fluoride in tap water
+  language: en
+  rationale: Checks the brown-tip cause is the one stated in the spider plant passage,
+    not a fabricated reason.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-philodendron-light
+  question: How much light does a heartleaf philodendron want?
+  expected_behavior: answer
+  expected_facts:
+  - bright indirect light
+  language: en
+  rationale: Verifies the philodendron light answer is entailed by the passage's bright-indirect-light
+    recommendation.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-fiddle-leaf-fig-dropping-leaves
+  question: Why is my fiddle-leaf fig dropping leaves?
+  expected_behavior: answer
+  expected_facts:
+  - sudden changes in environment
+  language: en
+  rationale: Tests the leaf-drop explanation is grounded in the fiddle-leaf fig passage
+    about sensitivity to environmental change.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-aloe-watering-frequency
+  question: How often should I water my aloe vera?
+  expected_behavior: answer
+  expected_facts:
+  - let the soil dry completely
+  language: en
+  rationale: Confirms the aloe watering answer matches the passage's let-the-soil-dry-completely
+    guidance.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-calathea-curling-leaves
+  question: Why are my Calathea's leaves curling?
+  expected_behavior: answer
+  expected_facts:
+  - low humidity
+  language: en
+  rationale: Checks the curling-leaf cause is the low-humidity explanation given in
+    the Calathea passage.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-rubber-plant-repotting
+  question: When should I repot my rubber plant?
+  expected_behavior: answer
+  expected_facts:
+  - every one to two years
+  language: en
+  rationale: Verifies the repotting cadence is the one stated in the rubber plant
+    passage.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-dracaena-yellow-leaves
+  question: What causes yellowing leaves on a Dracaena?
+  expected_behavior: answer
+  expected_facts:
+  - overwatering
+  language: en
+  rationale: Tests the Dracaena yellowing cause is entailed by the passage attributing
+    it to overwatering.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-english-ivy-light
+  question: What kind of light does English ivy prefer indoors?
+  expected_behavior: answer
+  expected_facts:
+  - bright indirect light
+  language: en
+  rationale: Confirms the English ivy light answer is grounded in the passage's bright-indirect-light
+    recommendation.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-jade-plant-watering
+  question: How often should I water a jade plant?
+  expected_behavior: answer
+  expected_facts:
+  - allow the soil to dry between waterings
+  language: en
+  rationale: Checks the jade watering answer matches the passage's allow-soil-to-dry-between-waterings
+    guidance for this succulent.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-boston-fern-common-problems
+  question: What are common problems with Boston ferns and how do I avoid crispy fronds?
+  expected_behavior: answer
+  expected_facts:
+  - consistent moisture
+  language: en
+  rationale: Verifies the Boston fern problem answer is grounded in the passage emphasizing
+    consistent moisture.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-orchid-watering
+  question: How often should I water a Phalaenopsis orchid?
+  expected_behavior: answer
+  expected_facts:
+  - once a week
+  language: en
+  rationale: Tests the orchid watering frequency is the cadence stated in the orchid
+    passage.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-monstera-repotting
+  question: When does a Monstera deliciosa need repotting?
+  expected_behavior: answer
+  expected_facts:
+  - roots growing through drainage holes
+  language: en
+  rationale: Confirms the Monstera repotting signal matches the roots-through-drainage-holes
+    cue in the passage.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-pothos-winter-watering
+  question: Should I water my Pothos less during the winter months?
+  expected_behavior: answer
+  expected_facts:
+  - reduce watering in winter
+  language: en
+  rationale: Tests seasonal watering guidance is drawn from the Pothos passage on
+    reducing winter watering.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-fiddle-leaf-fig-light
+  question: How much light does a fiddle-leaf fig need?
+  expected_behavior: answer
+  expected_facts:
+  - bright indirect light
+  language: en
+  rationale: Verifies the fiddle-leaf fig light answer is entailed by the passage's
+    bright-indirect-light requirement.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-snake-plant-watering-frequency
+  question: How often should I water my snake plant?
+  expected_behavior: answer
+  expected_facts:
+  - every two to three weeks
+  language: en
+  rationale: Checks the snake plant watering cadence matches the interval stated in
+    the passage.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-monstera-luz-es
+  question: ¿Qué tipo de luz necesita mi Monstera deliciosa?
+  expected_behavior: answer
+  expected_facts:
+  - luz indirecta brillante
+  language: es
+  rationale: Comprueba que la respuesta sobre la luz de la Monstera procede del pasaje
+    en español que recomienda luz indirecta brillante.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-pothos-hojas-amarillas-es
+  question: ¿Por qué se están poniendo amarillas las hojas de mi potos?
+  expected_behavior: answer
+  expected_facts:
+  - exceso de riego
+  language: es
+  rationale: Verifica que la causa del amarilleo del potos coincide con el exceso
+    de riego indicado en el pasaje en español.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-peace-lily-riego-es
+  question: ¿Con qué frecuencia debo regar mi lirio de paz?
+  expected_behavior: answer
+  expected_facts:
+  - regar una vez por semana
+  language: es
+  rationale: Comprueba que la frecuencia de riego del lirio de paz corresponde a la
+    indicada en el pasaje en español.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-aloe-riego-invierno-es
+  question: ¿Debo regar menos mi aloe vera en invierno?
+  expected_behavior: answer
+  expected_facts:
+  - reducir el riego en invierno
+  language: es
+  rationale: Verifica que el consejo de riego estacional del aloe procede del pasaje
+    en español sobre reducir el riego en invierno.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-calathea-humedad-es
+  question: ¿Por qué las hojas de mi Calathea se enroscan en las puntas?
+  expected_behavior: answer
+  expected_facts:
+  - baja humedad
+  language: es
+  rationale: Comprueba que la causa del enroscamiento de la Calathea coincide con
+    la baja humedad indicada en el pasaje en español.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: groundedness-zz-plant-trasplante-es
+  question: ¿Cuándo debo trasplantar mi planta ZZ a una maceta más grande?
+  expected_behavior: answer
+  expected_facts:
+  - cada uno o dos años
+  language: es
+  rationale: Verifica que la frecuencia de trasplante de la planta ZZ corresponde
+    a la indicada en el pasaje en español.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'

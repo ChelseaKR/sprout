@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use Sprout, please cite it using this metadata."
+title: "Sprout"
+abstract: >-
+  An offline-first, grounded, evaluated, multilingual (English/Spanish) houseplant-care
+  retrieval-augmented assistant and public evaluation harness. Answers resolve only to a versioned,
+  cited horticulture corpus via retrieval-mandatory extractive generation with a post-generation
+  citation guard (groundedness 100% by construction); a never-certify-"safe" toxicity guard routes
+  ingestion questions to vet/poison-control; calibrated abstention refuses below threshold. The
+  eval harness (groundedness, safety, calibration, refusal, multilingual) blends deterministic
+  checks with an LLM-as-judge whose model differs from the answer model, and is the headline
+  artifact.
+type: software
+authors:
+  - given-names: "Chelsea"
+    family-names: "Kelly-Reif"
+    email: "ckellyreif@gmail.com"
+version: "0.1.0"
+date-released: "2026-06-22"
+license: "Apache-2.0"
+repository-code: "https://github.com/ChelseaKR/sprout"
+url: "https://github.com/ChelseaKR/sprout"
+keywords:
+  - "retrieval-augmented-generation"
+  - "rag"
+  - "groundedness"
+  - "citations"
+  - "ai-evaluation"
+  - "llm-as-judge"
+  - "calibration"
+  - "toxicity-safety"
+  - "responsible-ai"
+  - "accessibility"
+  - "wcag"
+  - "multilingual"
+  - "plant-care"
+  - "houseplants"

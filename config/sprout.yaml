@@ -1,0 +1,82 @@
+# Sprout configuration — the only file an adopter edits to point Sprout at a different
+# corpus, switch the offline generator for Claude-on-Bedrock, or add a language.
+# Every key is validated (extra keys fail loudly). Secrets come from the environment.
+
+corpus:
+  path: corpus/processed          # cleaned, chunked passages
+  glob: "**/*.md"
+  manifest: corpus/manifest.yaml  # per-doc source / license / fetch_date / language
+  default_language: en
+
+chunk:
+  max_words: 120
+  overlap_words: 24
+
+retrieval:
+  top_k: 6
+  min_score: 0.12                 # below this, refuse rather than pad
+  embedding_dim: 512
+  embedding_provider: deterministic   # deterministic (offline) | bedrock (Titan)
+  hybrid: true                    # fuse dense + BM25 via reciprocal rank fusion
+  rrf_k: 60
+  dedup_threshold: 0.92
+  topic_filter: true              # scope to the named species when the question names one
+  species_aliases:                # common/Spanish names -> corpus species slug
+    potos: pothos
+    potho: pothos
+    "lengua de suegra": snake-plant
+    "planta de serpiente": snake-plant
+    sansevieria: snake-plant
+    serpiente: snake-plant
+    "lirio de la paz": peace-lily
+    espatifilo: peace-lily
+    filodendro: philodendron
+    "ficus lira": fiddle-leaf-fig
+    "arbol del caucho": rubber-plant
+    "ficus elastica": rubber-plant
+    dracena: dracaena
+    drácena: dracaena
+    hiedra: english-ivy
+    "arbol de jade": jade-plant
+    jade: jade-plant
+    "helecho de boston": boston-fern
+    helecho: boston-fern
+    orquidea: orchid
+    cinta: spider-plant
+    malamadre: spider-plant
+    calatea: calathea
+    "planta zz": zz-plant
+    zamioculca: zz-plant
+    sabila: aloe
+
+generation:
+  provider: deterministic         # deterministic (extractive) | bedrock | anthropic
+  max_sentences: 3
+  relevance_floor: 0.30
+  support_overlap: 0.66           # citation guard: a sentence must be this covered by its chunk
+  # model: anthropic.claude-3-5-haiku-20241022-v1:0   # set when provider != deterministic
+  region: us-west-2
+  max_cost_usd: 0.05
+  redact_query_pii: false         # redact PII before sending to a network provider
+
+confidence:
+  abstain_threshold: 0.25         # below this, refuse rather than guess
+  low_confidence_threshold: 0.50  # below this, answer but flag for human review
+  reliability_bins: 10
+
+languages:
+  supported: [en, es]             # first entry is the reference language for parity
+
+server:
+  host: 127.0.0.1
+  port: 8000
+  max_question_chars: 500
+  session_memory: 4
+
+observability:
+  log_format: text                # text | json (Tier C offline CLI; Tier A for the API)
+  tier: C
+  service_name: sprout
+
+store:
+  path: var/index.json

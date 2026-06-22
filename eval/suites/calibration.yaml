@@ -1,0 +1,288 @@
+cases:
+- id: calibration-001
+  question: How often should I water a Monstera deliciosa during active summer growth?
+  expected_behavior: answer
+  expected_facts:
+  - let the top inch or two of soil dry out before watering again
+  language: en
+  rationale: A core, strongly-in-corpus Monstera watering question the engine should
+    answer with high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-002
+  question: What kind of light does a Pothos prefer indoors?
+  expected_behavior: answer
+  expected_facts:
+  - bright, indirect light
+  language: en
+  rationale: Pothos light preference is a canonical care fact directly covered by
+    the corpus, warranting high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-003
+  question: Why does a snake plant rot so easily if I water it too much?
+  expected_behavior: answer
+  expected_facts:
+  - overwatering causes root rot
+  language: en
+  rationale: Snake plant overwatering and root rot is a well-documented care fact
+    the corpus covers confidently.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-004
+  question: Why are my peace lily's leaves drooping, and will it recover after watering?
+  expected_behavior: answer
+  expected_facts:
+  - drooping leaves often signal the plant needs water
+  language: en
+  rationale: Peace lily drooping as a thirst signal is a strongly-in-corpus diagnosis
+    the engine should answer with high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-005
+  question: How drought-tolerant is a ZZ plant and how often does it really need watering?
+  expected_behavior: answer
+  expected_facts:
+  - drought-tolerant and stores water in its rhizomes
+  language: en
+  rationale: ZZ plant drought tolerance and rhizome water storage is a clear corpus
+    fact meriting high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-006
+  question: Why is my spider plant producing little plantlets on long stems?
+  expected_behavior: answer
+  expected_facts:
+  - produces offshoots called plantlets or pups
+  language: en
+  rationale: Spider plant plantlet production is a canonical, strongly-in-corpus fact
+    the engine should answer confidently.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-007
+  question: What humidity does a Philodendron like, and does it benefit from a moss
+    pole?
+  expected_behavior: answer
+  expected_facts:
+  - prefers higher humidity and climbing types appreciate a moss pole
+  language: en
+  rationale: Philodendron humidity and support preferences are well covered by the
+    corpus, supporting a high-confidence answer.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-008
+  question: Why is my fiddle-leaf fig dropping leaves after I moved it to a new room?
+  expected_behavior: answer
+  expected_facts:
+  - sensitive to sudden changes in light or location
+  language: en
+  rationale: Fiddle-leaf fig sensitivity to relocation is a documented care fact the
+    corpus covers with high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-009
+  question: How much sunlight does an aloe vera need to stay compact and healthy?
+  expected_behavior: answer
+  expected_facts:
+  - bright light, including some direct sun
+  language: en
+  rationale: Aloe vera's need for bright, direct light is a strongly-in-corpus care
+    fact warranting high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-010
+  question: Why do my Calathea leaves curl and get crispy edges?
+  expected_behavior: answer
+  expected_facts:
+  - sensitive to low humidity and to minerals in tap water
+  language: en
+  rationale: Calathea leaf curling from low humidity and tap-water minerals is a documented
+    corpus fact the engine answers confidently.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-011
+  question: How do I keep a rubber plant's leaves glossy and free of dust?
+  expected_behavior: answer
+  expected_facts:
+  - wipe the leaves with a damp cloth
+  language: en
+  rationale: Rubber plant leaf-cleaning guidance is a clear care fact in the corpus,
+    supporting a high-confidence answer.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-012
+  question: Why is my Dracaena getting brown leaf tips?
+  expected_behavior: answer
+  expected_facts:
+  - brown tips often from fluoride or salts in tap water
+  language: en
+  rationale: Dracaena brown tips from tap-water fluoride is a well-documented corpus
+    fact the engine should answer with high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-013
+  question: How vigorously does English ivy grow and should I prune it to control
+    it?
+  expected_behavior: answer
+  expected_facts:
+  - vigorous trailing grower that benefits from regular pruning
+  language: en
+  rationale: English ivy's vigorous growth and pruning need is a strongly-in-corpus
+    care fact meriting high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-014
+  question: How often should I water a jade plant, and what soil does it need?
+  expected_behavior: answer
+  expected_facts:
+  - water sparingly and use a well-draining succulent mix
+  language: en
+  rationale: Jade plant sparse watering and well-draining soil is a canonical succulent-care
+    fact the corpus covers confidently.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-015
+  question: Why does my Boston fern keep getting dry, brown fronds in my heated apartment?
+  expected_behavior: answer
+  expected_facts:
+  - needs consistently high humidity and evenly moist soil
+  language: en
+  rationale: Boston fern's high-humidity and moist-soil requirement is a documented
+    corpus fact the engine answers with high confidence.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-016
+  question: How do I get my Phalaenopsis orchid to rebloom after the flowers drop?
+  expected_behavior: answer
+  expected_facts:
+  - cut back the spent flower spike and provide a slight nighttime temperature drop
+  language: en
+  rationale: Phalaenopsis orchid reblooming guidance is a strongly-in-corpus care
+    fact the engine should answer confidently.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-017
+  question: What's the ideal soil pH and exact NPK ratio for a string-of-turtles (Peperomia
+    prostrata)?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: String-of-turtles is not in the corpus, so the engine should abstain
+    at low confidence and redirect rather than guess.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-018
+  question: How do I care for a Venus flytrap and what should I feed it?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: Venus flytrap is outside the corpus, so the engine should record low
+    confidence and abstain rather than fabricate care advice.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-019
+  question: My alocasia Polly's leaves are yellowing one by one — what's the precise
+    watering schedule to fix it?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: Alocasia is not among the corpus plants, so the engine should abstain
+    at low confidence rather than diagnose.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-020
+  question: What's the best fertilizer schedule for a beefsteak tomato plant on my
+    balcony?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: An outdoor edible crop is out of scope for the houseplant corpus, so
+    the engine should abstain and redirect.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-021
+  question: How often should I rotate the tires on my car?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: A non-plant question is entirely out of scope, so the engine should record
+    very low confidence and refuse.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-022
+  question: What is the exact bloom cycle and watering frequency for a Hoya kerrii
+    heart leaf?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: Hoya kerrii is not in the corpus, so the engine should abstain at low
+    confidence rather than invent specifics.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-023
+  question: How do I prune and trellis a bird of paradise (Strelitzia) to encourage
+    flowering?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: Bird of paradise is outside the corpus plant list, so the engine should
+    record low confidence and redirect.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+- id: calibration-024
+  question: What's the recommended dosage of melatonin for a toddler who won't sleep?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: A non-plant medical question is wholly out of scope, so the engine should
+    abstain at very low confidence and refuse.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'

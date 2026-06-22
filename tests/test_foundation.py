@@ -1,0 +1,225 @@
+"""Tests for the deterministic foundation: hashing, text, language, config, models."""
+
+from __future__ import annotations
+
+import math
+from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
+
+from sprout import __version__
+from sprout.config import Config, load_config
+from sprout.determinism import (
+    canonical_bytes,
+    sha256_of_file,
+    sha256_of_obj,
+    sha256_of_text,
+    short,
+)
+from sprout.lang import detect_language
+from sprout.models import Answer, AnswerSentence, Chunk, Citation
+from sprout.text import (
+    contains_phrase,
+    content_tokens,
+    coverage,
+    has_negation,
+    jaccard,
+    normalize,
+    split_sentences,
+    tokenize,
+)
+
+
+def test_version_matches_pyproject() -> None:
+    assert __version__ == "0.1.0"
+
+
+# --- determinism -----------------------------------------------------------------
+def test_canonical_bytes_is_order_independent() -> None:
+    assert canonical_bytes({"b": 1, "a": 2}) == canonical_bytes({"a": 2, "b": 1})
+
+
+def test_hash_helpers_are_stable_and_consistent() -> None:
+    obj = {"x": [1, 2, 3], "y": "café"}
+    assert sha256_of_obj(obj) == sha256_of_obj(dict(reversed(list(obj.items()))))
+    assert sha256_of_text("hello") == sha256_of_text("hello")
+    assert sha256_of_text("hello") != sha256_of_text("world")
+    assert len(short(sha256_of_text("hello"))) == 12
+
+
+def test_sha256_of_file(tmp_path: Path) -> None:
+    f = tmp_path / "x.txt"
+    f.write_text("contents", encoding="utf-8")
+    assert sha256_of_file(f) == sha256_of_text("contents")
+
+
+# --- text ------------------------------------------------------------------------
+def test_tokenize_folds_accents_and_case() -> None:
+    assert tokenize("Riego TAMBIÉN") == ["riego", "tambien"]
+
+
+def test_tokenize_keeps_decimals_whole() -> None:
+    assert "1.5" in tokenize("let the top 1.5 inches dry")
+
+
+def test_content_tokens_drop_stopwords_and_stem() -> None:
+    toks = content_tokens("the leaves are yellowing")
+    assert "the" not in toks
+    assert "are" not in toks
+    assert "leav" in toks  # 'leaves' -> 'leav'
+    assert "yellow" in toks  # 'yellowing' -> 'yellow'
+
+
+def test_split_sentences_protects_decimals() -> None:
+    out = split_sentences("Let the top 1.5 inches dry. Then water deeply.")
+    assert out == ["Let the top 1.5 inches dry.", "Then water deeply."]
+
+
+def test_split_sentences_empty() -> None:
+    assert split_sentences("   ") == []
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Pothos is toxic to cats", False),
+        ("Pothos is not toxic", True),
+        ("It cannot hurt", True),
+        ("no es tóxica", True),
+        ("isn't fine", True),
+    ],
+)
+def test_has_negation(text: str, expected: bool) -> None:
+    assert has_negation(text) is expected
+
+
+def test_coverage_full_and_partial() -> None:
+    assert coverage("yellow leaves", "yellowing leaves indicate overwatering") == 1.0
+    assert coverage("", "anything") == 1.0
+    assert 0.0 < coverage("yellow fertilizer", "yellow leaves") < 1.0
+
+
+def test_jaccard_bounds() -> None:
+    assert jaccard("water the plant", "water the plant") == 1.0
+    assert jaccard("", "") == 1.0
+    assert jaccard("cats toxic", "sunlight bright") == 0.0
+
+
+def test_normalize_and_contains_phrase() -> None:
+    assert normalize("  A  B\nC ") == "a b c"
+    assert contains_phrase("This Plant Is Toxic to Cats", "toxic to cats")
+    assert not contains_phrase("safe and sound", "toxic")
+
+
+# --- language --------------------------------------------------------------------
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Why are my Monstera leaves yellowing?", "en"),
+        ("¿Por qué se amarillean las hojas?", "es"),
+        ("Las hojas de la planta están amarillas", "es"),
+        ("", "en"),
+        ("12345 6789", "en"),  # no markers -> default
+    ],
+)
+def test_detect_language(text: str, expected: str) -> None:
+    assert detect_language(text) == expected
+
+
+def test_detect_language_custom_default() -> None:
+    assert detect_language("", default="es") == "es"
+
+
+# --- config ----------------------------------------------------------------------
+def test_default_config_is_valid() -> None:
+    cfg = Config()
+    assert cfg.languages.reference == "en"
+    assert cfg.prompts.refusal_for("es").startswith("No tengo")
+    assert cfg.prompts.refusal_for("fr") == cfg.prompts.refusal_for("en")  # fallback
+    assert "veterinario" in cfg.prompts.safety_route_for("es")
+
+
+def test_config_rejects_unknown_keys() -> None:
+    with pytest.raises(ValidationError):
+        Config.model_validate({"corpus": {"nope": 1}})
+
+
+def test_config_rejects_out_of_range() -> None:
+    with pytest.raises(ValidationError):
+        Config.model_validate({"retrieval": {"min_score": 2.0}})
+
+
+def test_load_config_roundtrip(tmp_path: Path) -> None:
+    p = tmp_path / "c.yaml"
+    p.write_text("retrieval:\n  top_k: 9\n", encoding="utf-8")
+    cfg = load_config(p)
+    assert cfg.retrieval.top_k == 9
+
+
+def test_load_config_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_config(tmp_path / "absent.yaml")
+
+
+def test_load_config_empty_is_defaults(tmp_path: Path) -> None:
+    p = tmp_path / "empty.yaml"
+    p.write_text("", encoding="utf-8")
+    assert load_config(p).retrieval.top_k == Config().retrieval.top_k
+
+
+def test_load_config_non_mapping(tmp_path: Path) -> None:
+    p = tmp_path / "bad.yaml"
+    p.write_text("- a\n- b\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="mapping"):
+        load_config(p)
+
+
+# --- models ----------------------------------------------------------------------
+def _chunk() -> Chunk:
+    return Chunk(
+        chunk_id="c1",
+        doc_id="d1",
+        title="Monstera care",
+        source="monstera.md",
+        text="Yellowing leaves indicate overwatering.",
+        language="en",
+        topic="watering",
+        source_name="Synthetic Care Notes",
+        url="https://example.invalid/monstera",
+        license="CC0-1.0",
+        fetch_date="2026-05-01",
+    )
+
+
+def test_chunk_citation_label() -> None:
+    assert _chunk().citation_label == "Monstera care — monstera.md (as of 2026-05-01)"
+
+
+def test_answer_text_citations_and_coverage() -> None:
+    c = _chunk()
+    cit = Citation(
+        chunk_id=c.chunk_id,
+        doc_id=c.doc_id,
+        title=c.title,
+        source=c.source,
+        quote=c.text,
+        license=c.license,
+        fetch_date=c.fetch_date,
+        url=c.url,
+    )
+    s = AnswerSentence(text=c.text, chunk_id=c.chunk_id, citation=cit)
+    ans = Answer(question="why yellow?", language="en", sentences=(s, s))
+    assert ans.text == f"{c.text} {c.text}"
+    assert len(ans.citations) == 1  # deduped by chunk_id
+    assert math.isclose(ans.citation_coverage, 1.0)
+
+
+def test_empty_answer_coverage_is_zero() -> None:
+    assert Answer(question="q", language="en").citation_coverage == 0.0
+
+
+def test_models_are_frozen() -> None:
+    c = _chunk()
+    with pytest.raises(ValidationError):
+        c.text = "mutated"  # frozen model rejects assignment

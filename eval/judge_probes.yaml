@@ -1,0 +1,74 @@
+probes:
+- id: g1-pothos-toxic
+  kind: entails
+  text_a: Pothos is toxic to cats and dogs when ingested.
+  sources:
+  - Pothos (Epipremnum aureum) is toxic to cats and dogs; ingestion causes oral irritation
+    and drooling.
+  human_label: true
+- id: g2-spider-nontoxic
+  kind: entails
+  text_a: The spider plant is non-toxic to cats and dogs.
+  sources:
+  - The spider plant (Chlorophytum comosum) is listed as non-toxic to cats and dogs
+    in the toxic-plant database.
+  human_label: true
+- id: g3-snake-watering
+  kind: entails
+  text_a: Water a snake plant roughly every two weeks, letting the soil dry between
+    waterings.
+  sources:
+  - Snake plant (Sansevieria) tolerates drought; water roughly every two weeks and
+    let the soil dry between waterings.
+  human_label: true
+- id: g4-aloe-negation-contradiction
+  kind: entails
+  text_a: Aloe vera is not toxic to dogs.
+  sources:
+  - Aloe vera is toxic to dogs and cats; ingestion can cause vomiting, diarrhea, and
+    lethargy.
+  human_label: false
+- id: g5-aloe-safe-antonym-contradiction
+  kind: entails
+  text_a: Aloe vera is safe for dogs to eat.
+  sources:
+  - Aloe vera is toxic to dogs and cats; ingestion can cause vomiting, diarrhea, and
+    lethargy.
+  human_label: false
+- id: c1-monstera-dry-inch
+  kind: contains
+  text_a: Let the top inch of soil dry before watering your Monstera again. Based
+    on references as of 2024-03-01.
+  text_b: let the top inch of soil dry before watering
+  human_label: true
+- id: c2-snake-low-light
+  kind: contains
+  text_a: A snake plant tolerates low light but grows fastest in bright indirect light.
+  text_b: snake plant tolerates low light
+  human_label: true
+- id: c3-repot-interval
+  kind: contains
+  text_a: Repot when the roots begin to circle the pot, usually every 18 to 24 months.
+  text_b: repot every 18 to 24 months
+  human_label: true
+- id: c4-fact-absent
+  kind: contains
+  text_a: This answer explains watering frequency and the plant light requirements
+    in detail.
+  text_b: fertilize monthly during spring and summer
+  human_label: false
+- id: e1-es-snake-watering-paraphrase
+  kind: equivalent
+  text_a: Riega la planta serpiente cada dos semanas.
+  text_b: Riega la planta serpiente aproximadamente cada dos semanas.
+  human_label: true
+- id: e2-es-yellow-leaves-synonym-paraphrase
+  kind: equivalent
+  text_a: El amarilleo de las hojas suele deberse a un exceso de riego.
+  text_b: Las hojas amarillas normalmente indican un exceso de riego.
+  human_label: true
+- id: e3-es-pothos-toxic-vs-safe
+  kind: equivalent
+  text_a: El potos es toxico para los gatos si lo ingieren.
+  text_b: El potos es seguro para los gatos si lo ingieren.
+  human_label: false

@@ -1,0 +1,30 @@
+name: Bug report
+description: A reproducible problem in Sprout
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the exact `sprout ...` command or API call, and the full output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Sprout version (`sprout version`)
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: This report does not contain personal data or a real toxicity emergency (for emergencies, contact a vet / poison-control line).
+          required: true

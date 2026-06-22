@@ -1,0 +1,259 @@
+_note: Synthetic, CC0-1.0 reference corpus. Toxicity reflects publicly known status;
+  prose is original. Not authoritative horticulture. See docs/cards/data-card-corpus.md.
+documents:
+- file: aloe.es.md
+  title: Cuidado del Aloe vera
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/aloe
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: aloe.md
+  title: Aloe vera care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/aloe
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: boston-fern.es.md
+  title: Cuidado del helecho de Boston
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/boston-fern
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: boston-fern.md
+  title: Boston fern care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/boston-fern
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: calathea.es.md
+  title: Cuidado de la Calatea
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/calathea
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: calathea.md
+  title: Calathea care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/calathea
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: dracaena.es.md
+  title: Cuidado de la Drácena
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/dracaena
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: dracaena.md
+  title: Dracaena care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/dracaena
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: english-ivy.es.md
+  title: Cuidado de la Hiedra
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/english-ivy
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: english-ivy.md
+  title: English ivy care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/english-ivy
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: fiddle-leaf-fig.es.md
+  title: Cuidado del Ficus lira
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/fiddle-leaf-fig
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: fiddle-leaf-fig.md
+  title: Fiddle-leaf fig care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/fiddle-leaf-fig
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: jade-plant.es.md
+  title: Cuidado del árbol de jade
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/jade-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: jade-plant.md
+  title: Jade plant care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/jade-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: monstera.es.md
+  title: Cuidado de la Monstera
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/monstera
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: monstera.md
+  title: Monstera care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/monstera
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: orchid.es.md
+  title: Cuidado de la Orquídea
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/orchid
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: orchid.md
+  title: Orchid care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/orchid
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: peace-lily.es.md
+  title: Cuidado del Lirio de la paz
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/peace-lily
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: peace-lily.md
+  title: Peace lily care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/peace-lily
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: philodendron.es.md
+  title: Cuidado del Filodendro
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/philodendron
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: philodendron.md
+  title: Philodendron care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/philodendron
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: pothos.es.md
+  title: Cuidado del Potho
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/pothos
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: pothos.md
+  title: Pothos care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/pothos
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: rubber-plant.es.md
+  title: Cuidado del árbol del caucho
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/rubber-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: rubber-plant.md
+  title: Rubber plant care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/rubber-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: snake-plant.es.md
+  title: Cuidado y toxicidad de la lengua de suegra
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/snake-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: snake-plant.md
+  title: Snake plant care and toxicity
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/snake-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: spider-plant.es.md
+  title: Cuidado de la Cinta
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/spider-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: spider-plant.md
+  title: Spider plant care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/spider-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: zz-plant.es.md
+  title: Cuidado de la Planta ZZ
+  language: es
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/zz-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+- file: zz-plant.md
+  title: ZZ plant care
+  language: en
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/zz-plant
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care

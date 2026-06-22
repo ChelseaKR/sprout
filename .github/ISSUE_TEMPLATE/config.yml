@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/ChelseaKR/sprout/security/advisories/new
+    about: Please report vulnerabilities privately via a security advisory (see SECURITY.md).
+  - name: Pet or child may have eaten a plant
+    url: https://www.aspca.org/pet-care/animal-poison-control
+    about: This is not an emergency channel. Contact your veterinarian or a poison-control line now.

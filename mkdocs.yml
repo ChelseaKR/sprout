@@ -1,0 +1,50 @@
+site_name: Sprout
+site_description: A grounded, evaluated, multilingual plant-care assistant and eval harness.
+site_author: Chelsea Kelly-Reif
+repo_url: https://github.com/ChelseaKR/sprout
+copyright: Copyright 2026 Chelsea Kelly-Reif — Apache-2.0
+
+theme:
+  name: material
+  palette:
+    primary: green
+    accent: green
+  features:
+    - navigation.sections
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+# The docs are GitHub-first and intentionally link to source files (../src/...),
+# the README, and the vendored ../STANDARDS/ — none of which are site pages. Tolerate
+# those cross-tree links and the not-in-nav reference docs (ADRs, audits) while still
+# catching broken in-site anchors under --strict.
+validation:
+  nav:
+    omitted_files: ignore
+    not_found: warn
+  links:
+    not_found: ignore
+    absolute_links: ignore
+    unrecognized_links: ignore
+    anchors: warn
+
+nav:
+  - Home: index.md
+  - Architecture: ARCHITECTURE.md
+  - Threat model: THREAT-MODEL.md
+  - Roadmap: ROADMAP.md
+  - Responsible-tech audits: RESPONSIBLE-TECH-AUDITS.md
+  - Accessibility:
+      - Statement: a11y/STATEMENT.md
+      - Conformance report (ACR): accessibility/ACR.md
+  - Cards:
+      - Model card: cards/model-card.md
+      - Data card (corpus): cards/data-card-corpus.md
+  - Evaluation report: audits/eval-report.md
+  - ADRs:
+      - Record decisions: adr/0000-record-architecture-decisions.md

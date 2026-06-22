@@ -1,0 +1,327 @@
+cases:
+- id: multilingual-monstera-water-en
+  pair_id: ml-monstera-watering
+  question: How often should I water my Monstera deliciosa?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - monstera.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Establishes the English watering-frequency answer that the Spanish mirror
+    must reproduce with identical facts and citation.
+- id: multilingual-monstera-water-es
+  pair_id: ml-monstera-watering
+  question: ¿Con qué frecuencia debo regar mi Monstera deliciosa?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - monstera.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the Monstera watering question that must preserve the
+    English watering facts and cite the parallel Spanish passage.
+- id: multilingual-pothos-light-en
+  pair_id: ml-pothos-light
+  question: What light conditions does a Pothos need to thrive indoors?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - pothos.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Sets the reference light-requirement answer for Pothos against which
+    the Spanish version is checked for fact parity.
+- id: multilingual-pothos-light-es
+  pair_id: ml-pothos-light
+  question: ¿Qué condiciones de luz necesita un potos para prosperar en interiores?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - pothos.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the Pothos light question that must convey the same
+    light conditions and cite the Spanish corpus passage.
+- id: multilingual-snake-plant-overwater-en
+  pair_id: ml-snake-plant-overwatering
+  question: What are the signs that my snake plant is being overwatered?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - snake-plant.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Establishes the English overwatering-symptom answer for the snake plant
+    that the Spanish mirror must match factually and by citation.
+- id: multilingual-snake-plant-overwater-es
+  pair_id: ml-snake-plant-overwatering
+  question: ¿Cuáles son las señales de que mi planta de serpiente tiene exceso de
+    riego?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - snake-plant.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the snake-plant overwatering question requiring the
+    same symptom facts and the parallel Spanish citation.
+- id: multilingual-peace-lily-droop-en
+  pair_id: ml-peace-lily-drooping
+  question: Why are the leaves on my peace lily drooping?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - peace-lily.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Sets the reference drooping-leaf diagnosis for the peace lily that the
+    Spanish mirror must reproduce with the same cause and citation.
+- id: multilingual-peace-lily-droop-es
+  pair_id: ml-peace-lily-drooping
+  question: ¿Por qué se caen las hojas de mi lirio de la paz?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - peace-lily.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the peace-lily drooping question that must preserve
+    the diagnosis facts and cite the Spanish corpus passage.
+- id: multilingual-zz-plant-light-en
+  pair_id: ml-zz-plant-low-light
+  question: Can a ZZ plant survive in a low-light room?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - zz-plant.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Establishes the English low-light tolerance answer for the ZZ plant that
+    the Spanish mirror must match in fact and citation.
+- id: multilingual-zz-plant-light-es
+  pair_id: ml-zz-plant-low-light
+  question: ¿Puede una planta ZZ sobrevivir en una habitación con poca luz?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - zz-plant.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the ZZ-plant low-light question requiring the same
+    tolerance facts and the parallel Spanish citation.
+- id: multilingual-spider-plant-propagate-en
+  pair_id: ml-spider-plant-propagation
+  question: How do I propagate a spider plant from its plantlets?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - spider-plant.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Sets the reference propagation-from-plantlets answer for the spider plant
+    that the Spanish mirror must reproduce with the same steps and citation.
+- id: multilingual-spider-plant-propagate-es
+  pair_id: ml-spider-plant-propagation
+  question: ¿Cómo propago una cinta a partir de sus hijuelos?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - spider-plant.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the spider-plant propagation question that must convey
+    the same propagation steps and cite the Spanish corpus passage.
+- id: multilingual-philodendron-fertilize-en
+  pair_id: ml-philodendron-fertilizing
+  question: How often should I fertilize my philodendron during the growing season?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - philodendron.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Establishes the English growing-season fertilizing schedule for the philodendron
+    that the Spanish mirror must match in fact and citation.
+- id: multilingual-philodendron-fertilize-es
+  pair_id: ml-philodendron-fertilizing
+  question: ¿Con qué frecuencia debo fertilizar mi filodendro durante la temporada
+    de crecimiento?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - philodendron.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the philodendron fertilizing question requiring the
+    same schedule facts and the parallel Spanish citation.
+- id: multilingual-fiddle-leaf-fig-brown-en
+  pair_id: ml-fiddle-leaf-fig-brown-spots
+  question: What causes brown spots on the leaves of my fiddle-leaf fig?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - fiddle-leaf-fig.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Sets the reference brown-spot diagnosis for the fiddle-leaf fig that
+    the Spanish mirror must reproduce with the same cause and citation.
+- id: multilingual-fiddle-leaf-fig-brown-es
+  pair_id: ml-fiddle-leaf-fig-brown-spots
+  question: ¿Qué causa las manchas marrones en las hojas de mi ficus lira?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - fiddle-leaf-fig.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the fiddle-leaf fig brown-spot question that must preserve
+    the diagnosis facts and cite the Spanish corpus passage.
+- id: multilingual-calathea-humidity-en
+  pair_id: ml-calathea-humidity
+  question: What humidity level does a Calathea need to keep its leaves healthy?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - calathea.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Establishes the English humidity-requirement answer for the Calathea
+    that the Spanish mirror must match including any numeric range and citation.
+- id: multilingual-calathea-humidity-es
+  pair_id: ml-calathea-humidity
+  question: ¿Qué nivel de humedad necesita una calatea para mantener sus hojas sanas?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - calathea.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the Calathea humidity question requiring the same humidity
+    figures and the parallel Spanish citation.
+- id: multilingual-rubber-plant-repot-en
+  pair_id: ml-rubber-plant-repotting
+  question: When should I repot my rubber plant and into what size pot?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - rubber-plant.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Sets the reference repotting-timing and pot-size answer for the rubber
+    plant that the Spanish mirror must reproduce in fact and citation.
+- id: multilingual-rubber-plant-repot-es
+  pair_id: ml-rubber-plant-repotting
+  question: ¿Cuándo debo trasplantar mi árbol del caucho y a qué tamaño de maceta?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - rubber-plant.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the rubber-plant repotting question that must convey
+    the same timing and pot-size facts and cite the Spanish corpus passage.
+- id: multilingual-aloe-water-winter-en
+  pair_id: ml-aloe-winter-watering
+  question: How should I adjust watering for my aloe vera in winter?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - aloe.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Establishes the English winter-watering adjustment for aloe vera that
+    the Spanish mirror must match including the seasonal reduction and citation.
+- id: multilingual-aloe-water-winter-es
+  pair_id: ml-aloe-winter-watering
+  question: ¿Cómo debo ajustar el riego de mi aloe vera en invierno?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - aloe.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the aloe winter-watering question requiring the same
+    seasonal reduction facts and the parallel Spanish citation.
+- id: multilingual-boston-fern-yellow-en
+  pair_id: ml-boston-fern-yellowing
+  question: Why are the fronds on my Boston fern turning yellow and crispy?
+  language: en
+  is_reference: true
+  expected_behavior: answer
+  must_mention:
+  - boston-fern.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Sets the reference yellowing-and-crisping diagnosis for the Boston fern
+    that the Spanish mirror must reproduce with the same cause and citation.
+- id: multilingual-boston-fern-yellow-es
+  pair_id: ml-boston-fern-yellowing
+  question: ¿Por qué las frondas de mi helecho de Boston se vuelven amarillas y quebradizas?
+  language: es
+  expected_behavior: answer
+  must_mention:
+  - boston-fern.es.md
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-06-22'
+  rationale: Spanish mirror of the Boston-fern yellowing question that must preserve
+    the diagnosis facts and cite the Spanish corpus passage.
