@@ -1,7 +1,8 @@
 # Responsible-Tech Audits — Sprout
 
 Instantiates [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md).
-Last regenerated: **2026-06-22**. Author: Chelsea Kelly-Reif.
+Last regenerated: **2026-06-22** (photo-ID + reminders DPIA/non-goal reconciliation
+**2026-06-30**, per ADR-0010/ADR-0011). Author: Chelsea Kelly-Reif.
 
 This document supplies the *frame* (what could go wrong, who is hurt, what we commit to)
 and the AI-governance scaffolding. It does **not** restate numeric thresholds: every gate
@@ -59,8 +60,15 @@ value-chain are recorded as not-applicable with one-line reasons in the risk reg
 - **Not** a substitute for a veterinarian or a poison-control center. Every answer carries
   *"This is not veterinary advice"* and every toxicity/ingestion question is routed to a vet
   or poison-control line (`PromptConfig.safety_route_by_lang`).
-- **Not** a plant-identification-from-photo tool. Sprout answers text questions against a
-  cited corpus; it does not ingest or reason over photo bytes.
+- **Not** a vision model that treats a photo as a source of fact. Sprout *can* accept a
+  photo to *select* a candidate species — offline by default (no network, always falls
+  back to "type the plant's name"), with an allowlisted Pl@ntNet provider behind a config
+  switch — but a visual match is labelled *"a visual match, not a cited fact,"* never
+  enters `Answer.sentences`, and is never citation-checked. The care/toxicity answer still
+  flows through the grounded, cited, never-certify-safe pipeline, so the photo path adds no
+  new way for an unsupported claim to render. See
+  [ADR-0010](adr/0010-photo-plant-id-as-selector-not-fact-source.md); the photo-ID and
+  reminders privacy posture is inventoried in §C.
 - **Not** a source of medical, legal, or financial advice, or of any guidance outside the
   versioned horticulture corpus. Out-of-scope questions are refused and redirected, not
   improvised (`Assistant.answer` → `_refuse(reason="out_of_scope")`).
@@ -168,14 +176,16 @@ fabricate a cited fact, and must not infer household composition. Pre-staged as 
 Sprout's defining privacy property is that, in the default offline build, **there is almost
 no personal data to protect**, by design.
 
-### Data inventory (default offline build)
+### Data inventory (default offline build, plus opt-in seams)
 
 | Data | Why | Storage | Retention | Access |
 | --- | --- | --- | --- | --- |
 | The user's question text | needed to retrieve + answer | **in-process only**; never persisted | duration of the request | the process |
 | Corpus passages | the only source of fact | committed repo (`corpus/processed`, synthetic CC0) | versioned | public |
 | Operational logs | health/debugging | stderr / log sink | per deployment | operator |
-| API keys (cloud seam only) | auth to Bedrock/Anthropic | **env vars only**, never config/repo | n/a | operator |
+| Photo bytes (photo-ID, opt-in) | *select* a candidate species to route to the corpus (ADR-0010) | **not persisted**; the offline default does no I/O; the `plantnet` provider streams the image once to the allowlisted Pl@ntNet endpoint and retains nothing | duration of the request | the process; Pl@ntNet **only if** the `plantnet` provider is enabled |
+| Care reminders (opt-in) | user-set watering/fertilizing schedule the user asked Sprout to remember (ADR-0011) | **one local JSON file** (`var/reminders.json`) on the user's own device; created lazily on first use | until the user deletes it; **never uploaded**, no sync, no push | the local process only |
+| API keys (cloud + Pl@ntNet seams) | auth to Bedrock/Anthropic; `PLANTNET_API_KEY` for the photo seam | **env vars only**, never config/repo | n/a | operator |
 
 - **No query persistence in the demo.** The assistant holds the question in memory for the
   duration of a request and returns an `Answer`; nothing writes the question to disk. The
@@ -193,6 +203,21 @@ no personal data to protect**, by design.
   lawful-basis question; the cloud seam, if enabled, redacts emails/SSNs/phone numbers from
   text sent to the provider (`guards.redact_pii`, gated by `generation.redact_query_pii`) and
   sends no logs to the provider.
+- **Photo-ID egress is opt-in, minimal, and non-retaining (DPIA delta for ADR-0010).** The
+  default `offline` identifier makes **no network call** and performs no on-device
+  inference. Enabling the `plantnet` provider introduces **exactly one** allowlisted
+  outbound call — the image is streamed once to the Pl@ntNet endpoint to obtain candidate
+  *species names*, which are a selector only; the photo bytes are not stored by Sprout, the
+  returned match never renders as a cited fact, and the key is env-only (`PLANTNET_API_KEY`).
+  This is the same "behind a config switch, fails closed" discipline as the Bedrock/Anthropic
+  generator seam. A home photo can incidentally reveal a location, so the provider stays
+  **off by default** and a future external-exposure phase steps the privacy posture to ASVS L2
+  (see §F).
+- **Reminders are local-only state (DPIA delta for ADR-0011).** Watering/fertilizing
+  reminders live in a single JSON file on the user's machine (`var/reminders.json`), created
+  lazily on first use; nothing is uploaded, there is no sync and no push delivery, and
+  reminder *content* (plant labels, notes) never reaches the logs — only event names and
+  counts pass the whitelist logger, preserving the Tier-C PII-free posture.
 
 ### Data-flow (default offline)
 
@@ -203,8 +228,12 @@ user question ──(in-process)──▶ guards(input) ──▶ retrieve ─�
       └─ question text: never persisted, never logged, never sent off-box (offline default)
 ```
 
-The only egress in the *default* build is the answer back to the caller. There is no
-third-party exfiltration path because there is no network call.
+The only egress in the *default* build is the answer back to the caller: there is no
+third-party exfiltration path because there is no network call. Two **opt-in, non-default**
+seams can add a single allowlisted egress each — the cloud generator (Bedrock/Anthropic) and
+the `plantnet` photo-ID provider — and both fail closed; the photo seam streams the image
+once and retains nothing (see the bullets above). Reminders add **local** state only and
+never leave the device.
 
 ### Sentinel-PII plan (future household-data path — Family Greenhouse)
 

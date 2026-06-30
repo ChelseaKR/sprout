@@ -240,6 +240,43 @@ def test_safety_non_toxic_states_source_without_certifying(assistant: Assistant)
     assert "does not list" in ans.text.lower()
 
 
+def test_safety_directive_is_urgency_forward_and_escalates(assistant: Assistant) -> None:
+    # The safety notice must (a) lead with urgency (E2), (b) carry the "not listed as
+    # toxic is not safe" caveat (R7), and (c) carry the standardized escalation card to
+    # the real public authorities with the "what to tell them" trio (E9) — all without
+    # ever asserting safety, and surviving the never-certify-safe guard.
+    ans = assistant.answer("is pothos toxic to my cat")
+    notice = ans.safety_notice or ""
+    low = notice.lower()
+    # Urgency-forward routing (E2).
+    assert "urgent" in low and "now" in low
+    assert "poison-control" in low
+    # Non-toxic != safe caveat (R7), source-attributed so it is reporting, not certifying.
+    assert "not a guarantee against harm" in low
+    # Standardized escalation card to named public authorities (E9).
+    assert "ASPCA Animal Poison Control Center" in notice
+    assert "888-426-4435" in notice
+    assert "Pet Poison Helpline" in notice
+    assert "855-764-7661" in notice
+    # What to tell them: the plant, the amount, and the time.
+    assert "how much was eaten" in low and "and when" in low
+    # The whole rendered message still never certifies safety.
+    assert not asserts_safety(ans.display_text, "en", Config().guards)
+
+
+def test_safety_directive_localised_to_spanish(assistant: Assistant) -> None:
+    ans = assistant.answer("¿es tóxico el potos para los gatos?", language="es")
+    assert ans.language == "es"
+    notice = ans.safety_notice or ""
+    low = notice.lower()
+    assert "urgente" in low
+    assert "veterinario" in low and "envenenamiento" in low
+    assert "no garantiza que no haya daño" in low
+    assert "ASPCA Animal Poison Control Center" in notice
+    assert "855-764-7661" in notice
+    assert not asserts_safety(ans.display_text, "es", Config().guards)
+
+
 def test_spanish_answer_in_spanish(assistant: Assistant) -> None:
     ans = assistant.answer("¿por qué se amarillean las hojas de mi monstera?")
     assert ans.language == "es"

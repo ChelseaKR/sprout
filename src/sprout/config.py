@@ -265,16 +265,60 @@ class PromptConfig(_Model):
             "es": "Las respuestas provienen solo de un corpus de cuidado de plantas fechado y citado. Esto no es asesoramiento veterinario.",  # noqa: E501
         }
     )
+    # Urgency-forward routing (research item E2): lead with the time-critical action,
+    # never with reassurance, and still never certify a plant safe.
     safety_route_by_lang: dict[str, str] = Field(
         default_factory=lambda: {
             "en": (
-                "I can't certify any plant safe. If a pet or child may have eaten part "
-                "of this plant, contact your veterinarian or a poison-control line now."
+                "If a pet or child may have eaten part of this plant, treat it as urgent: "
+                "contact your veterinarian or a poison-control line now — don't wait for "
+                "symptoms to appear. I can't certify any plant safe."
             ),
             "es": (
-                "No puedo certificar ninguna planta como segura. Si una mascota o un "
-                "niño pudo haber comido parte de esta planta, comunícate ahora con tu "
-                "veterinario o una línea de control de envenenamiento."
+                "Si una mascota o un niño pudo haber comido parte de esta planta, trátalo "
+                "como urgente: comunícate ahora con tu veterinario o una línea de control "
+                "de envenenamiento; no esperes a que aparezcan síntomas. No puedo "
+                "certificar ninguna planta como segura."
+            ),
+        }
+    )
+    # "Not listed as toxic" is not a clean bill of health (research item R7 / evidence
+    # EV3): any plant material can cause GI upset, and individual animals vary. This is a
+    # framing caveat about the limits of a *source's silence*, not a claim about any
+    # specific plant — it is attributed to "a source", so it reads as reporting, not a
+    # certification, and the never-certify-safe guard leaves it intact.
+    nontoxic_caveat_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "Even a plant a source does not list as toxic can still cause vomiting or "
+                "mouth and stomach irritation if eaten, and reactions vary by pet and "
+                "person — a source's silence is not a guarantee against harm."
+            ),
+            "es": (
+                "Incluso una planta que una fuente no incluye como tóxica puede causar "
+                "vómitos o irritación de la boca y el estómago si se ingiere, y cada "
+                "mascota o niño reacciona distinto: el silencio de una fuente no garantiza "
+                "que no haya daño."
+            ),
+        }
+    )
+    # Standardized escalation card (research item E9): named public poison-control
+    # authorities plus the three facts the clinician needs. Numbers and pages are the
+    # well-established public contacts (ASPCA APCC, Pet Poison Helpline); the official
+    # pages are linked so they remain the source of truth if a number ever changes.
+    escalation_card_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "Who to call now: ASPCA Animal Poison Control Center, 888-426-4435 "
+                "(https://www.aspca.org/pet-care/animal-poison-control), or Pet Poison "
+                "Helpline, 855-764-7661 (https://www.petpoisonhelpline.com/). What to "
+                "tell them: the plant (species if known), how much was eaten, and when."
+            ),
+            "es": (
+                "A quién llamar ahora: ASPCA Animal Poison Control Center, 888-426-4435 "
+                "(https://www.aspca.org/pet-care/animal-poison-control), o Pet Poison "
+                "Helpline, 855-764-7661 (https://www.petpoisonhelpline.com/). Qué "
+                "informar: la planta (especie si la conoces), cuánto comió y cuándo."
             ),
         }
     )
@@ -331,6 +375,29 @@ class PromptConfig(_Model):
 
     def safety_route_for(self, language: str) -> str:
         return self.safety_route_by_lang.get(language, self.safety_route_by_lang["en"])
+
+    def nontoxic_caveat_for(self, language: str) -> str:
+        return self.nontoxic_caveat_by_lang.get(language, self.nontoxic_caveat_by_lang["en"])
+
+    def escalation_card_for(self, language: str) -> str:
+        return self.escalation_card_by_lang.get(language, self.escalation_card_by_lang["en"])
+
+    def safety_directive_for(self, language: str) -> str:
+        """The full safety message shown on every toxicity answer/refusal.
+
+        Three research-backed parts, in urgency order: the time-critical routing line
+        (E2), the "not listed as toxic is not safe" caveat (R7), and the standardized
+        vet/poison-control escalation card (E9). It never certifies a plant safe, and
+        because the caveat is source-attributed the never-certify-safe guard keeps it
+        intact.
+        """
+        return " ".join(
+            (
+                self.safety_route_for(language),
+                self.nontoxic_caveat_for(language),
+                self.escalation_card_for(language),
+            )
+        )
 
 
 class ServerConfig(_Model):
