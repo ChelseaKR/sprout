@@ -10,7 +10,28 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
-_Nothing yet. New work lands here and is promoted on release._
+### Added
+- **Photo-based plant identification → grounded care lookup** (`identify.py`,
+  `providers/plantnet.py`). A photo is identified into candidate species, the best confident
+  match is resolved to a species **already in the cited corpus**, and that species is routed
+  back through the *unchanged* grounded pipeline — so every rendered claim is still cited and
+  toxicity still routes to a vet. The identification is labelled "a visual match, not a cited
+  fact" and never enters the answer's sentences. Offline by default (no network, always falls
+  back to "type the plant's name"); a `plantnet` provider calls the allowlisted Pl@ntNet API
+  with its key from `PLANTNET_API_KEY` (env only). New `sprout identify` command and
+  `POST /api/identify`. See [ADR-0010](docs/adr/0010-photo-plant-id-as-selector-not-fact-source.md).
+- **Local-first care reminders** (`reminders.py`). Watering/fertilizing/etc. reminders tied to a
+  plant (and optionally the citation that motivated them), stored in one JSON file on the user's
+  own machine — offline, opt-in, no database, content never logged. New `sprout remind`
+  sub-commands (add/list/due/done/remove), reminder endpoints under `/api/reminders`, and an
+  accessible reminders panel in the chat UI. See
+  [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md).
+
+### Changed
+- `create_app` accepts an optional `identifier` override (mirroring the existing `assistant`
+  override) so the grounded photo path is testable offline.
+- New `identification` and `reminders` config blocks (`config/sprout.yaml`); `identify` optional
+  dependency extra (`httpx`).
 
 ## [0.1.0] - 2026-06-22
 

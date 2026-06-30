@@ -150,6 +150,16 @@ class Assistant:
             disclosure=self._config.prompts.disclosure_for(lang),
         )
 
+    def resolve_language(self, query: str, language: str | None = None) -> str:
+        """Public language resolution (used by the photo-ID path)."""
+        return self._resolve_language(query, language)
+
+    def species_slugs(self) -> set[str]:
+        """Canonical species slugs present in the loaded corpus (for photo-ID routing)."""
+        from .retrieve import species_slug
+
+        return {species_slug(chunk.source) for chunk in self._store.all_chunks()}
+
     def trace(self, query: str, language: str | None = None) -> AnswerTrace:
         """Return the full retrieval+generation trace for debugging (``--debug``)."""
         lang = self._resolve_language(query, language)

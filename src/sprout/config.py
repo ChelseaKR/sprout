@@ -168,6 +168,68 @@ class GuardsConfig(_Model):
     )
 
 
+class IdentificationConfig(_Model):
+    """Photo plant-ID seam. The identifier returns a *species name* (a selector), never a
+    horticultural fact: the resolved species is routed back through the grounded care-RAG,
+    so every rendered claim is still cited. ``offline`` (no network, no model) always
+    falls back to "type the plant's name"; ``plantnet`` calls the allowlisted Pl@ntNet API
+    with its key read from ``PLANTNET_API_KEY`` (env only, never config)."""
+
+    provider: Literal["offline", "plantnet"] = "offline"
+    min_confidence: float = Field(default=0.30, ge=0.0, le=1.0)
+    top_k: int = Field(default=5, ge=1, le=20)
+    # The single allowlisted vision endpoint. No other network egress is introduced.
+    endpoint: str = "https://my-api.plantnet.org/v2/identify/all"
+    timeout_s: float = Field(default=30.0, ge=1.0, le=120.0)
+    max_image_bytes: int = Field(default=8_000_000, ge=1, le=64_000_000)
+    # Folded scientific binomial -> corpus species slug. Maps a vision result to the
+    # passages that already exist in the cited corpus; unknown species fall back.
+    scientific_aliases: dict[str, str] = Field(
+        default_factory=lambda: {
+            "aloe vera": "aloe",
+            "aloe barbadensis": "aloe",
+            "nephrolepis exaltata": "boston-fern",
+            "goeppertia": "calathea",
+            "calathea": "calathea",
+            "dracaena fragrans": "dracaena",
+            "dracaena": "dracaena",
+            "hedera helix": "english-ivy",
+            "ficus lyrata": "fiddle-leaf-fig",
+            "crassula ovata": "jade-plant",
+            "monstera deliciosa": "monstera",
+            "phalaenopsis": "orchid",
+            "spathiphyllum": "peace-lily",
+            "spathiphyllum wallisii": "peace-lily",
+            "philodendron": "philodendron",
+            "philodendron hederaceum": "philodendron",
+            "epipremnum aureum": "pothos",
+            "ficus elastica": "rubber-plant",
+            "dracaena trifasciata": "snake-plant",
+            "sansevieria trifasciata": "snake-plant",
+            "chlorophytum comosum": "spider-plant",
+            "zamioculcas zamiifolia": "zz-plant",
+        }
+    )
+
+
+class RemindersConfig(_Model):
+    """Local-first watering/fertilizing reminders. Stored in one JSON file on the user's
+    own machine (no database, no network) and opt-in: nothing is written until a reminder
+    is created. Reminder content is never logged (PII-free observability is preserved)."""
+
+    path: str = "var/reminders.json"
+    max_reminders: int = Field(default=200, ge=1, le=10000)
+    default_intervals: dict[str, int] = Field(
+        default_factory=lambda: {
+            "water": 7,
+            "fertilize": 30,
+            "repot": 365,
+            "mist": 3,
+            "rotate": 14,
+        }
+    )
+
+
 class LanguageConfig(_Model):
     supported: list[str] = Field(default_factory=lambda: ["en", "es"])
 
@@ -217,8 +279,52 @@ class PromptConfig(_Model):
         }
     )
 
+    photo_fallback_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "I couldn't confidently identify a plant in that photo. Please type the "
+                "plant's name and I'll answer from the cited corpus."
+            ),
+            "es": (
+                "No pude identificar con confianza una planta en esa foto. Escribe el "
+                "nombre de la planta y responderé desde el corpus citado."
+            ),
+        }
+    )
+    photo_care_question_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": "How do I care for my {name}?",
+            "es": "¿Cómo cuido mi {name}?",
+        }
+    )
+    photo_identified_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "Identified from your photo as {name} — a visual match, not a cited fact. "
+                "The guidance below is grounded in the cited corpus."
+            ),
+            "es": (
+                "Identificado en tu foto como {name}: una coincidencia visual, no un hecho "
+                "citado. La siguiente orientación proviene del corpus citado."
+            ),
+        }
+    )
+
     def refusal_for(self, language: str) -> str:
         return self.refusal_by_lang.get(language, self.refusal_by_lang["en"])
+
+    def photo_fallback_for(self, language: str) -> str:
+        return self.photo_fallback_by_lang.get(language, self.photo_fallback_by_lang["en"])
+
+    def photo_care_question_for(self, language: str, name: str) -> str:
+        template = self.photo_care_question_by_lang.get(
+            language, self.photo_care_question_by_lang["en"]
+        )
+        return template.format(name=name)
+
+    def photo_identified_for(self, language: str, name: str) -> str:
+        template = self.photo_identified_by_lang.get(language, self.photo_identified_by_lang["en"])
+        return template.format(name=name)
 
     def disclosure_for(self, language: str) -> str:
         return self.disclosure_by_lang.get(language, self.disclosure_by_lang["en"])
@@ -251,6 +357,8 @@ class Config(_Model):
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     confidence: ConfidenceConfig = Field(default_factory=ConfidenceConfig)
     guards: GuardsConfig = Field(default_factory=GuardsConfig)
+    identification: IdentificationConfig = Field(default_factory=IdentificationConfig)
+    reminders: RemindersConfig = Field(default_factory=RemindersConfig)
     languages: LanguageConfig = Field(default_factory=LanguageConfig)
     prompts: PromptConfig = Field(default_factory=PromptConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)

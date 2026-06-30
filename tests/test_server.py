@@ -76,6 +76,69 @@ def test_chat_stream_refusal_and_validation(assistant: Assistant, config: Config
     assert c.get("/api/chat/stream?q=").status_code == 400
 
 
+def test_identify_grounded_path(assistant: Assistant, config: Config) -> None:
+    import base64
+
+    from sprout.identify import Identification, PlantCandidate
+
+    ident = Identification(
+        provider="fake",
+        candidates=(
+            PlantCandidate(
+                scientific_name="Epipremnum aureum",
+                common_names=("Golden pothos",),
+                score=0.9,
+            ),
+        ),
+    )
+
+    class _Fake:
+        def identify(self, image: bytes) -> Identification:
+            return ident
+
+    c = TestClient(create_app(config, assistant=assistant, identifier=_Fake()))
+    img = base64.b64encode(b"jpeg-bytes").decode("ascii")
+    r = c.post("/api/identify", json={"image_b64": img, "question": "is this toxic to my cat?"})
+    body = r.json()
+    assert r.status_code == 200
+    assert body["identified"] is True
+    assert body["species_slug"] == "pothos"
+    assert body["answer"]["citations"]
+    assert body["answer"]["safety_notice"]
+
+
+def test_identify_fallback_and_validation(assistant: Assistant, config: Config) -> None:
+    import base64
+
+    c = _client(assistant, config)  # offline identifier -> always falls back
+    img = base64.b64encode(b"jpeg-bytes").decode("ascii")
+    fb = c.post("/api/identify", json={"image_b64": img}).json()
+    assert fb["identified"] is False and fb["message"]
+    assert c.post("/api/identify", json={}).status_code == 400
+    assert c.post("/api/identify", json={"image_b64": "not base64!!"}).status_code == 400
+
+
+def test_reminders_crud(assistant: Assistant, tmp_path: object) -> None:
+    cfg = Config.model_validate({"reminders": {"path": str(tmp_path) + "/r.json"}})
+    c = TestClient(create_app(cfg, assistant=assistant))
+    assert c.get("/api/reminders").json() == {"reminders": []}
+
+    created = c.post("/api/reminders", json={"plant": "pothos", "kind": "water"})
+    assert created.status_code == 201
+    rid = created.json()["reminder_id"]
+
+    assert len(c.get("/api/reminders").json()["reminders"]) == 1
+    assert isinstance(c.get("/api/reminders/due").json()["reminders"], list)
+
+    done = c.post(f"/api/reminders/{rid}/complete")
+    assert done.status_code == 200 and done.json()["last_done"]
+
+    assert c.post("/api/reminders", json={"plant": "  "}).status_code == 400
+    assert c.post("/api/reminders/missing/complete").status_code == 404
+    assert c.delete(f"/api/reminders/{rid}").json() == {"removed": True}
+    assert c.delete(f"/api/reminders/{rid}").status_code == 404
+
+
 def test_shipped_ui_passes_structural_a11y() -> None:
     html = Path("web/dist/index.html").read_text(encoding="utf-8")
     assert check_html(html) == []

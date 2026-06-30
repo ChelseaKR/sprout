@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Sprout — a grounded, cited houseplant-care assistant." />
+    <title>Sprout — grounded plant-care answers</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to the question box</a>
+    <header class="banner" role="banner">
+      <p class="ref-impl">Reference implementation · answers come only from a dated, cited corpus</p>
+      <h1>Sprout <span aria-hidden="true">🌱</span></h1>
+      <p class="tagline">Ask about houseplant care. Every answer cites its source — or says it doesn't know.</p>
+    </header>
+
+    <main id="main">
+      <form id="ask-form" aria-describedby="form-help">
+        <p id="form-help" class="help">Answers are not veterinary advice. Toxicity questions are never certified “safe.”</p>
+        <label for="q">Your plant-care question</label>
+        <div class="row">
+          <input id="q" name="q" type="text" autocomplete="off" required maxlength="500"
+                 aria-describedby="form-help" placeholder="Why are my Monstera's leaves yellowing?" />
+          <button type="submit" id="ask-btn">Ask</button>
+        </div>
+        <fieldset class="lang">
+          <legend>Answer language</legend>
+          <label><input type="radio" name="lang" value="en" checked /> English</label>
+          <label><input type="radio" name="lang" value="es" /> Español</label>
+        </fieldset>
+      </form>
+
+      <section aria-labelledby="examples-h">
+        <h2 id="examples-h">Try an example</h2>
+        <ul class="examples" id="examples">
+          <li><button type="button" data-q="Why are my Monstera's leaves yellowing?">Yellowing Monstera leaves</button></li>
+          <li><button type="button" data-q="Is pothos toxic to my cat?">Is pothos toxic to my cat?</button></li>
+          <li><button type="button" data-q="How often should I water in winter?">Watering in winter</button></li>
+          <li><button type="button" data-q="¿Es tóxico el potho para los gatos?">Toxicidad del potho (ES)</button></li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="answer-h">
+        <h2 id="answer-h">Answer</h2>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <div id="answer" class="answer" aria-live="polite"></div>
+        <div id="safety" class="safety" role="alert" hidden></div>
+        <div id="sources-wrap" hidden>
+          <h3>Sources</h3>
+          <ul id="citations" class="citations"></ul>
+        </div>
+        <p id="meta" class="meta" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="photo-h">
+        <h2 id="photo-h">Identify a plant from a photo</h2>
+        <p class="help">
+          A photo only <em>selects</em> the plant; the care answer below is still drawn from
+          the cited corpus. If the plant can't be identified, type its name in the box above.
+        </p>
+        <form id="photo-form">
+          <label for="photo">Plant photo (JPG or PNG)</label>
+          <input id="photo" name="photo" type="file" accept="image/png,image/jpeg" />
+          <label for="photo-q">Optional question about the plant</label>
+          <input id="photo-q" name="photo-q" type="text" autocomplete="off" maxlength="500"
+                 placeholder="Is this toxic to my cat?" />
+          <div class="row">
+            <button type="submit" id="photo-btn">Identify and answer</button>
+          </div>
+        </form>
+        <p id="photo-status" class="status" role="status" aria-live="polite"></p>
+        <p id="photo-label" class="meta"></p>
+        <div id="photo-answer" class="answer" aria-live="polite"></div>
+        <div id="photo-safety" class="safety" role="alert" hidden></div>
+        <div id="photo-sources-wrap" hidden>
+          <h3>Sources</h3>
+          <ul id="photo-citations" class="citations"></ul>
+        </div>
+      </section>
+
+      <section aria-labelledby="reminders-h">
+        <h2 id="reminders-h">Care reminders</h2>
+        <p class="help">
+          Watering and fertilizing reminders are stored only on this device — nothing is
+          uploaded. A reminder's cadence is your own setting, not a cited fact.
+        </p>
+        <form id="reminder-form">
+          <div class="row">
+            <span class="field">
+              <label for="r-plant">Plant</label>
+              <input id="r-plant" name="r-plant" type="text" autocomplete="off" required
+                     maxlength="60" placeholder="pothos" />
+            </span>
+            <span class="field">
+              <label for="r-kind">Task</label>
+              <select id="r-kind" name="r-kind">
+                <option value="water">Water</option>
+                <option value="fertilize">Fertilize</option>
+                <option value="mist">Mist</option>
+                <option value="rotate">Rotate</option>
+                <option value="repot">Repot</option>
+              </select>
+            </span>
+            <span class="field">
+              <label for="r-every">Every (days)</label>
+              <input id="r-every" name="r-every" type="number" min="1" max="3650" value="7" />
+            </span>
+            <span class="field align-end">
+              <button type="submit" id="r-add-btn">Add reminder</button>
+            </span>
+          </div>
+        </form>
+        <p id="reminder-status" class="status" role="status" aria-live="polite"></p>
+        <h3>Your reminders</h3>
+        <table id="reminders-table">
+          <caption class="visually-hidden">Care reminders, with task, plant, cadence, and next due date</caption>
+          <thead>
+            <tr>
+              <th scope="col">Plant</th>
+              <th scope="col">Task</th>
+              <th scope="col">Every</th>
+              <th scope="col">Next due</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reminders-body"></tbody>
+        </table>
+        <p id="reminders-empty" class="meta">No reminders yet.</p>
+      </section>
+    </main>
+
+    <footer role="contentinfo">
+      <p>Sprout is an independent, open-source reference implementation (Apache-2.0).
+         The bundled corpus is synthetic and CC0. This is not veterinary or medical advice.</p>
+    </footer>
+    <script src="app.js"></script>
+  </body>
+</html>

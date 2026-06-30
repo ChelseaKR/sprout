@@ -1285,6 +1285,9 @@ anthropic = [
 bedrock = [
     { name = "boto3" },
 ]
+identify = [
+    { name = "httpx" },
+]
 lang = [
     { name = "langdetect" },
 ]
@@ -1318,6 +1321,7 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.35" },
     { name = "fastapi", marker = "extra == 'serve'", specifier = ">=0.115" },
     { name = "httpx", marker = "extra == 'anthropic'", specifier = ">=0.27" },
+    { name = "httpx", marker = "extra == 'identify'", specifier = ">=0.27" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "langdetect", marker = "extra == 'lang'", specifier = ">=1.0.9" },
     { name = "pydantic", specifier = ">=2.7" },
@@ -1326,7 +1330,7 @@ requires-dist = [
     { name = "typer", specifier = ">=0.12" },
     { name = "uvicorn", marker = "extra == 'serve'", specifier = ">=0.29" },
 ]
-provides-extras = ["serve", "bedrock", "anthropic", "lang"]
+provides-extras = ["serve", "bedrock", "anthropic", "identify", "lang"]
 
 [package.metadata.requires-dev]
 dev = [

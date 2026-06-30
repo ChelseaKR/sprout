@@ -9,7 +9,7 @@ the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), `
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 import yaml
@@ -18,6 +18,7 @@ from . import __version__
 from .a11y import check_html
 from .answer import Assistant
 from .config import Config, load_config
+from .models import Answer
 
 app = typer.Typer(add_completion=False, help="Sprout — grounded, evaluated plant-care assistant.")
 
@@ -56,8 +57,7 @@ def ingest(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
     typer.echo(f"Ingested {len(store)} chunks into {cfg.store.path}")
 
 
-def _print_answer(assistant: Assistant, question: str, language: str | None, debug: bool) -> None:
-    answer = assistant.answer(question, language)
+def _print_answer_obj(answer: Answer) -> None:
     typer.echo(answer.display_text)
     if answer.citations:
         typer.echo("\nSources:")
@@ -67,6 +67,11 @@ def _print_answer(assistant: Assistant, question: str, language: str | None, deb
         typer.echo(f"\nBased on references as of {answer.as_of}.")
     flag = " (low confidence)" if answer.low_confidence and not answer.refused else ""
     typer.echo(f"[confidence {answer.confidence:.2f}{flag} · {answer.disclosure}]")
+
+
+def _print_answer(assistant: Assistant, question: str, language: str | None, debug: bool) -> None:
+    answer = assistant.answer(question, language)
+    _print_answer_obj(answer)
     if debug:
         trace = assistant.trace(question, language)
         typer.echo("\n--- trace ---")
@@ -192,6 +197,138 @@ def calibrate(
         f"meets_threshold={record.meets_threshold}"
     )
     raise typer.Exit(1 if gate and not record.meets_threshold else 0)
+
+
+@app.command()
+def identify(
+    image: Annotated[str, typer.Argument(help="Path to a plant photo (jpg/png).")],
+    question: Annotated[str | None, typer.Option("--question", "-q")] = None,
+    language: Annotated[str | None, typer.Option("--language", "-l")] = None,
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Identify a plant from a photo, then answer from the cited corpus (or fall back)."""
+    from .identify import PhotoCareService, build_identifier
+
+    cfg = _load(config)
+    img = Path(image)
+    if not img.exists():
+        typer.echo(f"image not found: {img}", err=True)
+        raise typer.Exit(2)
+    try:
+        assistant = Assistant.from_config(cfg)
+    except FileNotFoundError as exc:
+        typer.echo(f"{exc}", err=True)
+        raise typer.Exit(2) from exc
+    service = PhotoCareService(assistant, build_identifier(cfg), cfg)
+    result = service.identify_and_answer(img.read_bytes(), question=question, language=language)
+    if not result.identified or result.answer is None:
+        typer.echo(result.message or "Could not identify the plant from the photo.")
+        raise typer.Exit(0)
+    typer.echo(result.label or "")
+    typer.echo("")
+    _print_answer_obj(result.answer)
+
+
+remind_app = typer.Typer(
+    add_completion=False, help="Local, offline watering/fertilizing reminders."
+)
+app.add_typer(remind_app, name="remind")
+
+
+def _reminder_store(config: ConfigOpt) -> Any:
+    from .reminders import ReminderStore
+
+    cfg = _load(config)
+    return ReminderStore(cfg.reminders.path, max_reminders=cfg.reminders.max_reminders), cfg
+
+
+@remind_app.command("add")
+def remind_add(
+    plant: Annotated[str, typer.Argument(help="Corpus species slug or a label.")],
+    kind: Annotated[str, typer.Option("--kind", "-k")] = "water",
+    every: Annotated[int | None, typer.Option("--every", help="Interval in days.")] = None,
+    note: Annotated[str, typer.Option("--note")] = "",
+    language: Annotated[str, typer.Option("--language", "-l")] = "en",
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Create a reminder tied to a plant (stored locally, never uploaded)."""
+    from .reminders import ReminderError
+
+    store, cfg = _reminder_store(config)
+    interval = every or cfg.reminders.default_intervals.get(kind, 7)
+    try:
+        reminder = store.add(
+            plant=plant,
+            kind=kind,
+            interval_days=interval,
+            language=language,
+            note=note,
+        )
+    except (ReminderError, ValueError) as exc:
+        typer.echo(f"{exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"Added {reminder.kind} reminder {reminder.reminder_id} for '{reminder.plant}' "
+        f"every {reminder.interval_days}d (next due {reminder.next_due})."
+    )
+
+
+@remind_app.command("list")
+def remind_list(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
+    """List all reminders, soonest-due first."""
+    store, _ = _reminder_store(config)
+    reminders = store.all_reminders()
+    if not reminders:
+        typer.echo("No reminders set.")
+        return
+    for r in reminders:
+        typer.echo(
+            f"  {r.reminder_id}  {r.plant:<16} {r.kind:<10} "
+            f"every {r.interval_days}d  next {r.next_due}"
+        )
+
+
+@remind_app.command("due")
+def remind_due(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
+    """Show reminders that are due now."""
+    store, _ = _reminder_store(config)
+    due = store.due()
+    if not due:
+        typer.echo("Nothing due.")
+        return
+    for r in due:
+        typer.echo(f"  DUE  {r.reminder_id}  {r.plant} — {r.kind} (was due {r.next_due})")
+
+
+@remind_app.command("done")
+def remind_done(
+    reminder_id: Annotated[str, typer.Argument()],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Mark a reminder done and reschedule its next due date."""
+    from .reminders import ReminderError
+
+    store, _ = _reminder_store(config)
+    try:
+        r = store.complete(reminder_id)
+    except ReminderError as exc:
+        typer.echo(f"{exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Done. Next {r.kind} for '{r.plant}' due {r.next_due}.")
+
+
+@remind_app.command("remove")
+def remind_remove(
+    reminder_id: Annotated[str, typer.Argument()],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Remove a reminder."""
+    store, _ = _reminder_store(config)
+    if store.remove(reminder_id):
+        typer.echo(f"Removed {reminder_id}.")
+    else:
+        typer.echo(f"No reminder with id {reminder_id}.", err=True)
+        raise typer.Exit(1)
 
 
 @app.command()

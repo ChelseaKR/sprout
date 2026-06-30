@@ -59,6 +59,26 @@ generation:
   max_cost_usd: 0.05
   redact_query_pii: false         # redact PII before sending to a network provider
 
+identification:                   # photo plant-ID -> grounded care lookup
+  provider: offline               # offline (no network, always falls back) | plantnet
+  min_confidence: 0.30            # below this visual-match score, ask for the name instead
+  top_k: 5
+  endpoint: https://my-api.plantnet.org/v2/identify/all   # the one allowlisted vision egress
+  timeout_s: 30.0
+  max_image_bytes: 8000000
+  # The Pl@ntNet API key is read from PLANTNET_API_KEY (env only). A returned species is a
+  # selector routed back through the cited corpus, never presented as a horticultural fact.
+
+reminders:                        # local, offline watering/fertilizing reminders
+  path: var/reminders.json        # stored on this machine only; nothing is uploaded
+  max_reminders: 200
+  default_intervals:
+    water: 7
+    fertilize: 30
+    repot: 365
+    mist: 3
+    rotate: 14
+
 confidence:
   abstain_threshold: 0.25         # below this, refuse rather than guess
   low_confidence_threshold: 0.50  # below this, answer but flag for human review

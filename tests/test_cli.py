@@ -85,6 +85,7 @@ def _project(tmp_path: Path) -> Path:
     cfg = {
         "corpus": {"path": str(processed), "manifest": str(tmp_path / "manifest.yaml")},
         "store": {"path": str(tmp_path / "index.json")},
+        "reminders": {"path": str(tmp_path / "reminders.json")},
     }
     cfg_path = tmp_path / "sprout.yaml"
     cfg_path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
@@ -138,6 +139,46 @@ def test_a11y_check(tmp_path: Path) -> None:
 
     missing = runner.invoke(app, ["a11y-check", str(tmp_path / "nope.html")])
     assert missing.exit_code == 2
+
+
+def test_identify_offline_falls_back(tmp_path: Path) -> None:
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    img = tmp_path / "plant.jpg"
+    img.write_bytes(b"fake-jpeg-bytes")
+    result = runner.invoke(app, ["identify", str(img), "--config", str(cfg)])
+    assert result.exit_code == 0
+    assert "type the plant" in result.stdout.lower()
+
+    missing = runner.invoke(app, ["identify", str(tmp_path / "nope.jpg"), "--config", str(cfg)])
+    assert missing.exit_code == 2
+
+
+def test_remind_lifecycle(tmp_path: Path) -> None:
+    cfg = _project(tmp_path)
+    empty = runner.invoke(app, ["remind", "list", "--config", str(cfg)])
+    assert empty.exit_code == 0 and "No reminders" in empty.stdout
+
+    add = runner.invoke(
+        app, ["remind", "add", "pothos", "--kind", "water", "--every", "7", "--config", str(cfg)]
+    )
+    assert add.exit_code == 0 and "Added" in add.stdout
+    rid = add.stdout.split("reminder")[1].split("for")[0].strip()
+
+    listed = runner.invoke(app, ["remind", "list", "--config", str(cfg)])
+    assert rid in listed.stdout
+
+    due = runner.invoke(app, ["remind", "due", "--config", str(cfg)])
+    assert "Nothing due" in due.stdout
+
+    done = runner.invoke(app, ["remind", "done", rid, "--config", str(cfg)])
+    assert done.exit_code == 0 and "Next water" in done.stdout
+
+    removed = runner.invoke(app, ["remind", "remove", rid, "--config", str(cfg)])
+    assert removed.exit_code == 0 and "Removed" in removed.stdout
+
+    missing = runner.invoke(app, ["remind", "done", "deadbeef", "--config", str(cfg)])
+    assert missing.exit_code == 1
 
 
 def test_eval_end_to_end(tmp_path: Path) -> None:

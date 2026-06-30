@@ -26,6 +26,15 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 - Expresses **calibrated uncertainty**: below a confidence threshold it abstains rather
   than guesses.
 - Works in **English and Spanish** with enforced parity.
+- **Identifies a plant from a photo**, then answers from the *same* cited corpus. The
+  visual match only *selects* the species (it's labelled "a visual match, not a cited
+  fact" and never rendered as one); the care answer still flows through the grounded,
+  guarded pipeline. Offline by default, with a graceful "type the plant's name" fallback
+  and an allowlisted Pl@ntNet provider behind a config switch — see
+  [ADR-0010](docs/adr/0010-photo-plant-id-as-selector-not-fact-source.md).
+- **Sets local care reminders** (watering/fertilizing) tied to a plant and answer, stored
+  only on your device — offline, opt-in, nothing uploaded — see
+  [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md).
 
 ### The four hard rules (enforced, not aspirational)
 
@@ -49,6 +58,8 @@ pipx install sprout              # or: uv sync && uv run sprout ...
 sprout ingest                    # build the index from the bundled corpus
 sprout ask "Why are my Monstera's leaves yellowing?"
 sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
+sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer (offline → fallback)
+sprout remind add pothos --kind water --every 7    # local, offline reminder
 sprout serve                     # accessible chat UI + JSON/SSE API at :8000
 make eval                        # regenerate the committed eval report, fully offline
 ```
