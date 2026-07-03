@@ -1,0 +1,117 @@
+# Claims-integrity registry — every numeric/policy claim the docs make about Sprout, pinned to
+# its code/config source of truth and checked by `sprout claims-check` (src/sprout/claims.py).
+#
+# Docs drift from the systems they describe. This registry is the guard: each entry names a doc
+# site (an explicit HTML-comment `marker`, never a prose-parsing regex — markers keep extraction
+# robust to rewording), a `source` the value must equal, and the `expected` text the checker greps
+# for in the marker's neighborhood. Both directions are checked: the registry's `expected` must
+# equal the *live* value resolved from `source` (catches a stale registry when code/config
+# changes), and the doc text around the marker must contain that value (catches a doc that
+# drifted from an up-to-date registry).
+#
+# `source` is one of:
+#   config:<dotted.path>     — a field on the validated Config (src/sprout/config.py::load_config),
+#                              resolved against config/sprout.yaml.
+#   suite:refusal.threshold  — RefusalSuite().metric.threshold (src/sprout/eval/suites/refusal.py),
+#                              the MetricDefinition the refusal gate actually enforces.
+#   eval-report:<suite>.<dotted.path>
+#                            — a field under the named suite's entry in the committed
+#                              docs/audits/eval-report.json (suite_results[].<path>).
+#   policy:<name>            — a fixed policy decision with no single computed code artifact (e.g.
+#                              a conformance-level target). The registry's `expected` value IS the
+#                              source of truth here; the checker only cross-checks doc sites
+#                              against each other via this shared registry entry, it cannot derive
+#                              the value from code.
+#
+# `marker` is the literal HTML comment placed at the claim site in `file`; the checker searches
+# the lines immediately around it for `expected`, so extraction never depends on parsing prose.
+#
+# Reconciled 2026-07-03 (FIX-01): abstention thresholds and refusal target adopted config/suite
+# values as canonical (they match shipped behavior); AA adopted over AAA (see docs/accessibility/
+# ACR.md, which explicitly disclaims AAA).
+
+claims:
+  # --- Abstention thresholds (config/sprout.yaml confidence:) ---------------------------------
+  - id: model-card-abstain-threshold
+    file: docs/cards/model-card.md
+    source: "config:confidence.abstain_threshold"
+    expected: "0.25"
+    marker: "<!-- claim:model-card-abstain-threshold -->"
+
+  - id: model-card-low-confidence-threshold
+    file: docs/cards/model-card.md
+    source: "config:confidence.low_confidence_threshold"
+    expected: "0.50"
+    marker: "<!-- claim:model-card-low-confidence-threshold -->"
+
+  - id: responsible-tech-abstain-threshold
+    file: docs/RESPONSIBLE-TECH-AUDITS.md
+    source: "config:confidence.abstain_threshold"
+    expected: "0.25"
+    marker: "<!-- claim:responsible-tech-abstain-threshold -->"
+
+  - id: responsible-tech-low-confidence-threshold
+    file: docs/RESPONSIBLE-TECH-AUDITS.md
+    source: "config:confidence.low_confidence_threshold"
+    expected: "0.50"
+    marker: "<!-- claim:responsible-tech-low-confidence-threshold -->"
+
+  - id: red-team-abstain-threshold
+    file: docs/audits/red-team-2026-06-22.md
+    source: "config:confidence.abstain_threshold"
+    expected: "0.25"
+    marker: "<!-- claim:red-team-abstain-threshold -->"
+
+  - id: roadmap-abstention-enforced
+    file: docs/ROADMAP.md
+    source: "config:confidence.abstain_threshold"
+    expected: "0.25"
+    marker: "<!-- claim:roadmap-abstention-enforced -->"
+
+  # --- Retrieval / generation thresholds referenced alongside abstention above ----------------
+  - id: red-team-support-overlap
+    file: docs/audits/red-team-2026-06-22.md
+    source: "config:generation.support_overlap"
+    expected: "0.66"
+    marker: "<!-- claim:red-team-support-overlap -->"
+
+  - id: red-team-min-score
+    file: docs/audits/red-team-2026-06-22.md
+    source: "config:retrieval.min_score"
+    expected: "0.12"
+    marker: "<!-- claim:red-team-min-score -->"
+
+  # --- Refusal target (src/sprout/eval/suites/refusal.py) -------------------------------------
+  - id: roadmap-refusal-target
+    file: docs/ROADMAP.md
+    source: "suite:refusal.threshold"
+    expected: "0.90"
+    marker: "<!-- claim:roadmap-refusal-target -->"
+
+  # --- eval-report.json cross-check (demonstrates the eval-report source kind; groundedness has
+  # not drifted, but pinning it here means the ledger row is checked, not merely trusted) -------
+  - id: roadmap-groundedness-threshold
+    file: docs/ROADMAP.md
+    source: "eval-report:groundedness.metric.threshold"
+    expected: "0.95"
+    marker: "<!-- claim:roadmap-groundedness-threshold -->"
+
+  # --- WCAG conformance level (policy: no single code artifact; docs/accessibility/ACR.md line
+  # 126 is the authoritative sign-off that AAA is not claimed) ---------------------------------
+  - id: claude-md-wcag-merge-gate
+    file: CLAUDE.md
+    source: "policy:wcag-conformance-level"
+    expected: "AA"
+    marker: "<!-- claim:claude-md-wcag-merge-gate -->"
+
+  - id: claude-md-wcag-standards
+    file: CLAUDE.md
+    source: "policy:wcag-conformance-level"
+    expected: "AA"
+    marker: "<!-- claim:claude-md-wcag-standards -->"
+
+  - id: claude-md-wcag-target
+    file: CLAUDE.md
+    source: "policy:wcag-conformance-level"
+    expected: "AA"
+    marker: "<!-- claim:claude-md-wcag-target -->"

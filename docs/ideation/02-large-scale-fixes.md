@@ -8,7 +8,23 @@ days, **L** ≈ 1–2 weeks, **XL** ≈ multi-week.
 
 ---
 
-## FIX-01 — Claims-integrity gate: no number in the docs without a machine-checked source
+## FIX-01 — Claims-integrity gate: no number in the docs without a machine-checked source — ✅ Done
+
+**Status:** Implemented as specified — `docs/claims.yaml` registers the abstention
+thresholds, `low_confidence_threshold`, `min_score`, `support_overlap`, the refusal
+target, and the WCAG conformance level, each pinned to `config/sprout.yaml`,
+`RefusalSuite().metric.threshold`, `docs/audits/eval-report.json`, or a fixed policy
+decision via an explicit `<!-- claim:ID --> ` marker; `src/sprout/claims.py::check()`
+resolves every source live and checks both directions (registry vs. source, and doc
+text vs. registry); `sprout claims-check` is wired into `Makefile verify` and
+`ci.yml`. All four known drifts reconciled: abstention thresholds and
+`low_confidence_threshold` corrected to 0.25/0.50 in the model card, the responsible-tech
+audit, and the ROADMAP ledger; the red-team report got an erratum note (not a
+silent rewrite, per its own dated-artifact status); the refusal target corrected to
+0.90 in the ROADMAP ledger; `CLAUDE.md`'s three AAA mentions corrected to AA; the
+data-card species table's four non-corpus species (Dieffenbachia, Areca palm, African
+violet, Hoya) moved to a labeled "planned, not yet in the corpus" note. Branch
+`roadmap/fix-01-claims-integrity-gate-docs-claims`.
 
 **Pitch.** Make every numeric self-claim in the documentation provably equal to the
 value the code enforces — the honesty ethos applied to Sprout's own paperwork.

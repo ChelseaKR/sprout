@@ -290,8 +290,8 @@ path. An empty survivor set is a refusal, not a guess.
 **Confidence signposting.** Each answer carries a calibrated confidence in [0,1] computed from
 *retrieval evidence* (best cosine + margin over the runner-up), deliberately **not** from
 answer fluency, which would reward confident nonsense (`confidence.score_confidence`). Two
-thresholds turn the score into behavior: below `abstain_threshold` (default 0.25) the
-assistant **refuses rather than guesses**; below `low_confidence_threshold` (default 0.50) it
+thresholds turn the score into behavior: below `abstain_threshold` (default 0.25)<!-- claim:responsible-tech-abstain-threshold --> the
+assistant **refuses rather than guesses**; below `low_confidence_threshold` (default 0.50)<!-- claim:responsible-tech-low-confidence-threshold --> it
 answers but flags the answer for review (`Answer.low_confidence`). Values per
 [ADR-0012](adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md), which supersedes
 ADR-0005 — the earlier 0.45/0.62 figures cited here never matched the shipped, calibrated
