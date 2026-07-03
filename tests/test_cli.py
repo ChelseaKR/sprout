@@ -1,4 +1,4 @@
-"""CLI tests: version, ingest, ask, demo, a11y-check, and an end-to-end eval run."""
+"""CLI tests: version, ingest, ask, demo, a11y-check, freshness, and an end-to-end eval run."""
 
 from __future__ import annotations
 
@@ -139,6 +139,44 @@ def test_a11y_check(tmp_path: Path) -> None:
 
     missing = runner.invoke(app, ["a11y-check", str(tmp_path / "nope.html")])
     assert missing.exit_code == 2
+
+
+def test_freshness_check(tmp_path: Path) -> None:
+    from datetime import date, timedelta
+
+    cfg = _project(tmp_path)
+    fresh = runner.invoke(app, ["freshness", "--config", str(cfg)])
+    assert fresh.exit_code == 0
+    assert "no stale or dead citations" in fresh.stdout
+
+    stale_date = (date.today() - timedelta(days=900)).isoformat()
+    stale_manifest = {
+        "documents": [
+            {
+                "file": "monstera.md",
+                "title": "Monstera care",
+                "source_name": "Synthetic Notes",
+                "url": "https://example.invalid/monstera",
+                "license": "CC0-1.0",
+                "fetch_date": stale_date,
+                "language": "en",
+                "topic": "toxicity",
+            }
+        ]
+    }
+    manifest_path = tmp_path / "stale-manifest.yaml"
+    manifest_path.write_text(yaml.safe_dump(stale_manifest), encoding="utf-8")
+    stale_cfg = tmp_path / "stale.yaml"
+    stale_cfg.write_text(
+        yaml.safe_dump({"corpus": {"manifest": str(manifest_path)}}), encoding="utf-8"
+    )
+    stale = runner.invoke(app, ["freshness", "--config", str(stale_cfg)])
+    assert stale.exit_code == 1
+    assert "high" in stale.output.lower()
+    assert "monstera.md" in stale.output
+
+    linked = runner.invoke(app, ["freshness", "--config", str(stale_cfg), "--check-links"])
+    assert linked.exit_code == 1  # the stale finding alone still fails the gate offline
 
 
 def test_identify_offline_falls_back(tmp_path: Path) -> None:
