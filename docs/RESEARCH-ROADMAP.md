@@ -164,3 +164,6 @@ real interviews this exercise exists to design.
 ---
 ## Implementation status — 2026-06-30 (working tree, uncommitted)
 Shipped this pass: **R6** doc-drift fix (photo-ID non-goal reconciled with ADR-0010) · **R3** model + data cards · conservative safety framing (**R7/E9** "non-toxic ≠ safe" + escalation to ASPCA/Pet-Poison-Helpline; never asserts safe). Verify: `make verify` green. Deferred: R1 toxicity corpus + R2 eval cases (need a veterinary-toxicologist / SME).
+
+## Implementation status — 2026-07-03
+**R9 done.** The reminders panel note (`web/dist/index.html`, `<section aria-labelledby="reminders-h">`) now states all three ADR-0011 honest limits in-product: reminders live only in a local file on-device (`var/reminders.json`), are never uploaded, do not sync across devices, and have no push/notification delivery (the app must be opened to see what's due) — alongside the existing "cadence is your own setting, not a cited fact" line. Structural a11y unchanged (plain `<p>` text, no new interactive/tabindex elements). Verify: `uv run sprout a11y-check web/dist/index.html` and `uv run pytest tests/test_server.py::test_shipped_ui_passes_structural_a11y -q` both pass.
