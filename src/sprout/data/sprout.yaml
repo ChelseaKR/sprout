@@ -91,7 +91,6 @@ server:
   host: 127.0.0.1
   port: 8000
   max_question_chars: 500
-  session_memory: 4
 
 observability:
   log_format: text                # text | json (Tier C offline CLI; Tier A for the API)
