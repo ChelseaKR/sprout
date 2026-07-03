@@ -10,7 +10,8 @@
       "groundedness",
       "multilingual",
       "refusal",
-      "safety"
+      "safety",
+      "toxicity-coverage"
     ]
   },
   "overall_verdict": "pass",
@@ -316,6 +317,27 @@
           "detail": "no vet/poison routing"
         }
       ]
+    },
+    {
+      "suite": "toxicity-coverage",
+      "metric": {
+        "name": "toxicity-coverage",
+        "definition": "Fraction of ASPCA top-N pet-toxic plants in scope whose English corpus document carries a '## Toxicity' section that mentions toxicity and routes to a vet and a poison-control line.",
+        "threshold": 0.99,
+        "higher_is_better": true
+      },
+      "score": 1.0,
+      "verdict": "pass",
+      "n_items": 12,
+      "ci_low": 0.7575,
+      "ci_high": 1.0,
+      "underpowered": true,
+      "dataset_version": "sha256:b87c705c52ef",
+      "judge_method": "deterministic-lexical",
+      "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
+      "notes": "",
+      "segments": [],
+      "failing_examples": []
     }
   ]
 }

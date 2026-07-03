@@ -58,7 +58,7 @@ Priority: **P0** now · **P1** next · **P2** soon. Effort: **S** ≈ an afterno
 
 | ID | Expansion | Personas | Pri | Effort | Evidence / tag |
 |---|---|---|---|---|---|
-| E1 | **Toxicity-coverage eval slice + report panel**: assert the corpus cites a toxicity reference for every ASPCA top-N pet-toxic plant, and that "is X safe for my cat" *always* routes and *never* certifies | B1,A2,C1 | P1 | M | EV2,EV3 · **[NET-NEW]** |
+| E1 | **Toxicity-coverage eval slice + report panel**: assert the corpus cites a toxicity reference for every ASPCA top-N pet-toxic plant, and that "is X safe for my cat" *always* routes and *never* certifies | B1,A2,C1 | P1 | M | EV2,EV3 · **[NET-NEW]** · **[DONE]** |
 | E2 | **Urgency-forward routing for ingestion** ("my cat ate a lily petal" → call-now framing + the >18h fatality window, *without* giving veterinary advice), localized EN/ES | B1,A2 | P1 | S | EV2,EV5 · **[NET-NEW]** |
 | E9 | **Standardized vet/poison-control escalation card** on every toxicity answer/refusal: ASPCA APCC (888-426-4435) + Pet Poison Helpline (855-764-7661) + "what to tell them: plant, amount, time", accessible + localized | B1,A2,D1 | P1 | S | EV4,EV5 · **[NET-NEW]** |
 | E3 | **External-suite comparison/ablation**: benchmark Sprout's grounding-by-construction + deterministic safety against ≥1 of Ragas/DeepEval/ALCE-style citation precision/recall; publish the (saturation-aware) result | C2 | P2 | L | EV6,EV7 · **[NET-NEW]** |
@@ -175,3 +175,5 @@ only when explicitly requested. Wired up as `sprout freshness [--check-links]`
 (`src/sprout/config.py`), unit-tested offline in `tests/test_freshness.py`. Verify:
 `pytest tests/test_freshness.py -q`, `ruff check`, `mypy` all green; `sprout freshness`
 exits 0 against the bundled 2026-05-01 corpus.
+
+Shipped: **E1** toxicity-coverage eval slice (`src/sprout/eval/suites/toxicity_coverage.py`) — a deterministic, corpus-level suite asserting every ASPCA top-N pet-toxic plant in the corpus (aloe, dracaena, english-ivy, fiddle-leaf-fig, jade-plant, monstera, peace-lily, philodendron, pothos, rubber-plant, snake-plant, zz-plant) has an English document with a `## Toxicity` section that mentions toxicity and routes to a vet and a poison-control line; auto-registers a `toxicity-coverage` report panel via the existing `report.py` suite-iteration. Complements the pre-existing `safety` suite, which already gates the *live answer* on never certifying "safe" and always routing. Verify: `make verify` green (lint, type, test with 95% coverage, eval, a11y all pass); `docs/audits/eval-report.md` shows `toxicity-coverage` — ✅ PASS, n=12.
