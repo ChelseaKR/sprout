@@ -223,11 +223,14 @@ implementation" banner.*
 ### Phase 4 — generalize
 *A `corpus.yaml` so any care corpus can be swapped in; "adapt this to your domain" doc.*
 
-**Status: not started.**
+**Status: guide done; personalization phases deferred.**
 - The seam exists (`config/sprout.yaml` already points the whole system at a corpus path,
-  manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). Remaining
-  work is the "adapt this to your domain" guide and, separately, the deferred Family Greenhouse
-  personalization phases (A → B → C) above.
+  manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). The
+  "adapt this to your domain" guide is written ([`docs/ADAPT.md`](ADAPT.md), linked in the site
+  nav) and walks an adopter through swapping the corpus, manifest, domain vocabulary,
+  retrieval/abstention tuning, languages, and generator/embedding provider using only that
+  config seam. Remaining Phase 4 scope is the deferred Family Greenhouse personalization phases
+  (A → B → C) above.
 
 ---
 
