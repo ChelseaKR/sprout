@@ -118,7 +118,7 @@ class Assistant:
             retrieved=tuple(retrieved),
             refused=False,
             is_safety_query=route,
-            safety_notice=self._config.prompts.safety_route_for(lang) if route else None,
+            safety_notice=self._config.prompts.safety_directive_for(lang) if route else None,
             confidence=round(confidence, 4),
             low_confidence=is_low_confidence(confidence, self._config.confidence),
             abstained=False,
@@ -143,12 +143,22 @@ class Assistant:
             refusal_reason=reason,
             refusal_text=self._config.prompts.refusal_for(lang),
             is_safety_query=safety,
-            safety_notice=self._config.prompts.safety_route_for(lang) if safety else None,
+            safety_notice=self._config.prompts.safety_directive_for(lang) if safety else None,
             confidence=round(confidence, 4),
             low_confidence=True,
             abstained=abstained,
             disclosure=self._config.prompts.disclosure_for(lang),
         )
+
+    def resolve_language(self, query: str, language: str | None = None) -> str:
+        """Public language resolution (used by the photo-ID path)."""
+        return self._resolve_language(query, language)
+
+    def species_slugs(self) -> set[str]:
+        """Canonical species slugs present in the loaded corpus (for photo-ID routing)."""
+        from .retrieve import species_slug
+
+        return {species_slug(chunk.source) for chunk in self._store.all_chunks()}
 
     def trace(self, query: str, language: str | None = None) -> AnswerTrace:
         """Return the full retrieval+generation trace for debugging (``--debug``)."""

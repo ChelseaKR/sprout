@@ -10,14 +10,34 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
-_Nothing yet. New work lands here and is promoted on release._
+> **2026-07-05 correction:** this project has **never been tagged or released** — `git tag`
+> returns nothing, and no release workflow has ever run. A previous version of this file carried
+> a `[0.1.0] - 2026-06-22` released section, `CITATION.cff` claimed `date-released: 2026-06-22`,
+> and a locally-built (never-published) wheel sat in `dist/`. That was a documentation defect
+> (REL-03): a version was declared released that was never tagged, published, or verified. That
+> section's content is folded back into `[Unreleased]` below, un-dated, until an actual signed
+> `v0.1.0` tag is cut and `release.yml` runs end to end. See the 2026-07-05 remediation execution
+> log at the end of this repo's audit trail for the full discrepancy.
 
-## [0.1.0] - 2026-06-22
-
-Initial reference-implementation release: an offline-first, grounded, evaluated, multilingual
-(EN/ES) houseplant-care RAG assistant, with the public evaluation harness as the headline artifact.
+An offline-first, grounded, evaluated, multilingual (EN/ES) houseplant-care RAG assistant, with
+the public evaluation harness as the headline artifact.
 
 ### Added
+- **Photo-based plant identification → grounded care lookup** (`identify.py`,
+  `providers/plantnet.py`). A photo is identified into candidate species, the best confident
+  match is resolved to a species **already in the cited corpus**, and that species is routed
+  back through the *unchanged* grounded pipeline — so every rendered claim is still cited and
+  toxicity still routes to a vet. The identification is labelled "a visual match, not a cited
+  fact" and never enters the answer's sentences. Offline by default (no network, always falls
+  back to "type the plant's name"); a `plantnet` provider calls the allowlisted Pl@ntNet API
+  with its key from `PLANTNET_API_KEY` (env only). New `sprout identify` command and
+  `POST /api/identify`. See [ADR-0010](docs/adr/0010-photo-plant-id-as-selector-not-fact-source.md).
+- **Local-first care reminders** (`reminders.py`). Watering/fertilizing/etc. reminders tied to a
+  plant (and optionally the citation that motivated them), stored in one JSON file on the user's
+  own machine — offline, opt-in, no database, content never logged. New `sprout remind`
+  sub-commands (add/list/due/done/remove), reminder endpoints under `/api/reminders`, and an
+  accessible reminders panel in the chat UI. See
+  [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md).
 - **Grounded extractive assistant.** Retrieval-mandatory pipeline
   (`guards(input) → retrieve → extractive generate → guards(output) → confidence/abstention`)
   that answers only from the cited corpus, with an inline citation to the governing passage and its
@@ -56,10 +76,17 @@ Initial reference-implementation release: an offline-first, grounded, evaluated,
 - **Docs:** ARCHITECTURE, THREAT-MODEL, ACCESSIBILITY (+ ACR via VPAT 2.5 Rev 508), ROADMAP,
   RESPONSIBLE-TECH-AUDITS, model and data cards, and the committed `docs/audits/` eval artifacts.
 
+### Changed
+- `create_app` accepts an optional `identifier` override (mirroring the existing `assistant`
+  override) so the grounded photo path is testable offline.
+- New `identification` and `reminders` config blocks (`config/sprout.yaml`); `identify` optional
+  dependency extra (`httpx`).
+
 ### Security
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the
   **OWASP ASVS L1** baseline; secrets via environment only; pip-audit, gitleaks, and Semgrep wired
-  into CI. No advisories in this release.
+  into CI. No advisories to date.
 
-[Unreleased]: https://github.com/ChelseaKR/sprout/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/ChelseaKR/sprout/releases/tag/v0.1.0
+<!-- No versioned sections below: no tag has ever been cut (`git tag` is empty). Add
+     `[X.Y.Z] - YYYY-MM-DD` here, with its own compare link, only once `git tag -s vX.Y.Z` has
+     actually been pushed and release.yml has run. -->

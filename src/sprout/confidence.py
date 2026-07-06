@@ -22,6 +22,11 @@ from .models import RetrievedChunk
 # Logistic shape, calibrated against the eval set so stated confidence tracks empirical
 # accuracy (mean confidence ~ observed correctness, ECE well under the 0.15 gate) rather
 # than saturating near 1.0. Re-fit if the corpus or retrieval changes materially.
+# Values per ADR-0012 (supersedes ADR-0005, which documented untested midpoint 0.22 /
+# steepness 12.0; an audit on 2026-07-05 found these shipped values -- 0.30/6.0 -- had
+# diverged from the ADR since the initial commit, and running the calibration suite
+# against both showed the ADR's numbers fail the ECE gate (0.184 > 0.15) while these
+# pass it (0.108) -- see ADR-0012 for the full evidence).
 _MIDPOINT = 0.30
 _STEEPNESS = 6.0
 _MARGIN_BONUS = 0.05

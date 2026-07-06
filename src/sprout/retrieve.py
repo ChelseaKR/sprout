@@ -56,6 +56,11 @@ def _canonical_slug(source: str) -> str:
     return Path(source).stem.split(".")[0]
 
 
+def species_slug(source: str) -> str:
+    """Public alias of the language-invariant species key (used by the photo-ID path)."""
+    return _canonical_slug(source)
+
+
 def _slug_tokens(source: str) -> list[str]:
     return [t for t in _canonical_slug(source).replace("_", "-").split("-") if t]
 

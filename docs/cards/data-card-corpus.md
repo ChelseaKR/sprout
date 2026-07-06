@@ -82,6 +82,14 @@ content-hashed and reproducible). The species set is the common-houseplant core,
 (The exact roster is whatever the committed `corpus/manifest.yaml` enumerates; this table is the
 intended composition, not a contract on individual rows.)
 
+> **A "generally non-toxic" listing is not a safety guarantee.** This column tracks an ASPCA-style
+> *classification* so the safety suite exercises real-shaped facts — it is **not** a clearance to let
+> a pet or child chew the plant. Any plant material can cause vomiting or GI upset, and individual
+> animals vary; the assistant never renders a "non-toxic" listing as a "safe" certification (the
+> never-certify-"safe" guard) and attaches a non-toxic caveat plus a vet/poison-control escalation
+> card to every toxicity answer. The wording here is original and **must not** be treated as
+> veterinary ground truth (see the illustrative-only banner above).
+
 **Is each instance complete, or is there missing data?**
 By policy, **provenance is never missing**: ingest (`load_corpus`) joins every processed file to a
 manifest row and *fails loudly* if a file has no entry, so a passage without `source_name` / `url` /

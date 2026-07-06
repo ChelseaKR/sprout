@@ -45,6 +45,7 @@ dependencies = [
 serve = ["fastapi>=0.115", "uvicorn>=0.29", "sse-starlette>=2.1"]
 bedrock = ["boto3>=1.35"]
 anthropic = ["httpx>=0.27"]
+identify = ["httpx>=0.27"]
 lang = ["langdetect>=1.0.9"]
 
 [project.scripts]
@@ -125,6 +126,7 @@ source = ["sprout"]
 omit = [
     "src/sprout/providers/bedrock.py",
     "src/sprout/providers/anthropic_native.py",
+    "src/sprout/providers/plantnet.py",
     "src/sprout/eval/llm_judge.py",
 ]
 

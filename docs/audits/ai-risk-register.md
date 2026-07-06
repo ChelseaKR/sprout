@@ -82,7 +82,9 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
   - **Retrieval-first refusal.** `Assistant.answer` refuses before generating if no chunk clears
     `min_score` and shares a content term (`Retriever.has_grounding`). The model is never asked to
     fill a gap.
-  - **Calibrated abstention.** Below `abstain_threshold` (0.45) the assistant refuses rather than
+  - **Calibrated abstention.** Below `abstain_threshold` (0.25, per
+    [ADR-0012](../adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md); corrected
+    2026-07-05, was miscited as 0.45) the assistant refuses rather than
     guesses ([`src/sprout/confidence.py`](../../src/sprout/confidence.py)).
   - **Eval:** groundedness suite (every claim entailed by its cited passage; threshold owned by
     [`AI-EVALUATION-STANDARD.md`](../../../STANDARDS/AI-EVALUATION-STANDARD.md), confabulation floor

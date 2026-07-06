@@ -26,6 +26,15 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 - Expresses **calibrated uncertainty**: below a confidence threshold it abstains rather
   than guesses.
 - Works in **English and Spanish** with enforced parity.
+- **Identifies a plant from a photo**, then answers from the *same* cited corpus. The
+  visual match only *selects* the species (it's labelled "a visual match, not a cited
+  fact" and never rendered as one); the care answer still flows through the grounded,
+  guarded pipeline. Offline by default, with a graceful "type the plant's name" fallback
+  and an allowlisted Pl@ntNet provider behind a config switch — see
+  [ADR-0010](docs/adr/0010-photo-plant-id-as-selector-not-fact-source.md).
+- **Sets local care reminders** (watering/fertilizing) tied to a plant and answer, stored
+  only on your device — offline, opt-in, nothing uploaded — see
+  [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md).
 
 ### The four hard rules (enforced, not aspirational)
 
@@ -49,6 +58,8 @@ pipx install sprout              # or: uv sync && uv run sprout ...
 sprout ingest                    # build the index from the bundled corpus
 sprout ask "Why are my Monstera's leaves yellowing?"
 sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
+sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer (offline → fallback)
+sprout remind add pothos --kind water --every 7    # local, offline reminder
 sprout serve                     # accessible chat UI + JSON/SSE API at :8000
 make eval                        # regenerate the committed eval report, fully offline
 ```
@@ -96,19 +107,22 @@ restating them. Per-repo *values* live in [`docs/ROADMAP.md`](docs/ROADMAP.md) a
 
 | Standard | Applies | This repo's posture |
 |---|---|---|
-| Quality & Metrics (ISO 25010 / DORA) | ✅ | Metrics ledger in ROADMAP; `make verify` = CI gate set |
+| Quality & Metrics (ISO 25010 / DORA) | ✅ | Metrics ledger in ROADMAP; `make verify` uses the same tools/thresholds as the CI-required checks |
 | Code Quality | ✅ | `ruff` + `mypy --strict`; branch coverage ≥90% (published-library floor); src layout |
-| Security & Supply Chain | ✅ | ASVS L1 (offline mode); pip-audit, gitleaks, Semgrep, SHA-pinned actions, SBOM on release |
-| CI/CD | ✅ | Single `ci-gate` required check; least-privilege tokens; `make verify` parity |
-| Release & Versioning | ✅ | SemVer; signed tags; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) |
-| Accessibility | ✅ | WCAG 2.2 AA gate (axe/pa11y/Lighthouse) on chat UI + HTML report + transcript view; ACR (VPAT 2.5 Rev 508) |
-| Observability | ✅ | Tier C (offline CLI: structured JSON logs, PII-free); Tier A for the optional serverless API |
+| Security & Supply Chain | ✅ | ASVS L1 (offline mode); pip-audit + Semgrep blocking (CI and `make verify`); gitleaks in CI; CodeQL + zizmor workflow-SAST; SHA-pinned actions; SBOM generated + uploaded on release |
+| CI/CD | ✅ | Single `ci-gate` required check; least-privilege tokens; `make verify` mirrors CI's tools/thresholds |
+| Release & Versioning | ✅ | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
+| Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check` gate is merge-blocking; axe/pa11y run today as **advisory only**, Lighthouse **not yet wired** (gap tracked, corrected 2026-07-05); transcript view; ACR (VPAT 2.5 Rev 508) |
+| Observability | ✅ | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
 | Internationalization | ✅ | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
-| AI Evaluation | ✅ | RAG groundedness/refusal/calibration gates; judge≠answer model; κ + reliability; model/data cards |
+| AI Evaluation | ✅ | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, gap tracked); judge-calibration is **report-only, currently below threshold** (gap tracked); judge≠answer model; model/data cards |
 | Documentation | ✅ | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
+| Responsible-Tech Framework | ✅ | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; no audit is N/A (added to this table 2026-07-05 — was silently omitted) |
 
 No standard is `N/A`. Family Greenhouse personalization (household-data path, ASVS L2) is
-**deferred to a later phase**; see [`docs/ROADMAP.md`](docs/ROADMAP.md).
+**deferred to a later phase**; see [`docs/ROADMAP.md`](docs/ROADMAP.md). Every row above with a
+"gap tracked" note is tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md) and this repo's remediation
+history, not silently carried — see the 2026-07-05 audit remediation for the full list.
 
 ## Architecture (one screen)
 

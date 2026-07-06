@@ -3,8 +3,9 @@
 Applicable to cases that carry both a stated ``confidence`` and a ``is_correct`` label.
 The suite computes a reliability diagram and the Expected Calibration Error (ECE) — the
 count-weighted gap between confidence and accuracy — and gates ECE at <=0.15. It also
-enforces abstention: any case answered below the abstain threshold (0.25) must have been a
-refusal. Reliability bins are reported as segments so the diagram is visible in the report.
+enforces abstention: any case answered below the abstain threshold (0.25, ADR-0012) must
+have been a refusal. Reliability bins are reported as segments so the diagram is visible
+in the report.
 """
 
 from __future__ import annotations
@@ -22,8 +23,8 @@ from ..suite import (
 )
 from ._common import is_refused
 
-# Mirrors the engine default confidence.abstain_threshold; below it, an answered
-# (non-refused) case is a calibration violation.
+# Mirrors the engine default confidence.abstain_threshold (ADR-0012, supersedes ADR-0005);
+# below it, an answered (non-refused) case is a calibration violation.
 ABSTAIN_THRESHOLD = 0.25
 N_BINS = 10
 
@@ -34,7 +35,8 @@ class CalibrationSuite:
         name="expected-calibration-error",
         definition=(
             "Expected Calibration Error over (stated confidence, correctness) pairs "
-            "(<=0.15), with abstention enforced below the 0.25 confidence threshold."
+            "(<=0.15), with abstention enforced below the 0.25 confidence threshold "
+            "(ADR-0012)."
         ),
         threshold=0.15,
         higher_is_better=False,

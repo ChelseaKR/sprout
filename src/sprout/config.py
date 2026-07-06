@@ -62,7 +62,11 @@ class GenerationConfig(_Model):
 
 
 class ConfidenceConfig(_Model):
-    """Two thresholds over a computed [0,1] confidence drive abstention/handoff."""
+    """Two thresholds over a computed [0,1] confidence drive abstention/handoff.
+
+    Values per ADR-0012 (supersedes ADR-0005; reconciled 2026-07-05 — see that ADR for
+    the ECE evidence that these, not ADR-0005's 0.45/0.62, are the calibrated values).
+    """
 
     abstain_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
     low_confidence_threshold: float = Field(default=0.50, ge=0.0, le=1.0)
@@ -168,6 +172,68 @@ class GuardsConfig(_Model):
     )
 
 
+class IdentificationConfig(_Model):
+    """Photo plant-ID seam. The identifier returns a *species name* (a selector), never a
+    horticultural fact: the resolved species is routed back through the grounded care-RAG,
+    so every rendered claim is still cited. ``offline`` (no network, no model) always
+    falls back to "type the plant's name"; ``plantnet`` calls the allowlisted Pl@ntNet API
+    with its key read from ``PLANTNET_API_KEY`` (env only, never config)."""
+
+    provider: Literal["offline", "plantnet"] = "offline"
+    min_confidence: float = Field(default=0.30, ge=0.0, le=1.0)
+    top_k: int = Field(default=5, ge=1, le=20)
+    # The single allowlisted vision endpoint. No other network egress is introduced.
+    endpoint: str = "https://my-api.plantnet.org/v2/identify/all"
+    timeout_s: float = Field(default=30.0, ge=1.0, le=120.0)
+    max_image_bytes: int = Field(default=8_000_000, ge=1, le=64_000_000)
+    # Folded scientific binomial -> corpus species slug. Maps a vision result to the
+    # passages that already exist in the cited corpus; unknown species fall back.
+    scientific_aliases: dict[str, str] = Field(
+        default_factory=lambda: {
+            "aloe vera": "aloe",
+            "aloe barbadensis": "aloe",
+            "nephrolepis exaltata": "boston-fern",
+            "goeppertia": "calathea",
+            "calathea": "calathea",
+            "dracaena fragrans": "dracaena",
+            "dracaena": "dracaena",
+            "hedera helix": "english-ivy",
+            "ficus lyrata": "fiddle-leaf-fig",
+            "crassula ovata": "jade-plant",
+            "monstera deliciosa": "monstera",
+            "phalaenopsis": "orchid",
+            "spathiphyllum": "peace-lily",
+            "spathiphyllum wallisii": "peace-lily",
+            "philodendron": "philodendron",
+            "philodendron hederaceum": "philodendron",
+            "epipremnum aureum": "pothos",
+            "ficus elastica": "rubber-plant",
+            "dracaena trifasciata": "snake-plant",
+            "sansevieria trifasciata": "snake-plant",
+            "chlorophytum comosum": "spider-plant",
+            "zamioculcas zamiifolia": "zz-plant",
+        }
+    )
+
+
+class RemindersConfig(_Model):
+    """Local-first watering/fertilizing reminders. Stored in one JSON file on the user's
+    own machine (no database, no network) and opt-in: nothing is written until a reminder
+    is created. Reminder content is never logged (PII-free observability is preserved)."""
+
+    path: str = "var/reminders.json"
+    max_reminders: int = Field(default=200, ge=1, le=10000)
+    default_intervals: dict[str, int] = Field(
+        default_factory=lambda: {
+            "water": 7,
+            "fertilize": 30,
+            "repot": 365,
+            "mist": 3,
+            "rotate": 14,
+        }
+    )
+
+
 class LanguageConfig(_Model):
     supported: list[str] = Field(default_factory=lambda: ["en", "es"])
 
@@ -203,16 +269,91 @@ class PromptConfig(_Model):
             "es": "Las respuestas provienen solo de un corpus de cuidado de plantas fechado y citado. Esto no es asesoramiento veterinario.",  # noqa: E501
         }
     )
+    # Urgency-forward routing (research item E2): lead with the time-critical action,
+    # never with reassurance, and still never certify a plant safe.
     safety_route_by_lang: dict[str, str] = Field(
         default_factory=lambda: {
             "en": (
-                "I can't certify any plant safe. If a pet or child may have eaten part "
-                "of this plant, contact your veterinarian or a poison-control line now."
+                "If a pet or child may have eaten part of this plant, treat it as urgent: "
+                "contact your veterinarian or a poison-control line now — don't wait for "
+                "symptoms to appear. I can't certify any plant safe."
             ),
             "es": (
-                "No puedo certificar ninguna planta como segura. Si una mascota o un "
-                "niño pudo haber comido parte de esta planta, comunícate ahora con tu "
-                "veterinario o una línea de control de envenenamiento."
+                "Si una mascota o un niño pudo haber comido parte de esta planta, trátalo "
+                "como urgente: comunícate ahora con tu veterinario o una línea de control "
+                "de envenenamiento; no esperes a que aparezcan síntomas. No puedo "
+                "certificar ninguna planta como segura."
+            ),
+        }
+    )
+    # "Not listed as toxic" is not a clean bill of health (research item R7 / evidence
+    # EV3): any plant material can cause GI upset, and individual animals vary. This is a
+    # framing caveat about the limits of a *source's silence*, not a claim about any
+    # specific plant — it is attributed to "a source", so it reads as reporting, not a
+    # certification, and the never-certify-safe guard leaves it intact.
+    nontoxic_caveat_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "Even a plant a source does not list as toxic can still cause vomiting or "
+                "mouth and stomach irritation if eaten, and reactions vary by pet and "
+                "person — a source's silence is not a guarantee against harm."
+            ),
+            "es": (
+                "Incluso una planta que una fuente no incluye como tóxica puede causar "
+                "vómitos o irritación de la boca y el estómago si se ingiere, y cada "
+                "mascota o niño reacciona distinto: el silencio de una fuente no garantiza "
+                "que no haya daño."
+            ),
+        }
+    )
+    # Standardized escalation card (research item E9): named public poison-control
+    # authorities plus the three facts the clinician needs. Numbers and pages are the
+    # well-established public contacts (ASPCA APCC, Pet Poison Helpline); the official
+    # pages are linked so they remain the source of truth if a number ever changes.
+    escalation_card_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "Who to call now: ASPCA Animal Poison Control Center, 888-426-4435 "
+                "(https://www.aspca.org/pet-care/animal-poison-control), or Pet Poison "
+                "Helpline, 855-764-7661 (https://www.petpoisonhelpline.com/). What to "
+                "tell them: the plant (species if known), how much was eaten, and when."
+            ),
+            "es": (
+                "A quién llamar ahora: ASPCA Animal Poison Control Center, 888-426-4435 "
+                "(https://www.aspca.org/pet-care/animal-poison-control), o Pet Poison "
+                "Helpline, 855-764-7661 (https://www.petpoisonhelpline.com/). Qué "
+                "informar: la planta (especie si la conoces), cuánto comió y cuándo."
+            ),
+        }
+    )
+
+    photo_fallback_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "I couldn't confidently identify a plant in that photo. Please type the "
+                "plant's name and I'll answer from the cited corpus."
+            ),
+            "es": (
+                "No pude identificar con confianza una planta en esa foto. Escribe el "
+                "nombre de la planta y responderé desde el corpus citado."
+            ),
+        }
+    )
+    photo_care_question_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": "How do I care for my {name}?",
+            "es": "¿Cómo cuido mi {name}?",
+        }
+    )
+    photo_identified_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "Identified from your photo as {name} — a visual match, not a cited fact. "
+                "The guidance below is grounded in the cited corpus."
+            ),
+            "es": (
+                "Identificado en tu foto como {name}: una coincidencia visual, no un hecho "
+                "citado. La siguiente orientación proviene del corpus citado."
             ),
         }
     )
@@ -220,11 +361,47 @@ class PromptConfig(_Model):
     def refusal_for(self, language: str) -> str:
         return self.refusal_by_lang.get(language, self.refusal_by_lang["en"])
 
+    def photo_fallback_for(self, language: str) -> str:
+        return self.photo_fallback_by_lang.get(language, self.photo_fallback_by_lang["en"])
+
+    def photo_care_question_for(self, language: str, name: str) -> str:
+        template = self.photo_care_question_by_lang.get(
+            language, self.photo_care_question_by_lang["en"]
+        )
+        return template.format(name=name)
+
+    def photo_identified_for(self, language: str, name: str) -> str:
+        template = self.photo_identified_by_lang.get(language, self.photo_identified_by_lang["en"])
+        return template.format(name=name)
+
     def disclosure_for(self, language: str) -> str:
         return self.disclosure_by_lang.get(language, self.disclosure_by_lang["en"])
 
     def safety_route_for(self, language: str) -> str:
         return self.safety_route_by_lang.get(language, self.safety_route_by_lang["en"])
+
+    def nontoxic_caveat_for(self, language: str) -> str:
+        return self.nontoxic_caveat_by_lang.get(language, self.nontoxic_caveat_by_lang["en"])
+
+    def escalation_card_for(self, language: str) -> str:
+        return self.escalation_card_by_lang.get(language, self.escalation_card_by_lang["en"])
+
+    def safety_directive_for(self, language: str) -> str:
+        """The full safety message shown on every toxicity answer/refusal.
+
+        Three research-backed parts, in urgency order: the time-critical routing line
+        (E2), the "not listed as toxic is not safe" caveat (R7), and the standardized
+        vet/poison-control escalation card (E9). It never certifies a plant safe, and
+        because the caveat is source-attributed the never-certify-safe guard keeps it
+        intact.
+        """
+        return " ".join(
+            (
+                self.safety_route_for(language),
+                self.nontoxic_caveat_for(language),
+                self.escalation_card_for(language),
+            )
+        )
 
 
 class ServerConfig(_Model):
@@ -251,6 +428,8 @@ class Config(_Model):
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     confidence: ConfidenceConfig = Field(default_factory=ConfidenceConfig)
     guards: GuardsConfig = Field(default_factory=GuardsConfig)
+    identification: IdentificationConfig = Field(default_factory=IdentificationConfig)
+    reminders: RemindersConfig = Field(default_factory=RemindersConfig)
     languages: LanguageConfig = Field(default_factory=LanguageConfig)
     prompts: PromptConfig = Field(default_factory=PromptConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
