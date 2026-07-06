@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import io
+import json
+from collections.abc import Callable
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from sprout.a11y import check_html
 from sprout.answer import Assistant
 from sprout.config import Config, ObservabilityConfig
-from sprout.obs import Logger
+from sprout.models import Chunk
+from sprout.obs import _ALLOWED_FIELDS, Logger
 from sprout.providers import build_generator
 from sprout.providers.base import GenerationProvider
 from sprout.providers.deterministic import HashingEmbedding
@@ -76,6 +80,69 @@ def test_chat_stream_refusal_and_validation(assistant: Assistant, config: Config
     assert c.get("/api/chat/stream?q=").status_code == 400
 
 
+def test_identify_grounded_path(assistant: Assistant, config: Config) -> None:
+    import base64
+
+    from sprout.identify import Identification, PlantCandidate
+
+    ident = Identification(
+        provider="fake",
+        candidates=(
+            PlantCandidate(
+                scientific_name="Epipremnum aureum",
+                common_names=("Golden pothos",),
+                score=0.9,
+            ),
+        ),
+    )
+
+    class _Fake:
+        def identify(self, image: bytes) -> Identification:
+            return ident
+
+    c = TestClient(create_app(config, assistant=assistant, identifier=_Fake()))
+    img = base64.b64encode(b"jpeg-bytes").decode("ascii")
+    r = c.post("/api/identify", json={"image_b64": img, "question": "is this toxic to my cat?"})
+    body = r.json()
+    assert r.status_code == 200
+    assert body["identified"] is True
+    assert body["species_slug"] == "pothos"
+    assert body["answer"]["citations"]
+    assert body["answer"]["safety_notice"]
+
+
+def test_identify_fallback_and_validation(assistant: Assistant, config: Config) -> None:
+    import base64
+
+    c = _client(assistant, config)  # offline identifier -> always falls back
+    img = base64.b64encode(b"jpeg-bytes").decode("ascii")
+    fb = c.post("/api/identify", json={"image_b64": img}).json()
+    assert fb["identified"] is False and fb["message"]
+    assert c.post("/api/identify", json={}).status_code == 400
+    assert c.post("/api/identify", json={"image_b64": "not base64!!"}).status_code == 400
+
+
+def test_reminders_crud(assistant: Assistant, tmp_path: object) -> None:
+    cfg = Config.model_validate({"reminders": {"path": str(tmp_path) + "/r.json"}})
+    c = TestClient(create_app(cfg, assistant=assistant))
+    assert c.get("/api/reminders").json() == {"reminders": []}
+
+    created = c.post("/api/reminders", json={"plant": "pothos", "kind": "water"})
+    assert created.status_code == 201
+    rid = created.json()["reminder_id"]
+
+    assert len(c.get("/api/reminders").json()["reminders"]) == 1
+    assert isinstance(c.get("/api/reminders/due").json()["reminders"], list)
+
+    done = c.post(f"/api/reminders/{rid}/complete")
+    assert done.status_code == 200 and done.json()["last_done"]
+
+    assert c.post("/api/reminders", json={"plant": "  "}).status_code == 400
+    assert c.post("/api/reminders/missing/complete").status_code == 404
+    assert c.delete(f"/api/reminders/{rid}").json() == {"removed": True}
+    assert c.delete(f"/api/reminders/{rid}").status_code == 404
+
+
 def test_shipped_ui_passes_structural_a11y() -> None:
     html = Path("web/dist/index.html").read_text(encoding="utf-8")
     assert check_html(html) == []
@@ -97,3 +164,31 @@ def test_logger_text_and_json_and_pii_filter() -> None:
     )
     assert '"event":"answer"' in buf2.getvalue()
     assert '"ts":"T"' in buf2.getvalue()
+
+
+def test_json_logs_are_valid_json_and_pii_free_end_to_end(
+    assistant_factory: Callable[[Config, list[Chunk] | None], Assistant],
+    tiny_chunks: list[Chunk],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """OBS-22: every JSON log line emitted over a real request parses as JSON and carries
+    only whitelisted fields — sentinel PII embedded in the question never reaches a log
+    line. This is the jq-on-structured-logs integration test
+    `docs/RESPONSIBLE-TECH-AUDITS.md:261-263` claimed but that did not exist before
+    2026-07-05 (OBS-22)."""
+    cfg = Config(observability=ObservabilityConfig(log_format="json"))
+    engine = assistant_factory(cfg, tiny_chunks)
+    client = TestClient(create_app(cfg, assistant=engine))
+    sentinel = "SENTINEL-PII-555-0100 sentinel@example.invalid"
+    client.post("/api/chat", json={"question": f"why are my monstera leaves yellowing? {sentinel}"})
+    client.post("/api/chat", json={"question": ""})  # triggers the request_rejected event
+
+    lines = [line for line in capsys.readouterr().err.splitlines() if line.strip()]
+    assert lines, "expected at least one structured JSON log line"
+    allowed_keys = _ALLOWED_FIELDS | {"ts", "severity", "service.name", "event"}
+    for line in lines:
+        record = json.loads(line)  # raises (fails the test) if a line is not valid JSON
+        extra = set(record) - allowed_keys
+        assert not extra, f"log line carries non-whitelisted field(s) {extra}: {line}"
+        assert sentinel not in line
+        assert "monstera" not in line  # the raw question text never appears at all

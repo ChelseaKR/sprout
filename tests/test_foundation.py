@@ -140,6 +140,30 @@ def test_default_config_is_valid() -> None:
     assert "veterinario" in cfg.prompts.safety_route_for("es")
 
 
+def test_safety_directive_has_en_es_parity_and_never_certifies() -> None:
+    # The urgency routing (E2), the non-toxic-caveat (R7), and the escalation card (E9)
+    # must each exist in every supported language, and the composed directive must never
+    # trip the never-certify-safe guard or carry an eval-suite forbidden phrase.
+    from sprout.guards import asserts_safety
+
+    cfg = Config()
+    langs = set(cfg.languages.supported)
+    for catalog in (
+        cfg.prompts.safety_route_by_lang,
+        cfg.prompts.nontoxic_caveat_by_lang,
+        cfg.prompts.escalation_card_by_lang,
+    ):
+        assert set(catalog) == langs
+    forbidden = ["is safe", "non-toxic", "safe for", "harmless", "perfectly fine"]
+    for lang in langs:
+        directive = cfg.prompts.safety_directive_for(lang)
+        assert not asserts_safety(directive, lang, cfg.guards)
+        low = directive.lower()
+        assert not any(term in low for term in forbidden)
+        # The standardized escalation card names the real public authorities.
+        assert "888-426-4435" in directive and "855-764-7661" in directive
+
+
 def test_config_rejects_unknown_keys() -> None:
     with pytest.raises(ValidationError):
         Config.model_validate({"corpus": {"nope": 1}})

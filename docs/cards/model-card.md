@@ -180,14 +180,27 @@ These are the two behaviors that make Sprout honest about its limits.
   directive to a vet / poison-control line** on both the answer *and* the refusal paths.
 - Sprout reports *what a cited toxicity reference says* and, when the corpus is silent, says so —
   it does not infer safety from absence of evidence.
+- The routing directive is a **standardized safety message** shown on every toxicity answer *and*
+  refusal, in EN and ES (`PromptConfig.safety_directive_for`), with three parts in urgency order:
+  (1) an **urgency-forward routing line** — if a pet or child may have eaten part of a plant, treat
+  it as urgent and call now, rather than leading with reassurance; (2) a **"not listed as toxic is
+  not safe" caveat** — any plant material can cause vomiting or GI upset and individual animals
+  vary, so a source's silence is not a guarantee against harm; and (3) a **standardized escalation
+  card** naming the public authorities — the **ASPCA Animal Poison Control Center** and the **Pet
+  Poison Helpline** (with their published numbers and official pages) — plus the three facts a
+  clinician needs: the plant, how much was eaten, and when. None of this asserts safety, and the
+  caveat is source-attributed so the never-certify-"safe" guard leaves it intact.
 
 ### Calibrated abstention
 
 - Confidence is a transparent function of **retrieval evidence** — the best passage's cosine score,
   nudged by its margin over the runner-up, through a fixed logistic. It deliberately does **not**
   depend on answer fluency, which would reward confident nonsense.
-- Below `abstain_threshold` (default **0.45**) the assistant **refuses rather than guesses**. Below
-  `low_confidence_threshold` (default **0.62**) it answers but flags the answer for human review.
+- Below `abstain_threshold` (default **0.25**) the assistant **refuses rather than guesses**. Below
+  `low_confidence_threshold` (default **0.50**) it answers but flags the answer for human review.
+  (Per [ADR-0012](../adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md), which
+  supersedes ADR-0005; the earlier 0.45/0.62 figures never matched the shipped, calibrated
+  values and are corrected here as of 2026-07-05.)
 - The harness checks that these stated confidences track correctness via a **reliability diagram**
   and **Expected Calibration Error (ECE)** in the calibration suite — a confidence Sprout cannot
   back up is a test failure, not a footnote.
@@ -270,6 +283,20 @@ case set — are authoritative in the committed report, not here.
 - **Corpus-bounded by design.** Anything outside the loaded corpus is refused, including newer
   species, products, or guidance. Coverage gaps look like refusals, not best guesses — which is the
   intended failure mode, but a limitation nonetheless.
+- **"Not listed as toxic" is not "safe," and a cited answer can be true-but-incomplete.** A source
+  that does not list a plant as toxic is not a clean bill of health: any plant material can cause
+  vomiting or GI upset and individual animals vary. Because generation is *extractive*, a rendered
+  sentence is faithful to its passage yet that passage may legitimately *omit* a toxin or a caveat —
+  a correct retrieval that happens to be incomplete is the failure that matters most here. Sprout
+  mitigates this by never certifying safety and by attaching the non-toxic caveat and the
+  vet/poison-control escalation card to every toxicity answer and refusal, but the residual risk is
+  real: treat reassuring-sounding silence as unverified and call a professional.
+- **Photo-ID can be confidently wrong; reminders are local-only.** When the optional photo path is
+  used, a visual match is a *selector, not a fact* — it never renders as a citation and the care
+  answer still flows through the grounded pipeline, but a confident *wrong* identification of an
+  in-corpus species can yield a correct, cited answer about the *wrong* plant (mitigated by the
+  confidence gate and the "a visual match, not a cited fact" label; see ADR-0010). Care reminders
+  are stored only on the user's device (`var/reminders.json`): no sync, no push delivery (ADR-0011).
 - **Offline retrieval is a baseline.** The default `HashingEmbedding` is lexical, not semantic;
   paraphrased or synonym-heavy questions may under-retrieve and refuse where a semantic embedder
   (Titan/Bedrock) would answer. This trades recall for zero-dependency reproducibility.

@@ -23,15 +23,27 @@ buyers actually audit to.
 
 ## How this is verified
 
-- **Automated, merge-blocking:** axe-core (WCAG 2.2 AA tags, zero critical/serious/moderate
-  violations), pa11y-ci (`WCAG2AA`, zero errors), Lighthouse CI accessibility score ≥ 0.90, and a
-  deterministic structural self-check (`sprout a11y-check`) that runs on both the chat UI and the
-  generated eval report and **fails closed** — Sprout will not emit an inaccessible report.
-- **Manual, per release:** keyboard-only walkthrough and screen-reader review with
-  **NVDA + Firefox** (Windows) and **VoiceOver + Safari** (macOS and iOS). The dated artifact lives
-  at `docs/a11y/screen-reader-walkthrough-2026-06-22.md`.
+**Corrected 2026-07-05** — a conformance audit found this section overstated what actually gates.
+The honest breakdown:
 
-All of this runs under `make verify`, which mirrors the CI gate set locally.
+- **Automated, merge-blocking today:** a deterministic structural self-check
+  (`sprout a11y-check`) that runs on both the chat UI and the generated eval report and **fails
+  closed** — Sprout will not emit an inaccessible report. This is genuinely wired into `make verify`
+  and the required `ci-gate` check.
+- **Automated, advisory only (not yet merge-blocking):** axe-core and pa11y-ci both run inside the
+  `pa11y` CI job, which is `continue-on-error: true` and excluded from `ci-gate` — a violation is
+  visible in CI logs but does not fail a PR. Wiring this to blocking is tracked (gap tracked;
+  planned in `docs/ROADMAP.md`).
+- **Not yet wired:** Lighthouse CI accessibility scoring does not exist in this repo yet, despite
+  being referenced below in the past. Tracked as a gap, not silently dropped.
+- **Manual, per release — not yet performed:** a keyboard-only walkthrough and screen-reader review
+  (NVDA + Firefox, VoiceOver + Safari) is planned per release but has not yet been carried out; no
+  dated walkthrough artifact exists yet. A prior version of this statement cited
+  `docs/a11y/screen-reader-walkthrough-2026-06-22.md`, which was never created — that reference is
+  removed here and will be restored, with a real dated file, once the walkthrough is actually done.
+
+`make verify` runs the structural self-check above; it does not yet run pa11y/axe/Lighthouse
+(those are CI-only, and advisory as described above).
 
 ## What we have done
 
