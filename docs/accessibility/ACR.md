@@ -6,11 +6,15 @@ columns used here).
 **Version evaluated:** 0.1.0 (offline/default configuration).
 **Report date:** 2026-06-22.
 **Author / contact:** Chelsea Kelly-Reif · ckellyreif@gmail.com.
-**Evaluation methods used:** automated tooling (axe-core, pa11y, Lighthouse CI) over the built
-HTML; the repo's deterministic structural a11y self-check (`sprout a11y-check`, source
-`src/sprout/a11y.py`); manual keyboard walkthrough; and manual screen-reader review
-(NVDA + Firefox on Windows, VoiceOver + Safari on macOS/iOS). See
-`docs/a11y/screen-reader-walkthrough-2026-06-22.md` for the dated AT pairing notes.
+**Evaluation methods used:** the repo's deterministic structural a11y self-check
+(`sprout a11y-check`, source `src/sprout/a11y.py`) — genuinely merge-blocking — plus automated
+tooling (axe-core via pa11y, and pa11y-ci itself) run in CI today as **advisory only**
+(`continue-on-error: true`, excluded from the required `ci-gate` check; gap tracked to make
+blocking). Lighthouse CI is **not yet wired**. Manual keyboard walkthrough and manual
+screen-reader review (NVDA + Firefox on Windows, VoiceOver + Safari on macOS/iOS) are **planned
+per release but have not yet been performed** — no dated AT-pairing artifact exists yet. (Corrected
+2026-07-05: this paragraph previously claimed all of the above were performed/blocking and cited a
+`docs/a11y/screen-reader-walkthrough-2026-06-22.md` file that was never created.)
 
 > **Why VPAT 2.5 / 508, not federal scope.** A houseplant app is not federal ICT, so Section 508
 > does not apply to Sprout. Conforming to it anyway is the point: it demonstrates the assistant
@@ -183,16 +187,27 @@ Notes apply to all three surfaces unless a surface is named.
    single-page artifacts.
 3. **302.9 / readability of answer prose** — grounded answers are extracted verbatim from the
    corpus and are not readability-graded; review-gated, not auto-gated.
+4. **Automated-tooling enforcement gap (corrected 2026-07-05).** axe-core and pa11y-ci run today
+   only inside the advisory `pa11y` CI job (`continue-on-error: true`, not in the required
+   `ci-gate`); Lighthouse CI is not wired at all; and no screen-reader walkthrough has yet been
+   performed. Everywhere in this report that says a criterion is "Gated by axe `<rule>`," read
+   that as "checked by axe today, advisory, not yet merge-blocking" until this gap closes. Only
+   `sprout a11y-check` (the structural self-check) is genuinely merge-blocking right now.
 
 ## What backs the "Supports" claims
 
-- **Auto-gated (merge-blocking):** axe-core (`wcag2a,wcag2aa,wcag22aa`, zero
-  critical/serious/moderate), pa11y-ci (`WCAG2AA`, zero errors), Lighthouse CI accessibility
-  ≥ 0.90, and the deterministic structural self-check (`sprout a11y-check`) on both the chat UI
-  and `docs/audits/eval-report.html`, all wired through `make verify` so local mirrors CI.
-- **Review-gated (dated, committed artifact):** the screen-reader walkthrough
-  (`docs/a11y/screen-reader-walkthrough-2026-06-22.md`), the keyboard walkthrough, and this ACR —
-  refreshed per release.
+- **Auto-gated (merge-blocking) today:** the deterministic structural self-check
+  (`sprout a11y-check`) on both the chat UI and `docs/audits/eval-report.html`, wired through
+  `make verify` and the required `ci-gate` check.
+- **Automated, advisory only (not yet merge-blocking):** axe-core and pa11y-ci
+  (`WCAG2AA`) — both run in the `pa11y` CI job, which is `continue-on-error: true` and excluded
+  from `ci-gate`. Gap tracked to flip to blocking.
+- **Not yet wired:** Lighthouse CI accessibility scoring.
+- **Review-gated, planned but not yet performed:** the screen-reader walkthrough
+  (NVDA + Firefox, VoiceOver + Safari) and the keyboard-only walkthrough — no dated artifact
+  exists yet; a prior version of this report cited
+  `docs/a11y/screen-reader-walkthrough-2026-06-22.md`, which was never created. This ACR itself
+  is a genuine review-gated, dated, committed artifact, refreshed per release.
 
 This ACR references `STANDARDS/ACCESSIBILITY-STANDARD.md` for the gate definitions and tool
 selection rather than restating them. It is regenerated and re-committed on each release, the same

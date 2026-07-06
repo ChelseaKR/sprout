@@ -2,7 +2,7 @@
   "fingerprint": {
     "harness_version": "0.1.0",
     "seed": 1729,
-    "dataset_hash": "d0ab57db3735597858738373f197eefe99ccf9e1bfd731e67c608f8119559a0e",
+    "dataset_hash": "b87c705c52effe076f0f6fe20b365e139639f34d3fed99c308ae6c7a62196985",
     "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
     "target": "deterministic:extractive",
     "suite_names": [
@@ -19,20 +19,20 @@
       "suite": "calibration",
       "metric": {
         "name": "expected-calibration-error",
-        "definition": "Expected Calibration Error over (stated confidence, correctness) pairs (<=0.15), with abstention enforced below the 0.25 confidence threshold.",
+        "definition": "Expected Calibration Error over (stated confidence, correctness) pairs (<=0.15), with abstention enforced below the 0.25 confidence threshold (ADR-0012).",
         "threshold": 0.15,
         "higher_is_better": false
       },
-      "score": 0.1107,
+      "score": 0.1083,
       "verdict": "pass",
       "n_items": 98,
-      "ci_low": 0.6396,
-      "ci_high": 0.812,
+      "ci_low": 0.6834,
+      "ci_high": 0.8468,
       "underpowered": false,
-      "dataset_version": "sha256:d0ab57db3735",
+      "dataset_version": "sha256:b87c705c52ef",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
-      "notes": "ECE=0.111; abstention_below_0.25_enforced=True",
+      "notes": "ECE=0.108; abstention_below_0.25_enforced=True",
       "segments": [
         {
           "label": "[0.3,0.4)",
@@ -48,19 +48,19 @@
         },
         {
           "label": "[0.5,0.6)",
-          "score": 0.8824,
+          "score": 0.9412,
           "n": 17,
           "verdict": "fail"
         },
         {
           "label": "[0.6,0.7)",
-          "score": 0.55,
+          "score": 0.6,
           "n": 20,
           "verdict": "pass"
         },
         {
           "label": "[0.7,0.8)",
-          "score": 0.6957,
+          "score": 0.7826,
           "n": 23,
           "verdict": "pass"
         },
@@ -214,7 +214,7 @@
       "ci_low": 0.9623,
       "ci_high": 1.0,
       "underpowered": false,
-      "dataset_version": "sha256:d0ab57db3735",
+      "dataset_version": "sha256:b87c705c52ef",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
       "notes": "",
@@ -235,7 +235,7 @@
       "ci_low": 0.6461,
       "ci_high": 0.9851,
       "underpowered": true,
-      "dataset_version": "sha256:d0ab57db3735",
+      "dataset_version": "sha256:b87c705c52ef",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
       "notes": "",
@@ -263,7 +263,7 @@
       "ci_low": 0.7704,
       "ci_high": 0.9695,
       "underpowered": false,
-      "dataset_version": "sha256:d0ab57db3735",
+      "dataset_version": "sha256:b87c705c52ef",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
       "notes": "over-refusal rate 10% (1/10 answerable cases)",
@@ -303,7 +303,7 @@
       "ci_low": 0.8229,
       "ci_high": 0.9937,
       "underpowered": true,
-      "dataset_version": "sha256:d0ab57db3735",
+      "dataset_version": "sha256:b87c705c52ef",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
       "notes": "",

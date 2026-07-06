@@ -125,11 +125,18 @@ def evaluate(
     statistical_gate: Annotated[bool, typer.Option("--statistical-gate")] = False,
     update_baseline: Annotated[bool, typer.Option("--update-baseline")] = False,
 ) -> None:
-    """Record the live engine over the cases, run the suites, regenerate the report."""
+    """Record the live engine over the cases, run the suites, regenerate the report.
+
+    Unless ``--update-baseline`` is passed, the run is also diffed against the committed
+    ``<out>/eval-baseline.json`` (fingerprint comparability, PASS->FAIL flips, and score
+    erosion beyond tolerance); any issue — including a stale baseline whose fingerprint no
+    longer matches this run's dataset/judge/target — fails the command even if every suite
+    individually passed its own threshold.
+    """
     from .eval.dataset import load_suite_dir
     from .eval.judge import build_judge
     from .eval.record import record
-    from .eval.report import render_markdown, write_reports
+    from .eval.report import diff_against_baseline, load_run_result, render_markdown, write_reports
     from .eval.runner import run_evaluation
     from .eval.suite import resolve_suites
 
@@ -146,11 +153,27 @@ def evaluate(
     )
     write_reports(result, out)
     typer.echo(render_markdown(result))
+    exit_code = result.exit_code
+    baseline_path = Path(out, "eval-baseline.json")
     if update_baseline:
-        Path(out, "eval-baseline.json").write_text(
-            result.model_dump_json(indent=2), encoding="utf-8"
+        baseline_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+    elif baseline_path.exists():
+        baseline = load_run_result(baseline_path)
+        issues = diff_against_baseline(result, baseline)
+        if issues:
+            typer.echo("\nBaseline regression check FAILED:", err=True)
+            for issue in issues:
+                typer.echo(f"  - {issue}", err=True)
+            exit_code = 1
+        else:
+            typer.echo("\nBaseline regression check: no issues.")
+    else:
+        typer.echo(
+            f"\nNo committed baseline at {baseline_path} — skipping regression check "
+            "(run `sprout eval --update-baseline` once to create it).",
+            err=True,
         )
-    raise typer.Exit(result.exit_code)
+    raise typer.Exit(exit_code)
 
 
 @app.command("a11y-check")
@@ -182,16 +205,41 @@ def calibrate(
     Reports by default (exit 0); pass ``--gate`` to fail when below threshold. The
     deterministic judge is the reproducible offline floor and is reported, not gated;
     gate the calibrated LLM judge (``--judge llm --gate``) before it backs a production run.
+
+    Also warns (does not yet fail — AIEV-20, tied to the P0-4 remediation) when the probe
+    set's ``labeled_date`` is more than 30 days old, per the ROADMAP "judge-calibration
+    freshness" row.
     """
+    from datetime import date
+
     from .eval.calibration import JudgeProbe, to_markdown
     from .eval.calibration import calibrate as run_calibrate
     from .eval.judge import build_judge
 
     raw = yaml.safe_load(Path(probes).read_text(encoding="utf-8"))
+    labeled_date = raw.get("labeled_date") if isinstance(raw, dict) else None
+    if labeled_date:
+        age_days = (date.today() - date.fromisoformat(str(labeled_date))).days
+        if age_days > 30:
+            typer.echo(
+                f"warning: probe set labeled_date {labeled_date} is {age_days} days old "
+                "(> 30-day freshness target); re-label before trusting this record.",
+                err=True,
+            )
+    else:
+        typer.echo(
+            f"warning: {probes} has no labeled_date field; cannot check calibration-probe "
+            "freshness.",
+            err=True,
+        )
     items = [JudgeProbe.model_validate(p) for p in (raw.get("probes", raw))]
     record = run_calibrate(build_judge(judge), items)
-    Path(out, "judge-calibration.json").write_text(record.model_dump_json(indent=2), "utf-8")
-    Path(out, "judge-calibration.md").write_text(to_markdown(record), encoding="utf-8")
+    out_dir = Path(out)
+    out_dir.mkdir(
+        parents=True, exist_ok=True
+    )  # match eval's write_reports; --out may not exist yet
+    (out_dir / "judge-calibration.json").write_text(record.model_dump_json(indent=2), "utf-8")
+    (out_dir / "judge-calibration.md").write_text(to_markdown(record), encoding="utf-8")
     typer.echo(
         f"agreement={record.agreement:.3f} kappa={record.cohens_kappa:.3f} "
         f"meets_threshold={record.meets_threshold}"

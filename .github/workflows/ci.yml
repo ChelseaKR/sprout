@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       - name: Install (dev + serve) on ${{ matrix.python }}
-        run: uv sync --extra serve --python ${{ matrix.python }}
+        run: uv sync --frozen --extra serve --python ${{ matrix.python }}
       - name: Ruff format check
         run: uv run ruff format --check src tests
       - name: Ruff lint
@@ -35,6 +35,8 @@ jobs:
         run: uv run mypy
       - name: Pytest (branch coverage gate >=90% from pyproject)
         run: uv run pytest
+      - name: Build sdist + wheel (packaging regression check — CQ-10)
+        run: uv build
 
   security:
     runs-on: ubuntu-latest
@@ -44,7 +46,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       - name: Install (dev)
-        run: uv sync
+        run: uv sync --frozen
       - name: Semgrep (SAST)
         run: uvx semgrep scan --config p/python --error src
       - name: pip-audit (blocking — no || true)
@@ -62,7 +64,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       - name: Install (dev + serve)
-        run: uv sync --extra serve
+        run: uv sync --frozen --extra serve
       - name: Ingest the bundled corpus
         run: uv run sprout ingest
       - name: Eval suites (offline deterministic judge, merge-blocking)
@@ -71,7 +73,7 @@ jobs:
         run: |
           uv run sprout a11y-check web/dist/index.html
           uv run sprout a11y-check docs/audits/eval-report.html
-      - name: Judge calibration gate (agreement + Cohen's kappa)
+      - name: Judge calibration (report-only — below threshold, gap tracked; see docs/ROADMAP.md)
         run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits
 
   pa11y:
@@ -86,7 +88,7 @@ jobs:
         with:
           node-version: "20"
       - name: Install + ingest
-        run: uv sync --extra serve && uv run sprout ingest
+        run: uv sync --frozen --extra serve && uv run sprout ingest
       - name: Serve and pa11y the UI
         run: |
           uv run sprout serve &
@@ -101,21 +103,38 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       - name: Install (docs)
-        run: uv sync --group docs
+        run: uv sync --frozen --group docs
       - name: MkDocs strict build
         run: uv run mkdocs build --strict
+
+  zizmor:
+    # Workflow-SAST review, RTA §F claim (CICD-19): any PR touching workflows is scanned.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - name: zizmor (workflow SAST)
+        run: uvx zizmor --min-severity high .github/workflows/
 
   ci-gate:
     # The ONLY required status check for branch protection. pa11y is advisory.
     if: always()
-    needs: [test, security, eval-a11y, docs]
+    needs: [test, security, eval-a11y, docs, zizmor]
     runs-on: ubuntu-latest
     steps:
       - name: Require all gates to pass (skipped path-filtered jobs are OK)
+        # Interpolating join(needs.*.result) straight into the script body reads as a
+        # template-injection-adjacent pattern to workflow-SAST tools (zizmor flags it);
+        # the values are GitHub-controlled enums (success/failure/skipped/cancelled) so it
+        # was never exploitable, but routing through env: satisfies the rule directly
+        # instead of waiving it.
+        env:
+          GATE_RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
-          results='${{ join(needs.*.result, " ") }}'
-          echo "gate results: $results"
-          for r in $results; do
+          echo "gate results: $GATE_RESULTS"
+          for r in $GATE_RESULTS; do
             if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
               echo "::error::a required gate did not pass: $r"
               exit 1

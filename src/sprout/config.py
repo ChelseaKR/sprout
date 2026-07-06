@@ -62,7 +62,11 @@ class GenerationConfig(_Model):
 
 
 class ConfidenceConfig(_Model):
-    """Two thresholds over a computed [0,1] confidence drive abstention/handoff."""
+    """Two thresholds over a computed [0,1] confidence drive abstention/handoff.
+
+    Values per ADR-0012 (supersedes ADR-0005; reconciled 2026-07-05 — see that ADR for
+    the ECE evidence that these, not ADR-0005's 0.45/0.62, are the calibrated values).
+    """
 
     abstain_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
     low_confidence_threshold: float = Field(default=0.50, ge=0.0, le=1.0)

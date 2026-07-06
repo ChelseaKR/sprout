@@ -29,7 +29,7 @@
 ### `calibration` — ✅ PASS
 
 - **Metric:** expected-calibration-error
-- **Definition:** Expected Calibration Error over (stated confidence, correctness) pairs (<=0.15), with abstention enforced below the 0.25 confidence threshold.
+- **Definition:** Expected Calibration Error over (stated confidence, correctness) pairs (<=0.15), with abstention enforced below the 0.25 confidence threshold (ADR-0012).
 - **Score:** 0.108 (threshold 0.150, lower is better)
 - **95% CI (gated rate):** [0.683, 0.847]
 - **Items evaluated:** 98
