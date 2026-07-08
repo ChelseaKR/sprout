@@ -76,6 +76,38 @@ jobs:
       - name: Judge calibration (report-only — below threshold, gap tracked; see docs/ROADMAP.md)
         run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits
 
+  web-static:
+    # EXP-08 (docs/ideation/03-expansions.md): the TypeScript port's cross-language
+    # conformance test — the deliverable's spine. Regenerates the fixtures from the
+    # *current* Python pipeline on every run, so drift fails here, not later.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web-static/package-lock.json
+      - name: Install (dev + serve)
+        run: uv sync --frozen --extra serve
+      - name: Ingest the bundled corpus
+        run: uv run sprout ingest
+      - name: Export the static bundle (index.json + config.json)
+        run: uv run python scripts/export_web_bundle.py
+      - name: Generate cross-language conformance fixtures from the Python pipeline
+        run: uv run python scripts/generate_conformance_fixtures.py
+      - name: Install web-static deps
+        run: cd web-static && npm ci
+      - name: Typecheck
+        run: cd web-static && npm run typecheck
+      - name: Conformance test (128 eval-suite cases vs. the Python pipeline)
+        run: cd web-static && npm test
+      - name: Build the deployable static site
+        run: cd web-static && npm run build:site
+
   pa11y:
     runs-on: ubuntu-latest
     continue-on-error: true # advisory browser cross-check; excluded from ci-gate
@@ -121,7 +153,7 @@ jobs:
   ci-gate:
     # The ONLY required status check for branch protection. pa11y is advisory.
     if: always()
-    needs: [test, security, eval-a11y, docs, zizmor]
+    needs: [test, security, eval-a11y, web-static, docs, zizmor]
     runs-on: ubuntu-latest
     steps:
       - name: Require all gates to pass (skipped path-filtered jobs are OK)

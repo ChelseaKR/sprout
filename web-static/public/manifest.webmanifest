@@ -1,0 +1,12 @@
+{
+  "name": "Sprout Static — grounded plant-care answers",
+  "short_name": "Sprout Static",
+  "description": "A grounded, cited houseplant-care assistant that runs entirely in your browser — no server, no account, no telemetry.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f6b3a",
+  "lang": "en",
+  "icons": []
+}
