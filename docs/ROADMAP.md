@@ -226,10 +226,21 @@ implementation" banner.*
 **Status: in progress (current phase).**
 - Done: calibration suite + two-threshold abstention (`confidence.py`), EN/ES throughout
   (`lang.py`, per-language bundles, parity suite), framework-free WCAG 2.2 chat UI shipped in
-  `web/dist/`, structural a11y check, structured PII-free logging.
+  `web/dist/`, structural a11y check, structured PII-free logging, the **ACR**
+  (`docs/accessibility/ACR.md`, VPAT 2.5 Rev 508) and a dedicated **OWASP-LLM red-team report**
+  (`docs/audits/red-team-2026-06-22.md`, LLM01–LLM10:2025 coverage table, 0 open critical
+  findings) — both committed in the 2026-07-05 conformance pass. Corrected here 2026-07-08: this
+  bullet previously still listed the ACR and the red-team report as *outstanding* after they had
+  already been committed (DOC-defect, same class as the other 2026-07-05/07-08 "declared vs.
+  actual" corrections in this file). **Caveat that remains real:** the red-team report is a
+  structured *manual* exercise, not yet backed by an automated, per-PR mechanical check — see the
+  "Red-team (OWASP LLM01–LLM10)" row in the AI evaluation ledger above, which honestly carries
+  that gap (no Promptfoo run has completed against a provisioned key yet).
 - Outstanding: tune only against committed eval failures (no tuning to the test set); commit the
   model card at `docs/cards/model-card.md` and the data card; deploy the UI behind a real URL
-  with the reference-implementation banner; commit the ACR and the OWASP-LLM red-team report.
+  with the reference-implementation banner; get a clean Promptfoo `redteam` run wired and
+  promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical
+  check rather than only the manual, dated one (tracked in the ledger row above).
 
 ### Phase 4 — generalize
 *A `corpus.yaml` so any care corpus can be swapped in; "adapt this to your domain" doc.*
