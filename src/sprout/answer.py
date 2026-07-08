@@ -62,6 +62,10 @@ class Assistant:
         """Load the persisted index from ``config.store.path`` and build the assistant."""
         return cls.from_store(config, VectorStore.load(config.store.path))
 
+    def index_size(self) -> int:
+        """Public accessor for the loaded store size (health/readiness checks)."""
+        return len(self._store)
+
     def _resolve_language(self, query: str, language: str | None) -> str:
         supported = self._config.languages.supported
         if language is not None and language in supported:
