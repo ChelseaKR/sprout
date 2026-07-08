@@ -1,30 +1,33 @@
 {
   "judge_method": "deterministic-lexical",
   "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
-  "n_probes": 12,
-  "n_agree": 9,
-  "agreement": 0.75,
-  "cohens_kappa": 0.4,
+  "n_probes": 66,
+  "n_agree": 60,
+  "agreement": 0.9091,
+  "cohens_kappa": 0.8068,
   "per_operation": {
     "entails": {
-      "n": 5,
-      "n_agree": 4,
-      "agreement": 0.8
+      "n": 27,
+      "n_agree": 25,
+      "agreement": 0.9259
     },
     "contains": {
-      "n": 4,
-      "n_agree": 4,
+      "n": 22,
+      "n_agree": 22,
       "agreement": 1.0
     },
     "equivalent": {
-      "n": 3,
-      "n_agree": 1,
-      "agreement": 0.3333
+      "n": 17,
+      "n_agree": 13,
+      "agreement": 0.7647
     }
   },
   "disagreements": [
     "g5-aloe-safe-antonym-contradiction",
     "e2-es-yellow-leaves-synonym-paraphrase",
-    "e3-es-pothos-toxic-vs-safe"
+    "e3-es-pothos-toxic-vs-safe",
+    "g26-monstera-safe-antonym-contradiction",
+    "e16-es-brown-tips-synonym-paraphrase",
+    "e17-en-root-rot-synonym-paraphrase"
   ]
 }

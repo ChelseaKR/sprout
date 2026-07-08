@@ -202,9 +202,15 @@ def calibrate(
 ) -> None:
     """Calibrate the judge against human-labeled probes (agreement + Cohen's kappa).
 
-    Reports by default (exit 0); pass ``--gate`` to fail when below threshold. The
-    deterministic judge is the reproducible offline floor and is reported, not gated;
-    gate the calibrated LLM judge (``--judge llm --gate``) before it backs a production run.
+    Reports by default (exit 0); pass ``--gate`` to fail when below threshold. CI wires
+    ``--judge deterministic --gate`` as a regression smoke-floor on the reproducible
+    offline judge (66+ labeled probes as of 2026-07-08) — it catches gross
+    coverage/negation breakage, not a certification of human-level semantic judgment: the
+    deterministic judge still cannot detect antonym contradictions ("safe" vs "toxic") or
+    morphological synonyms by design (see the disagreements list in the report). Before an
+    LLM judge backs a real production judging decision, calibrate and gate *it* separately
+    with live credentials outside CI (``--judge llm --gate``) — the LLM judge is never hit
+    in CI (see ``eval/llm_judge.py``).
 
     Also warns (does not yet fail — AIEV-20, tied to the P0-4 remediation) when the probe
     set's ``labeled_date`` is more than 30 days old, per the ROADMAP "judge-calibration

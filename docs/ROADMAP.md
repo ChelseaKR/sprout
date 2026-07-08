@@ -65,8 +65,9 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 | Abstention enforced below threshold | answered cases below 0.25 confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | calibration suite invariant | AUTO |
 | EN/ES pass-rate parity | **\|EN − ES\| ≤ 5 pp** | bilingual benchmark slice | AUTO |
 | Hallucination rate | 0% by construction (extractive + citation guard) | citation guard unit tests + groundedness suite | AUTO |
-| Judge ↔ human agreement | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate` on the dated probe set | **report-only — currently below threshold (0.750 agreement, κ 0.400); CI step does not pass `--gate`, corrected 2026-07-05 (was declared AUTO while a step literally named "gate" could not fail); gap tracked. See `docs/audits/judge-calibration.md`.** |
-| Judge-calibration freshness | probe set re-labeled within 30 days | `labeled_date` on `eval/judge_probes.yaml`, checked by `sprout calibrate` | **warn-only (wired 2026-07-05, P1-19) — currently 13 days old, under threshold; `sprout calibrate` prints a warning past 30 days but does not yet fail the command (ties to P0-4: flips to a hard failure once the LLM judge is calibrated and `--gate` is enabled)** |
+| Judge ↔ human agreement (deterministic judge, CI floor) | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate` on the dated probe set | **AUTO (gated 2026-07-08) — probe set expanded 12 → 66 (within the 50–100 target) across all 16 corpus species; agreement 0.909, κ 0.807, both clear threshold; CI step now passes `--gate` and fails the build on regression. This gates the reproducible offline judge as a coverage/negation smoke-floor only — it still cannot detect antonym contradictions ("safe" vs "toxic") or morphological synonyms by design (6 known disagreements are committed, not hidden). See `docs/audits/judge-calibration.md`.** |
+| Judge ↔ human agreement (LLM judge, production gate) | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate --judge llm` | **not yet done — the LLM judge needs a live Anthropic credential and is deliberately never invoked in CI (see `eval/llm_judge.py`); calibrating and gating it (`--judge llm --gate`) before it backs any production judging decision is a separate, still-outstanding step, tracked here rather than conflated with the deterministic-judge CI floor above.** |
+| Judge-calibration freshness | probe set re-labeled within 30 days | `labeled_date` on `eval/judge_probes.yaml`, checked by `sprout calibrate` | **warn-only (wired 2026-07-05, P1-19) — re-labeled 2026-07-08 alongside the 12→66 expansion, 0 days old; `sprout calibrate` prints a warning past 30 days but does not yet fail the command (ties to P0-4: flips to a hard failure once the LLM judge is calibrated and `--gate` is enabled)** |
 | Fail-closed loader | hash mismatch / malformed case / empty suite / bad judge output → FAIL | `eval/dataset.py` + `runner.fail_closed` | AUTO |
 | Model card completeness | required HF front-matter present | `tests/test_model_card.py` | AUTO (wired 2026-07-05 — see P1-11; previously declared AUTO with no lint) |
 | Card honesty / limits framing | truthful, not box-ticking | owner review per release | REVIEW |
@@ -212,11 +213,16 @@ the CI smoke suite. Commit a baseline scoreboard, mediocre numbers included.*
   (exceeds the 120+ target). `docs/audits/eval-baseline.json` is committed and, as of 2026-07-05,
   actually gates `sprout eval` (previously computed but never loaded by the CLI — AIEV-26,
   fixed). The eval job (`eval-a11y` in `ci.yml`) is inside the required `ci-gate` check. The
-  judge-calibration probe set (`eval/judge_probes.yaml`, 12 probes) is committed and its κ is
-  measured — but **fails** the standard's threshold (agreement 0.750 < 0.80, κ 0.400 < 0.60;
-  report-only in CI, gap tracked — see AI evaluation suites table above).
-- Outstanding: expand/re-label the calibration probe set (currently 12, target 50–100) until it
-  clears the threshold, then flip the CI step to `--gate`.
+  judge-calibration probe set (`eval/judge_probes.yaml`, expanded 2026-07-08 from 12 to **66
+  probes** across all 16 corpus species — within the 50–100 target) is committed and its κ is
+  measured, and now **clears** the standard's threshold (agreement 0.909 ≥ 0.80, κ 0.807 ≥ 0.60);
+  the CI step passes `--gate` and fails the build on regression — see AI evaluation suites table
+  above and `docs/audits/judge-calibration.md`.
+- Outstanding: this gates the *deterministic* judge as a reproducible coverage/negation
+  smoke-floor only — it still cannot detect antonym contradictions or morphological synonyms by
+  design (6 known disagreements are committed, not hidden). Calibrating and gating the *LLM*
+  judge (`--judge llm --gate`) before it backs a real production judging decision is separate,
+  still-outstanding work that needs a live Anthropic credential and cannot run in CI.
 
 ### Phase 3 — quality + multilingual
 *Tune retrieval/prompts against eval failures only; add calibration suite and abstention; Spanish

@@ -73,8 +73,8 @@ jobs:
         run: |
           uv run sprout a11y-check web/dist/index.html
           uv run sprout a11y-check docs/audits/eval-report.html
-      - name: Judge calibration (report-only — below threshold, gap tracked; see docs/ROADMAP.md)
-        run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits
+      - name: Judge calibration (gated — deterministic judge, 66 probes; see docs/ROADMAP.md)
+        run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
 
   pa11y:
     runs-on: ubuntu-latest
