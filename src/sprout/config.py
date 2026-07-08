@@ -422,10 +422,29 @@ class PromptConfig(_Model):
 
 
 class ServerConfig(_Model):
+    """App-level hardening for ``serve`` (ASVS L2 delta — ``docs/audits/asvs-l2-delta.md``).
+
+    These guards hold even without a reverse proxy in front of the app: the offline CLI path
+    never loads this middleware stack (``sprout.cli`` never imports ``sprout.server``), so
+    none of it touches the zero-dependency offline mode.
+    """
+
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
     max_question_chars: int = Field(default=500, ge=1, le=4000)
     session_memory: int = Field(default=4, ge=0, le=50)
+    # Body-size cap independent of any proxy config. Sized above the largest legitimate
+    # payload — an 8 MB photo, base64-inflated ~1.33x, plus JSON/field overhead — with margin.
+    max_body_bytes: int = Field(default=12_000_000, ge=1_000, le=100_000_000)
+    # Per-client-IP token bucket, applied to every request.
+    rate_limit_requests: int = Field(default=60, ge=1, le=100_000)
+    rate_limit_window_s: float = Field(default=60.0, ge=1.0, le=3600.0)
+    # A stricter bucket layered on top for the heavy, unauthenticated photo endpoint.
+    identify_rate_limit_requests: int = Field(default=10, ge=1, le=100_000)
+    identify_rate_limit_window_s: float = Field(default=60.0, ge=1.0, le=3600.0)
+    # Bounded worker concurrency for /api/identify so a burst of large photos can't exhaust
+    # the threadpool the rest of the API shares.
+    identify_max_concurrency: int = Field(default=4, ge=1, le=256)
 
 
 class ObservabilityConfig(_Model):
