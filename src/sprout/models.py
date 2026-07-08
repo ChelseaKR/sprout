@@ -131,7 +131,17 @@ class SourceDisagreement(_Frozen):
 
 
 class Answer(_Frozen):
-    """The final, guard-checked answer object returned to callers and the UI."""
+    """The final, guard-checked answer object returned to callers and the UI.
+
+    ``season`` and ``light`` (EXP-05) echo back exactly what the caller passed to
+    ``Assistant.answer`` on *this one request* — the same selector-not-fact contract
+    ADR-0010 established for photo-ID, generalized to season/placement qualifiers. They
+    only ever influenced *which* already-cited sentence in ``sentences`` was chosen;
+    they are never themselves a citation, never appear as a fact, and are never
+    persisted anywhere (no field on this model is written to disk by the engine).
+    ``context_note`` is the localized, user-facing echo of the two, or ``None`` if
+    neither was supplied.
+    """
 
     question: str
     language: str
@@ -160,6 +170,9 @@ class Answer(_Frozen):
     # reader announces.
     confidence_band: str = "insufficient_evidence"
     confidence_band_label: str = ""
+    season: str | None = None
+    light: str | None = None
+    context_note: str | None = None
 
     @property
     def text(self) -> str:

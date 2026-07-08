@@ -147,6 +147,36 @@ def test_family_greenhouse_integration_rejects_blank_control_and_oversized_paylo
             headers={"Content-Type": "application/json"},
         )
     assert oversized.status_code == 413
+def test_chat_json_echoes_season_light_context_never_as_citation(
+    assistant: Assistant, config: Config
+) -> None:
+    c = _client(assistant, config)
+    r = c.post(
+        "/api/chat",
+        json={
+            "question": "why are my monstera leaves yellowing?",
+            "season": "winter",
+            "light": "north window",
+        },
+    )
+    body = r.json()
+    assert r.status_code == 200
+    assert body["season"] == "winter"
+    assert body["light"] == "north window"
+    assert body["context_note"] and "winter" in body["context_note"]
+    assert all(s["provenance"] == "corpus" for s in body["sentences"])
+
+    unset = c.post("/api/chat", json={"question": "why are my monstera leaves yellowing?"})
+    assert unset.json()["season"] is None
+    assert unset.json()["context_note"] is None
+
+
+def test_chat_stream_done_event_carries_context_note(assistant: Assistant, config: Config) -> None:
+    c = _client(assistant, config)
+    text = c.get("/api/chat/stream?q=why are my monstera leaves yellowing&season=winter").text
+    assert "event: done" in text
+    assert "context_note" in text
+    assert "winter" in text
 
 
 def test_chat_stream_safety(assistant: Assistant, config: Config) -> None:

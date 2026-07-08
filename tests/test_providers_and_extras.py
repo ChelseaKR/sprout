@@ -12,8 +12,22 @@ from sprout.config import Config
 from sprout.lang import _langdetect_fallback, detect_language
 from sprout.providers import build_embedding, build_generator
 from sprout.providers.bedrock import TitanEmbedding
+from sprout.providers.anthropic_native import AnthropicGenerator
+from sprout.providers.base import context_hint
+from sprout.providers.bedrock import BedrockGenerator, TitanEmbedding
 from sprout.providers.deterministic import ExtractiveGenerator, HashingEmbedding
 from sprout.providers.static_embedding import StaticEmbedding
+
+
+def test_context_hint_empty_for_no_selector() -> None:
+    assert context_hint(frozenset()) == ""
+
+
+def test_context_hint_names_the_selector_terms_as_non_source() -> None:
+    hint = context_hint(frozenset({"winter"}))
+    assert "winter" in hint
+    assert "not a source" in hint
+    assert "not a fact" in hint
 
 
 def test_factory_deterministic_default() -> None:

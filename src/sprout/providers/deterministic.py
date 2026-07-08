@@ -61,17 +61,34 @@ class ExtractiveGenerator:
     covers the winter clause can outrank another watering repeat.
     """
 
+    # Bounded so a season/light selector (EXP-05) can only break ties among sentences
+    # that already cleared the relevance floor on the real question — it can nudge which
+    # governing passage wins, never admit an off-topic one. See ``generate``'s docstring.
+    _BOOST_WEIGHT = 0.5
+
     def __init__(self, relevance_floor: float = 0.34) -> None:
         self._floor = relevance_floor
 
     def generate(
-        self, query: str, context: list[RetrievedChunk], max_sentences: int
+        self,
+        query: str,
+        context: list[RetrievedChunk],
+        max_sentences: int,
+        boost_terms: frozenset[str] = frozenset(),
     ) -> list[tuple[str, str]]:
+        """Rank sentences by query-token overlap, nudged by a selector-only boost.
+
+        ``boost_terms`` carries the (optional) season/light context qualifiers —
+        e.g. ``{"winter"}`` — as ordinary content tokens. It never changes the
+        relevance *floor*, which is computed from ``query`` alone, so it can only pick
+        among sentences the real question already made eligible: the same "context
+        selects, corpus asserts" contract as photo-ID (ADR-0010), generalized (EXP-05).
+        """
         q_tokens = token_set(query)
         if not q_tokens:
             return []
         facets = extract_facets(query)
-        candidates = self._score_candidates(q_tokens, facets, context)
+        candidates = self._score_candidates(q_tokens, facets, context, boost_terms)
         return self._select_diverse(candidates, max_sentences)
 
     def _score_candidates(
@@ -79,6 +96,7 @@ class ExtractiveGenerator:
         q_tokens: frozenset[str],
         facets: list[frozenset[str]],
         context: list[RetrievedChunk],
+        boost_terms: frozenset[str] = frozenset(),
     ) -> list[tuple[float, str, str, frozenset[int]]]:
         """Rank every sentence by query overlap and tag which facets it covers.
 
@@ -94,8 +112,10 @@ class ExtractiveGenerator:
                 overlap = len(q_tokens & s_tokens) / len(q_tokens)
                 if overlap < self._floor:
                     continue
-                # Prefer query overlap; nudge by retrieval score; break ties by order.
-                score = overlap + rc.score * 0.25 - rank * 1e-3
+                boost = (len(boost_terms & s_tokens) / len(boost_terms)) if boost_terms else 0.0
+                # Prefer query overlap; nudge by retrieval score and selector match;
+                # break ties by order.
+                score = overlap + rc.score * 0.25 + boost * self._BOOST_WEIGHT - rank * 1e-3
                 covers = frozenset(
                     i
                     for i, facet in enumerate(facets)
