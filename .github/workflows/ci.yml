@@ -82,6 +82,8 @@ jobs:
         run: uv run sprout gate-inventory --out docs/audits
       - name: Tier-A SLO + burn-rate-alert schema gate
         run: uv run sprout slo-check
+      - name: Corpus report (report-only — EXP-12 heuristics advisory until tuned)
+        run: uv run sprout corpus-report --out docs/audits
 
   smoke:
     # Phase 1: a dedicated CI smoke suite of corpus-derived questions, distinct from the
