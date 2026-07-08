@@ -180,6 +180,26 @@ def evaluate(
     suite_dir: Annotated[str, typer.Option("--suite-dir")] = "eval/suites",
     statistical_gate: Annotated[bool, typer.Option("--statistical-gate")] = False,
     update_baseline: Annotated[bool, typer.Option("--update-baseline")] = False,
+    release: Annotated[
+        str | None,
+        typer.Option(
+            "--release",
+            help=(
+                "Release identifier (e.g. a tag). When set, this run's per-suite scores are "
+                "appended to <out>/eval-history.jsonl and the trend/drift gate runs. Pass this "
+                "only from the release workflow — never per-PR — so the ledger stays one entry "
+                "per release."
+            ),
+        ),
+    ] = None,
+    drift_k: Annotated[
+        int,
+        typer.Option(
+            "--drift-k",
+            help="Fail the release gate if any suite declined for this many consecutive "
+            "releases in a row, even if each decline was inside baseline tolerance.",
+        ),
+    ] = 3,
 ) -> None:
     """Record the live engine over the cases, run the suites, regenerate the report.
 
@@ -192,9 +212,20 @@ def evaluate(
     Also fails closed (FIX-08 / ADR-0016) if ``confidence.fit`` is recorded but no longer
     matches the live ``retrieval:`` config — a retrieval change since the fit invalidates
     its evidence scale; re-run ``sprout fit-confidence`` before trusting it again.
+
+    With ``--release``, the run also appends to and is checked against
+    ``<out>/eval-history.jsonl`` (EXP-13): a suite that declined for ``--drift-k`` consecutive
+    releases fails the gate even if every one of those declines was individually within the
+    baseline diff's tolerance — the ledger catches the slow bleed the one-shot diff cannot.
     """
     from .confidence import fit_drift_warning
     from .eval.dataset import load_suite_dir, write_sidecar
+    from .eval.history import (
+        append_history_entry,
+        check_drift,
+        history_entry_from_result,
+        load_history,
+    )
     from .eval.judge import build_judge
     from .eval.record import record
     from .eval.report import diff_against_baseline, load_run_result, render_markdown, write_reports
@@ -228,8 +259,14 @@ def evaluate(
         statistical_gate=statistical_gate,
         threshold_overrides=threshold_overrides,
     )
-    write_reports(result, out)
-    typer.echo(render_markdown(result))
+    history_path = Path(out, "eval-history.jsonl")
+    history = load_history(history_path)
+    if release:
+        entry = history_entry_from_result(result, release=release)
+        append_history_entry(history_path, entry)
+        history = [*history, entry]
+    write_reports(result, out, history=history)
+    typer.echo(render_markdown(result, history))
     exit_code = result.exit_code
     baseline_path = Path(out, "eval-baseline.json")
     if update_baseline:
@@ -250,6 +287,15 @@ def evaluate(
             "(run `sprout eval --update-baseline` once to create it).",
             err=True,
         )
+    if release:
+        drift_issues = check_drift(history, k=drift_k)
+        if drift_issues:
+            typer.echo("\nEval trend drift check FAILED:", err=True)
+            for issue in drift_issues:
+                typer.echo(f"  - {issue}", err=True)
+            exit_code = 1
+        else:
+            typer.echo(f"\nEval trend drift check ({drift_k}-release window): no issues.")
     raise typer.Exit(exit_code)
 
 
