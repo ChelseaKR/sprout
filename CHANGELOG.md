@@ -75,6 +75,13 @@ the public evaluation harness as the headline artifact.
   Conventional Commits + DCO sign-off; the `claude/* → develop → main` branch model.
 - **Docs:** ARCHITECTURE, THREAT-MODEL, ACCESSIBILITY (+ ACR via VPAT 2.5 Rev 508), ROADMAP,
   RESPONSIBLE-TECH-AUDITS, model and data cards, and the committed `docs/audits/` eval artifacts.
+- **Promptfoo red-team config** (`eval/redteam/promptfooconfig.yaml`) covering OWASP Top 10 for
+  LLM Applications (LLM01-LLM10:2025) against the live `POST /api/chat` pipeline, in EN and ES.
+  Fills the gap `docs/ROADMAP.md` had been carrying since 2026-07-05 ("planned — no Promptfoo
+  config exists"); complements the manual, dated exercise in
+  `docs/audits/red-team-2026-06-22.md`. Advisory `redteam` CI job (opt-in, needs
+  `ANTHROPIC_API_KEY`, excluded from `ci-gate`) added to `.github/workflows/ci.yml`; see
+  `eval/redteam/README.md`.
 
 ### Changed
 - `create_app` accepts an optional `identifier` override (mirroring the existing `assistant`
