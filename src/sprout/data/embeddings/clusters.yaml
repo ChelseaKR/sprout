@@ -1,0 +1,296 @@
+# Static-vector semantic clusters (EXP-03, ADR-0013).
+#
+# Each cluster groups English and Spanish synonyms/paraphrases of one plant-care concept.
+# `scripts/generate_static_vectors.py` turns this file into `static_vectors.json`: every
+# cluster gets one deterministic seed vector, and every term in it gets that seed vector
+# plus a small deterministic per-term jitter, so synonyms and EN/ES translations land close
+# together in cosine space while staying distinguishable from each other. Terms are written
+# as natural phrases; the generator tokenizes them with the same `content_tokens()` pipeline
+# retrieval and grounding use, so this file needs no manual stemming or accent-folding.
+#
+# This is hand-authored, original vocabulary work for Sprout's plant-care domain — not
+# derived from any third-party embedding model or corpus — so it carries no external
+# license obligation. See `manifest.yaml` in this directory for full provenance.
+
+clusters:
+  watering_frequency:
+    - water
+    - watering
+    - watered
+    - hydrate
+    - hydration
+    - riego
+    - regar
+    - regando
+    - regado
+    - hidratacion
+
+  watering_amount:
+    - how much water
+    - soak
+    - soaking
+    - drench
+    - moisten
+    - cuanta agua
+    - empapar
+    - remojar
+
+  overwatering:
+    - overwater
+    - overwatering
+    - too much water
+    - soggy soil
+    - waterlogged
+    - exceso de riego
+    - encharcado
+    - tierra empapada
+
+  underwatering:
+    - underwater
+    - underwatering
+    - too little water
+    - dry soil
+    - dried out
+    - falta de riego
+    - tierra seca
+    - reseca
+
+  root_rot:
+    - root rot
+    - rotting roots
+    - mushy roots
+    - black roots
+    - foul smell soil
+    - raices podridas
+    - pudricion de raiz
+    - raices negras
+
+  light_requirement:
+    - light
+    - sunlight
+    - bright light
+    - indirect light
+    - direct sun
+    - low light
+    - shade
+    - luz
+    - luz solar
+    - luz indirecta
+    - sol directo
+    - poca luz
+    - sombra
+
+  leaf_yellowing:
+    - yellowing
+    - yellow leaves
+    - leaves turning yellow
+    - going yellow
+    - leaves going yellow
+    - chlorosis
+    - amarillamiento
+    - hojas amarillas
+    - hojas amarillentas
+    - clorosis
+
+  leaf_browning:
+    - browning
+    - brown tips
+    - brown edges
+    - crispy leaves
+    - leaf burn
+    - puntas marrones
+    - hojas marrones
+    - bordes marrones
+    - quemadura de hojas
+
+  leaf_drop:
+    - leaf drop
+    - dropping leaves
+    - losing leaves
+    - shedding leaves
+    - defoliation
+    - caida de hojas
+    - perdiendo hojas
+    - deshojado
+
+  wilting_drooping:
+    - wilting
+    - wilted
+    - drooping
+    - limp leaves
+    - sagging
+    - marchitamiento
+    - marchita
+    - caida
+    - flacidas
+
+  humidity:
+    - humidity
+    - moisture in the air
+    - dry air
+    - humidifier
+    - misting
+    - humedad
+    - aire seco
+    - humidificador
+    - nebulizar
+
+  temperature_drafts:
+    - temperature
+    - cold draft
+    - drafty window
+    - heat stress
+    - frost
+    - temperatura
+    - corriente de aire fria
+    - estres por calor
+    - helada
+
+  soil_potting_mix:
+    - soil
+    - potting mix
+    - potting soil
+    - well-draining mix
+    - drainage
+    - tierra
+    - sustrato
+    - mezcla para macetas
+    - drenaje
+
+  repotting:
+    - repot
+    - repotting
+    - transplant
+    - bigger pot
+    - root bound
+    - trasplantar
+    - trasplante
+    - maceta mas grande
+    - raices apretadas
+
+  fertilizing:
+    - fertilize
+    - fertilizer
+    - feeding
+    - plant food
+    - nutrients
+    - fertilizar
+    - fertilizante
+    - abono
+    - nutrientes
+
+  pruning:
+    - prune
+    - pruning
+    - trim
+    - trimming
+    - cut back
+    - leggy growth
+    - podar
+    - poda
+    - recortar
+    - crecimiento desgarbado
+
+  propagation:
+    - propagate
+    - propagation
+    - cutting
+    - rooting in water
+    - new roots
+    - propagar
+    - propagacion
+    - esqueje
+    - enraizar
+
+  pests:
+    - pest
+    - pests
+    - spider mites
+    - mealybugs
+    - aphids
+    - gnats
+    - plaga
+    - plagas
+    - araña roja
+    - cochinilla
+    - pulgones
+    - mosquitos del sustrato
+
+  disease_fungal:
+    - fungal
+    - fungus
+    - mold
+    - mildew
+    - spots on leaves
+    - hongo
+    - moho
+    - manchas en las hojas
+
+  dormancy_season:
+    - dormancy
+    - dormant season
+    - winter care
+    - summer growth
+    - growing season
+    - reposo
+    - invierno
+    - crecimiento de verano
+    - temporada de crecimiento
+
+  toxicity_pets:
+    - toxic
+    - toxicity
+    - poisonous
+    - poison
+    - safe for pets
+    - safe for cats
+    - safe for dogs
+    - toxico
+    - toxicidad
+    - venenoso
+    - veneno
+    - seguro para mascotas
+    - seguro para gatos
+    - seguro para perros
+
+  ingestion_child:
+    - ingest
+    - ingestion
+    - swallowed
+    - ate a leaf
+    - chewed on
+    - child safety
+    - ingerir
+    - ingestion
+    - se comio una hoja
+    - mastico
+    - seguridad infantil
+
+  emergency_routing:
+    - poison control
+    - veterinarian
+    - emergency vet
+    - call a vet
+    - control de envenenamiento
+    - veterinario
+    - emergencia veterinaria
+
+  species_identification:
+    - identify
+    - identification
+    - what plant is this
+    - what species
+    - identificar
+    - identificacion
+    - que planta es
+    - que especie
+
+  confidence_uncertainty:
+    - not sure
+    - uncertain
+    - low confidence
+    - cannot confirm
+    - no estoy seguro
+    - incertidumbre
+    - poca confianza
+    - no puedo confirmar
