@@ -23,6 +23,14 @@ An offline-first, grounded, evaluated, multilingual (EN/ES) houseplant-care RAG 
 the public evaluation harness as the headline artifact.
 
 ### Added
+- **Mechanical enforcement of the "tune only against committed eval failures" rule**
+  (`src/sprout/eval/tuning_scope.py`, `sprout check-tuning-scope` CLI command, `tuning-scope` CI
+  job). Previously a sentence in `docs/ROADMAP.md` Phase 3; now a fail-closed gate — a change
+  touching retrieval/generation/guards/calibration/lexical/config surface must carry a
+  `Tunes-Against: <case-id>[, ...]` commit trailer whose ids already appear in the committed
+  `docs/audits/eval-baseline.json` `failing_examples`, so tuning can only be justified against a
+  failure that was public before the change, never the held-out set or a local-only run. See
+  [`CONTRIBUTING.md`](CONTRIBUTING.md#tuning-discipline--eval-failures-only-never-the-held-out-set).
 - **Photo-based plant identification → grounded care lookup** (`identify.py`,
   `providers/plantnet.py`). A photo is identified into candidate species, the best confident
   match is resolved to a species **already in the cited corpus**, and that species is routed

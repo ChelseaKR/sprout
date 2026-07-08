@@ -5,7 +5,8 @@ Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest ref
 the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``freshness``
 (offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
 their code/config source of truth), ``smoke`` (the Phase 1 CI smoke suite of corpus-derived
-questions), ``calibrate`` (judge agreement + kappa),
+questions), ``check-tuning-scope`` (fail-closed gate for tunable-surface changes),
+``calibrate`` (judge agreement + kappa),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
 (a scripted session). Everything runs offline by default.
 """
@@ -225,6 +226,41 @@ def smoke(
     typer.echo(report)
     if not result.passed:
         raise typer.Exit(1)
+
+
+@app.command("check-tuning-scope")
+def check_tuning_scope_cmd(
+    base: Annotated[
+        str, typer.Option("--base", help="Git ref this branch is diffed against.")
+    ] = "origin/main",
+    head: Annotated[str, typer.Option("--head")] = "HEAD",
+    baseline: Annotated[
+        str, typer.Option("--baseline", help="Committed eval baseline to verify ids against.")
+    ] = "docs/audits/eval-baseline.json",
+) -> None:
+    """Fail if this change tunes retrieval/prompts/guards without citing an already-committed
+    eval failure (ROADMAP Phase 3: tune only against committed failures, never the held-out set).
+
+    No-op when the diff does not touch the tunable surface. Otherwise every commit range must
+    carry a ``Tunes-Against: <case-id>[, <case-id>...]`` trailer whose ids already appear in
+    ``<baseline>``'s committed ``failing_examples``.
+    """
+    from .eval.tuning_scope import TuningScopeError, check_tuning_scope
+
+    try:
+        issues = check_tuning_scope(base_ref=base, head_ref=head, baseline_path=baseline)
+    except TuningScopeError as exc:
+        typer.echo(f"Tuning-scope check could not run: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    if issues:
+        typer.echo("Tuning-scope check FAILED:", err=True)
+        for issue in issues:
+            typer.echo(f"  - {issue}", err=True)
+        raise typer.Exit(1)
+    typer.echo(
+        "Tuning-scope check: no tunable-surface change, or all changes cite committed eval "
+        "failures."
+    )
 
 
 @app.command("a11y-check")
