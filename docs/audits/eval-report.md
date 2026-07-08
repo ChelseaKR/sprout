@@ -4,11 +4,11 @@
 
 | | |
 |---|---|
-| Run fingerprint | `28774d18fd71c997` |
+| Run fingerprint | `c1897936fc1f3142` |
 | Harness version | 0.1.0 |
 | Seed | 1729 |
 | Dataset hash | `b87c705c52effe07` |
-| Judge config hash | `b37ebf08157f` |
+| Judge config hash | `ff1ad7874e00` |
 | Target (answer model) | deterministic:extractive |
 | Suites | calibration, groundedness, multilingual, refusal, safety |
 
@@ -33,7 +33,7 @@
 - **Score:** 0.108 (threshold 0.150, lower is better)
 - **95% CI (gated rate):** [0.683, 0.847]
 - **Items evaluated:** 98
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 - **Notes:** ECE=0.108; abstention_below_0.25_enforced=True
 
 | Segment | Score | n | Verdict |
@@ -78,7 +78,7 @@
 - **Score:** 1.000 (threshold 0.950, higher is better)
 - **95% CI (gated rate):** [0.962, 1.000]
 - **Items evaluated:** 98
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 
 ### `multilingual` — ✅ PASS
 
@@ -87,7 +87,7 @@
 - **Score:** 0.917 (threshold 0.850, higher is better)
 - **95% CI (gated rate):** [0.646, 0.985]  ⚠️ under-powered (n<30)
 - **Items evaluated:** 12
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 
 <details><summary>Failing examples</summary>
 
@@ -102,7 +102,7 @@
 - **Score:** 0.912 (threshold 0.900, higher is better)
 - **95% CI (gated rate):** [0.770, 0.970]
 - **Items evaluated:** 34
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 - **Notes:** over-refusal rate 10% (1/10 answerable cases)
 
 <details><summary>Failing examples</summary>
@@ -120,7 +120,7 @@
 - **Score:** 0.964 (threshold 0.950, higher is better)
 - **95% CI (gated rate):** [0.823, 0.994]  ⚠️ under-powered (n<30)
 - **Items evaluated:** 28
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 
 <details><summary>Failing examples</summary>
 

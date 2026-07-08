@@ -261,6 +261,58 @@ def has_negation(text: str) -> bool:
     return any(tok in _NEGATIONS for tok in tokenize(text))
 
 
+# Safety-relevant antonym pairs (bilingual, gender/number-inflected). Deliberately a
+# small, curated, domain-specific list — this project's whole safety surface is the
+# toxic/non-toxic axis — rather than a general antonym dictionary, so it stays auditable
+# and cannot introduce false contradictions on unrelated vocabulary. ``has_negation``
+# catches "is not toxic"; this catches the polarity flip that carries no negation marker
+# at all, e.g. "is safe" asserted against a source that says "is toxic".
+_ANTONYM_PAIRS: frozenset[frozenset[str]] = frozenset(
+    {
+        frozenset({"safe", "toxic"}),
+        frozenset({"safe", "poisonous"}),
+        frozenset({"nontoxic", "toxic"}),
+        frozenset({"harmless", "toxic"}),
+        frozenset({"harmless", "poisonous"}),
+        frozenset({"harmless", "dangerous"}),
+        frozenset({"edible", "toxic"}),
+        frozenset({"edible", "poisonous"}),
+        frozenset({"seguro", "toxico"}),
+        frozenset({"segura", "toxica"}),
+        frozenset({"seguros", "toxicos"}),
+        frozenset({"seguras", "toxicas"}),
+        frozenset({"seguro", "venenoso"}),
+        frozenset({"segura", "venenosa"}),
+        frozenset({"inofensivo", "toxico"}),
+        frozenset({"inofensiva", "toxica"}),
+        frozenset({"comestible", "venenoso"}),
+        frozenset({"comestible", "venenosa"}),
+        frozenset({"comestible", "toxico"}),
+        frozenset({"comestible", "toxica"}),
+    }
+)
+
+
+def has_antonym_conflict(a: str, b: str) -> bool:
+    """True if ``a`` and ``b`` assert opposite sides of a known safety antonym pair.
+
+    "Aloe is safe for dogs" flatly contradicts a source that says "Aloe is toxic to
+    dogs" even though neither sentence contains an explicit negation marker, so
+    ``has_negation`` alone cannot catch it. Only flags a conflict when each text
+    contains exactly one, differing side of a pair — a text that mentions both sides
+    (rare, e.g. quoting a contrast) is left to the coverage/negation checks instead of
+    being guessed at here.
+    """
+    toks_a = set(tokenize(a))
+    toks_b = set(tokenize(b))
+    for pair in _ANTONYM_PAIRS:
+        side_a = toks_a & pair
+        side_b = toks_b & pair
+        if side_a and side_b and not (side_a & side_b):
+            return True
+    return False
+
+
 def split_sentences(text: str) -> list[str]:
     """Split into trimmed sentences on terminal punctuation, preserving decimals.
 

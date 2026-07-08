@@ -3,8 +3,8 @@
 A suite splits an answer into claims and asks a ``Judge`` three relational questions —
 ``entails`` (groundedness), ``contains`` (fact/anchor coverage), ``equivalent``
 (multilingual). Because that is the only place a model is consulted, a suite is identical
-whether it runs under the offline ``DeterministicJudge`` (lexical coverage + a negation
-polarity guard, fully reproducible, no network) or an LLM judge. The judge's ``config_hash``
+whether it runs under the offline ``DeterministicJudge`` (lexical coverage + a negation/
+antonym polarity guard, fully reproducible, no network) or an LLM judge. The judge's ``config_hash``
 is folded into the run fingerprint, so any judge/model/threshold change is visible in the
 run identity — and a calibration record is invalidated when it changes.
 """
@@ -16,7 +16,7 @@ from typing import Any, Protocol, runtime_checkable
 from pydantic import BaseModel, ConfigDict
 
 from ..determinism import sha256_of_obj
-from ..text import coverage, has_negation, jaccard, split_sentences
+from ..text import coverage, has_antonym_conflict, has_negation, jaccard, split_sentences
 
 
 class JudgeDecision(BaseModel):
@@ -55,7 +55,11 @@ class DeterministicJudge:
     ) -> None:
         self.config: dict[str, Any] = {
             "method": self.method,
-            "version": "1.0.0",
+            # 1.1.0: entails/equivalent now also check has_antonym_conflict (safety
+            # antonym pairs, e.g. "safe" vs "toxic") in addition to negation polarity —
+            # bump so any calibration record made against 1.0.0 behavior is invalidated
+            # (see judge_config_hash / is_stale).
+            "version": "1.1.0",
             "entail_threshold": entail_threshold,
             "contains_threshold": contains_threshold,
             "equivalence_threshold": equivalence_threshold,
@@ -74,13 +78,15 @@ class DeterministicJudge:
         candidates = [s for src in sources for s in split_sentences(src)] or list(sources)
         scored = [(coverage(claim, s), s) for s in candidates]
         best_cov, best_sentence = max(scored, key=lambda t: t[0])
-        polarity_ok = has_negation(claim) == has_negation(best_sentence)
+        polarity_ok = has_negation(claim) == has_negation(
+            best_sentence
+        ) and not has_antonym_conflict(claim, best_sentence)
         threshold = float(self.config["entail_threshold"])
         passed = best_cov >= threshold and polarity_ok
         detail = (
             f"coverage={best_cov:.2f}"
             if polarity_ok
-            else f"coverage={best_cov:.2f} but negation polarity differs (contradiction)"
+            else f"coverage={best_cov:.2f} but polarity differs (contradiction)"
         )
         return JudgeDecision(score=round(best_cov, 4), passed=passed, detail=detail)
 
@@ -92,6 +98,8 @@ class DeterministicJudge:
         )
 
     def equivalent(self, a: str, b: str) -> JudgeDecision:
+        if has_antonym_conflict(a, b):
+            return JudgeDecision(score=0.0, passed=False, detail="antonym polarity conflict")
         sim = jaccard(a, b)
         threshold = float(self.config["equivalence_threshold"])
         return JudgeDecision(

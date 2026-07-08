@@ -44,8 +44,8 @@ eval: ingest ## Record the live engine, run the suites, regenerate the committed
 eval-baseline: ingest ## Regenerate the eval report AND refresh the committed baseline
 	$(PY) sprout eval --config $(CONFIG) --out docs/audits --update-baseline
 
-calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa)
-	$(PY) sprout calibrate eval/judge_probes.yaml --out docs/audits
+calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa; merge-blocking)
+	$(PY) sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
 
 a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gate)
 	$(PY) sprout a11y-check web/dist/index.html
@@ -60,7 +60,7 @@ docs: ## Build the docs site strictly (mirrors the CI docs gate)
 demo: ingest ## Reproduce a short scripted session
 	$(PY) sprout demo --config $(CONFIG)
 
-verify: lint type test security eval a11y ## Full local mirror of the CI gate set
+verify: lint type test security eval a11y calibrate ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts
