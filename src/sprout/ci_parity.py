@@ -39,7 +39,7 @@ import yaml
 JOB_TO_MAKE_TARGETS: dict[str, tuple[str, ...]] = {
     "test": ("lint", "type", "test"),
     "security": ("security",),
-    "eval-a11y": ("ingest", "eval", "a11y", "claims", "calibrate", "gate-inventory", "slo"),
+    "eval-a11y": ("ingest", "eval", "a11y", "claims", "calibrate", "gate-inventory", "slo", "corpus-report"),
     "smoke": ("ingest", "smoke"),
     "docs": ("docs",),
 }

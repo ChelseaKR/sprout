@@ -11,6 +11,7 @@ questions), ``check-tuning-scope`` (fail-closed gate for tunable-surface changes
 on a held-out train split),
 ``toxicity coverage``/``toxicity check`` (the structured
 per-row-cited toxicity table — coverage report and table-vs-prose consistency gate),
+``corpus-report`` (EXP-12 corpus workbench),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
 (a scripted session). Everything runs offline by default.
 """
@@ -74,6 +75,31 @@ def ingest(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
     cfg = _load(config)
     store = run_ingest(cfg)
     typer.echo(f"Ingested {len(store)} chunks into {cfg.store.path}")
+
+
+@app.command("corpus-report")
+def corpus_report_cmd(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    out: Annotated[str, typer.Option("--out")] = "docs/audits",
+    gate: Annotated[bool, typer.Option("--gate")] = False,
+) -> None:
+    """Species x topic x language completeness, EN/ES parity diff, chunk-quality lint.
+
+    Maintainer tooling for safe corpus growth (EXP-12, docs/ideation/03-expansions.md):
+    emits a committed matrix + parity-diff + lint report beside the eval report. Advisory
+    by default (always exits 0); pass ``--gate`` to fail when any finding needs review —
+    the promotion path to a merge gate once the heuristics are tuned.
+    """
+    from .corpus_report import build_report, render_json, render_markdown
+
+    cfg = _load(config)
+    report = build_report(cfg)
+    out_dir = Path(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "corpus-report.md").write_text(render_markdown(report), encoding="utf-8")
+    (out_dir / "corpus-report.json").write_text(render_json(report), encoding="utf-8")
+    typer.echo(render_markdown(report))
+    raise typer.Exit(1 if gate and not report.clean else 0)
 
 
 def _print_answer_obj(answer: Answer) -> None:

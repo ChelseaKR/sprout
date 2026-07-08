@@ -41,6 +41,8 @@ relying on a human noticing.
 
 Useful individual targets: `make fmt`, `make lint`, `make type`, `make test`, `make eval`,
 `make eval-baseline`, `make a11y`, `make docs`, `make demo`. Run `make help` for the full list.
+`make eval-baseline`, `make corpus-report`, `make a11y`, `make demo`. Run `make help` for the
+full list.
 
 ## Branch model
 
@@ -149,6 +151,12 @@ failures** — never against results only visible from a private/local run. Mech
 
 - **Horticultural facts** are *data*, not code: fix them in `corpus/` and re-`make ingest`. A wrong
   answer is usually a corpus or eval-case defect, not a Python bug.
+- **Adding or editing a species/topic/language**: run `make corpus-report` and check
+  `docs/audits/corpus-report.md` — it flags a missing EN/ES mirror, a mismatched section count,
+  a Spanish heading left untranslated, and chunk-quality issues (an over-length chunk, or a
+  passage whose sentences don't name the plant). It is advisory (does not fail CI) while the
+  heuristics are tuned; `sprout corpus-report --gate` fails on any finding for maintainers who
+  want to opt in early.
 - **New eval cases** go in `eval/suites/` as YAML (id, question, expected behavior, required
   citation/fact, language tag, rationale). Adding a hard case that currently fails is welcome —
   failures are shown, not hidden.
