@@ -96,6 +96,13 @@ confidence:
   low_confidence_threshold: 0.50  # below this, answer but flag for human review (per ADR-0012)
   reliability_bins: 10
 
+review:                           # local review console (EXP-17): OFF by default -- see
+  enabled: false                  # docs/RESPONSIBLE-TECH-AUDITS.md section C and ADR-0014 before
+  path: var/review/queue.json     # enabling. Stores question text on this machine only;
+  max_items: 500                  # nothing is uploaded. A maintainer opts in with `enabled:
+  capture_on_low_confidence: true # true` to queue flagged/refused traces for `sprout review`.
+  capture_on_refusal: true
+
 languages:
   supported: [en, es]             # first entry is the reference language for parity
 
