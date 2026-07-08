@@ -421,6 +421,52 @@ class StoreConfig(_Model):
     path: str = "var/index.json"
 
 
+class TrustedPublisher(_Model):
+    """A third-party corpus publisher this install trusts to sign bundles (EXP-15).
+
+    This list — not anything a bundle claims about itself — is the trust root: a
+    bundle's ``publisher.id`` must match an entry here, and *this* entry's
+    ``signing_scheme``/``identity``/``issuer`` (not the bundle's) is what verification
+    checks the signature against. An empty list means no third-party bundle verifies,
+    which is the safe default.
+    """
+
+    id: str
+    name: str
+    signing_scheme: Literal["sigstore-keyless", "dev-ed25519"]
+    # sigstore-keyless: the Fulcio certificate's Subject Alternative Name (an email or
+    # a CI workload URI, e.g. a GitHub Actions job identity).
+    # dev-ed25519: the signer's hex-encoded Ed25519 public key. Test/dev only — not a
+    # substitute for Sigstore's transparency-log-backed trust; see corpus_signing.py.
+    identity: str
+    issuer: str | None = None  # required, and only meaningful, for sigstore-keyless
+
+
+class CorpusRegistryConfig(_Model):
+    """Third-party signed corpus bundles (EXP-15, docs/ideation/03-expansions.md).
+
+    ``sprout corpus verify|install`` enforces signature + license allowlist + manifest
+    completeness before a bundle's files are readable by ingest. Installed bundles land
+    under ``registry_path``, never under ``corpus.path``/``corpus.manifest`` or
+    ``config/`` — a bundle cannot alter Sprout's own routing/deny-list strings
+    (``guards.*`` above), because the bundle manifest schema has no field for them.
+    """
+
+    registry_path: str = "corpus/registry"
+    license_allowlist: list[str] = Field(
+        default_factory=lambda: [
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0",
+            "MIT",
+            "Apache-2.0",
+            "Public Domain",
+        ]
+    )
+    trusted_publishers: list[TrustedPublisher] = Field(default_factory=list)
+    max_bundle_bytes: int = Field(default=50_000_000, ge=1)
+
+
 class Config(_Model):
     corpus: CorpusConfig = Field(default_factory=CorpusConfig)
     chunk: ChunkConfig = Field(default_factory=ChunkConfig)
@@ -435,6 +481,7 @@ class Config(_Model):
     server: ServerConfig = Field(default_factory=ServerConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     store: StoreConfig = Field(default_factory=StoreConfig)
+    corpus_registry: CorpusRegistryConfig = Field(default_factory=CorpusRegistryConfig)
 
 
 def load_config(path: str | Path) -> Config:

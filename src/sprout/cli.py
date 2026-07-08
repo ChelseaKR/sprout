@@ -3,7 +3,10 @@
 Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest refusal),
 ``serve`` (the chat UI + API), ``eval`` (record the live engine, run the suites, regenerate
 the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``calibrate``
-(judge agreement + kappa), and ``demo`` (a scripted session). Everything runs offline.
+(judge agreement + kappa), ``corpus verify|install`` (signed third-party corpus bundles,
+EXP-15), and ``demo`` (a scripted session). Everything runs offline except ``corpus
+verify|install`` against a ``sigstore-keyless`` bundle, which needs the ``corpus`` extra
+and network access to Sigstore's infrastructure.
 """
 
 from __future__ import annotations
@@ -55,6 +58,62 @@ def ingest(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
     cfg = _load(config)
     store = run_ingest(cfg)
     typer.echo(f"Ingested {len(store)} chunks into {cfg.store.path}")
+
+
+corpus_app = typer.Typer(add_completion=False, help="Signed third-party corpus bundles (EXP-15).")
+app.add_typer(corpus_app, name="corpus")
+
+
+@corpus_app.command("verify")
+def corpus_verify_cmd(
+    bundle: Annotated[str, typer.Argument(help="Path to a .sproutcorpus bundle file.")],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Verify a bundle's signature, publisher trust, license allowlist, and integrity
+    tree — without installing it. Exits non-zero on the first failure (fail closed)."""
+    from .corpus_bundle import BundleError
+    from .corpus_registry import verify_bundle
+    from .corpus_signing import SignatureError
+
+    cfg = _load(config)
+    try:
+        report = verify_bundle(bundle, cfg)
+    except (BundleError, SignatureError) as exc:
+        typer.echo(f"REJECTED: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    m = report.manifest
+    typer.echo(f"OK  {m.name} {m.version} by {m.publisher.name} ({m.publisher.id})")
+    typer.echo(f"    signed: {report.signature.scheme} / {report.signature.identity}")
+    typer.echo(f"    license: {m.license}  documents: {len(m.documents)}")
+
+
+@corpus_app.command("install")
+def corpus_install_cmd(
+    bundle: Annotated[str, typer.Argument(help="Path to a .sproutcorpus bundle file.")],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Verify a bundle, then install it under corpus_registry.registry_path.
+
+    Installed bundles live in their own namespace, separate from ``corpus.path`` /
+    ``corpus.manifest`` and ``config/`` — this command never touches either, so an
+    installed bundle cannot alter Sprout's own routing/deny-list strings. Wiring an
+    installed bundle into live retrieval is a documented follow-up, not done here.
+    """
+    from .corpus_bundle import BundleError
+    from .corpus_registry import install_bundle
+    from .corpus_signing import SignatureError
+
+    cfg = _load(config)
+    try:
+        installed = install_bundle(bundle, cfg)
+    except (BundleError, SignatureError) as exc:
+        typer.echo(f"REJECTED: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"Installed {installed.name} {installed.version} from publisher "
+        f"{installed.publisher_id} -> {installed.install_path}"
+    )
+    typer.echo(f"Provenance recorded at {installed.provenance_path}")
 
 
 def _print_answer_obj(answer: Answer) -> None:
