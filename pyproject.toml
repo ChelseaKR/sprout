@@ -52,6 +52,10 @@ observability = [
     "opentelemetry-exporter-otlp-proto-http>=1.27",
     "opentelemetry-sdk>=1.27",
 ]
+# EXP-04: NLI-grade entailment verifier for the cloud generation path (ADR-0018). CPU-only
+# ONNX inference — no torch/transformers — kept optional so the offline default install
+# stays zero-ML-dependency.
+nli = ["onnxruntime>=1.18", "tokenizers>=0.19", "huggingface-hub>=0.24", "numpy>=1.26"]
 
 [project.scripts]
 sprout = "sprout.cli:app"
@@ -120,6 +124,12 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["sprout._vendor.genai_telemetry.*"]
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+# Optional `sprout[nli]` extra (EXP-04) — lazily imported, unstubbed, and not part of the
+# base install; see providers/bedrock.py for the identical treatment of boto3.
+module = ["onnxruntime.*", "huggingface_hub.*", "tokenizers.*", "numpy.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"

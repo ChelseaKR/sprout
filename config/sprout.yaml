@@ -59,6 +59,17 @@ generation:
   region: us-west-2
   max_cost_usd: 0.05             # per-answer preflight ceiling; unpriced models refuse
   redact_query_pii: false         # redact PII before sending to a network provider
+  # EXP-04 (docs/adr/0013): an additional cross-encoder NLI entailment gate behind the
+  # citation guard, for the cloud path only — provider must not be "deterministic" and
+  # nli.model_sha256 must be pinned, enforced at config load (fail closed).
+  support_verifier: lexical       # lexical (default, zero-dependency) | nli
+  # nli:
+  #   model_id: cross-encoder/nli-deberta-v3-xsmall
+  #   revision: main               # pin to a commit sha, not a branch, in production
+  #   onnx_filename: onnx/model.onnx
+  #   model_sha256: "<sha256 of the pinned onnx file — required to enable nli>"
+  #   entail_threshold: 0.5
+  #   entailment_label_index: 1    # this checkpoint's "entailment" index; verify per model
 
 identification:                   # photo plant-ID -> grounded care lookup
   provider: offline               # offline (no network, always falls back) | plantnet
