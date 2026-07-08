@@ -99,6 +99,25 @@ def _golden() -> Dataset:
             is_correct=True,
         ),
         _mk(
+            id="g2",
+            question="how often should I water my fern, and does that change in winter?",
+            expected_behavior="answer",
+            expected_facts=["water every five days", "less often in winter"],
+            sources=[
+                "Water your fern every five days. In winter, water less often because growth slows."
+            ],
+            target_response=TargetResponse(
+                text=(
+                    "Water your fern every five days. In winter, water less often "
+                    "because growth slows."
+                ),
+                citations=["Fern care — fern.md (as of 2026-05-01)"],
+                confidence=0.9,
+            ),
+            confidence=0.9,
+            is_correct=True,
+        ),
+        _mk(
             id="ml-en",
             question="why are my monstera leaves yellow?",
             pair_id="ml1",
@@ -156,6 +175,7 @@ def test_all_suites_pass_on_good_golden(golden: Dataset) -> None:
         "refusal",
         "multilingual",
         "toxicity-coverage",
+        "completeness",
     }
     for name, s in by_name.items():
         assert s.passed, f"{name} should pass: {s.notes} {s.failing_examples}"

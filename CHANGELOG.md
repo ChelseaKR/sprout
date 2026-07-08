@@ -78,6 +78,17 @@ the public evaluation harness as the headline artifact.
   cache-first service worker shows it working end to end; see `web-static/README.md`
   for what's shipped versus deferred (a dedicated browser WCAG/Lighthouse audit,
   PWA icon assets, and subresource integrity remain follow-up work).
+- **Facet-coverage answer planner + a `completeness` eval metric** (EXP-01,
+  `providers/deterministic.py`, `eval/suites/completeness.py`). The extractive generator now
+  splits a multi-part question into per-clause "facets" (`text.extract_facets`) and selects
+  sentences greedily to maximise *marginal* facet coverage before raw relevance score, so a
+  two-part question ("how often should I water, and does that change in winter?") surfaces
+  both clauses instead of three near-duplicate answers to the first one — a single-clause
+  question is unaffected (verified byte-for-byte identical output). A new deterministic
+  `completeness` suite measures the fraction of a case's authored `expected_facts` (for
+  cases with two or more) that the rendered answer actually covers; three multi-facet cases
+  were added to `eval/suites/groundedness.yaml` to exercise it. See EXP-01 in
+  [`docs/ideation/03-expansions.md`](docs/ideation/03-expansions.md).
 - **Photo-based plant identification → grounded care lookup** (`identify.py`,
   `providers/plantnet.py`). A photo is identified into candidate species, the best confident
   match is resolved to a species **already in the cited corpus**, and that species is routed
