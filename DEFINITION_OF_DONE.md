@@ -24,8 +24,14 @@ here; per-repo target values live in [`docs/ROADMAP.md`](docs/ROADMAP.md).
       and the report is committed.
 - [ ] **No regression** against the committed `docs/audits/eval-baseline.json`: every suite
       (groundedness · safety · calibration · refusal · multilingual) holds at or above its baseline
-      pass rate, each PASS still clears its Wilson lower bound, and reports are **byte-identical for
-      identical inputs** (seeded, content-hashed).
+      pass rate, and reports are **byte-identical for identical inputs** (seeded, content-hashed).
+      Every result also *reports* a Wilson 95% CI and an `underpowered` (n<30) flag, but the
+      **optional `--statistical-gate` that flips a PASS to FAIL when the CI lower bound misses the
+      threshold is off by default and not passed in CI** — turning it on today would flip
+      `multilingual` (n=12) to FAIL on sample size, not quality (see `docs/ROADMAP.md`'s AI
+      evaluation table and `docs/ideation/02-large-scale-fixes.md` FIX-12, which grows the suites
+      past n≥30 before the gate is enabled). Corrected 2026-07-08 (FIX-02) — this line previously
+      implied the statistical gate was unconditionally enforced.
 - [ ] Groundedness stays **100% by construction** — extractive generation + the post-generation
       citation guard. An ungrounded sentence must not be able to render.
 - [ ] Intentional baseline movement is its **own** commit (`make eval-baseline`) with a written
