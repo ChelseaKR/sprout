@@ -12,6 +12,13 @@ must hold even if that proxy is misconfigured or absent — security headers, a 
 cap, per-IP rate limits, and a concurrency bound on the heaviest route — are app-level, wired
 below via ``sprout.hardening``. See ``docs/audits/asvs-l2-delta.md`` for the ASVS L2 delta
 this closes.
+
+Both chat endpoints accept an optional ``session_id`` (JSON body field / query param). When
+present, it selects a bounded, in-memory-only conversation window (EXP-07,
+``conversation.SessionMemory``) so a follow-up question can resolve the species/topic an
+earlier turn in the *same* session named. The window holds only {species-slug, topic,
+language} per turn — never question or answer text — and it is process-memory only: nothing
+is written to disk, and it is empty again after a restart.
 """
 
 from __future__ import annotations
@@ -32,6 +39,7 @@ from pydantic import ValidationError
 
 from .answer import Assistant
 from .config import Config
+from .conversation import SessionMemory, extract_turn
 from .hardening import (
     ConcurrencyLimiter,
     RateLimitMiddleware,
@@ -50,6 +58,18 @@ from .models import Answer
 from .obs import Logger
 from .otel import REDMiddleware, configure_observability
 from .reminders import Reminder, ReminderError, ReminderStore
+
+# A caller-supplied session id is an opaque correlation token only — never parsed, never
+# logged. Bound its length so a pathological client can't inflate SessionMemory's key space.
+_MAX_SESSION_ID_CHARS = 128
+
+
+def _valid_session_id(raw: object) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    sid = raw.strip()
+    return sid if sid and len(sid) <= _MAX_SESSION_ID_CHARS else None
+
 
 _FALLBACK_HTML = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">'
@@ -243,6 +263,10 @@ def create_app(
         if handles is not None:
             handles.shutdown()
 
+    # EXP-07: a bounded, in-memory-only turn window per (opaque) session id, holding only
+    # {species-slug, topic, language} — never answer text. Cleared on process restart, same
+    # as every other piece of Sprout's mutable state (docs/RESPONSIBLE-TECH-AUDITS.md §C).
+    sessions = SessionMemory(max_turns=config.server.session_memory)
     app = FastAPI(title="Sprout", version="0.1.0", lifespan=_lifespan)
     _register_hardening(app, config)
     if handles is not None:
@@ -251,10 +275,14 @@ def create_app(
     def _resolve(
         question: str,
         language: str | None,
+        session_id: str | None = None,
         season: str | None = None,
         light: str | None = None,
     ) -> Answer:
-        answer = engine.answer(question, language, season=season, light=light)
+        history = sessions.context_for(session_id) if session_id else None
+        answer = engine.answer(question, language, history=history, season=season, light=light)
+        if session_id:
+            sessions.record(session_id, extract_turn(answer))
         log.event(
             "answer",
             language=answer.language,
@@ -279,9 +307,11 @@ def create_app(
         if error is not None:
             log.event("request_rejected")
             return JSONResponse({"error": error}, status_code=400)
+        session_id = _valid_session_id(payload.get("session_id"))
         answer = _resolve(
             question,
             payload.get("language"),
+            session_id,
             _optional_str(payload.get("season")),
             _optional_str(payload.get("light")),
         )
@@ -292,16 +322,23 @@ def create_app(
 
     @app.get("/api/chat/stream")
     def chat_stream(
-        q: str, language: str | None = None, season: str | None = None, light: str | None = None
+        q: str,
+        language: str | None = None,
+        session_id: str | None = None,
+        season: str | None = None,
+        light: str | None = None,
     ) -> Any:
         from sse_starlette.sse import EventSourceResponse
 
         error = _question_error(q.strip(), config)
         if error is not None:
             return JSONResponse({"error": error}, status_code=400)
+        sid = _valid_session_id(session_id)
         # Normalize + bound the GET qualifiers exactly like the JSON path does.
         return EventSourceResponse(
-            _sse_events(_resolve(q.strip(), language, _optional_str(season), _optional_str(light)))
+            _sse_events(
+                _resolve(q.strip(), language, sid, _optional_str(season), _optional_str(light))
+            )
         )
 
     _register_identify(app, engine, config, log, identifier)
