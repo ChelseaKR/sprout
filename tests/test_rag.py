@@ -9,13 +9,16 @@ import pytest
 
 from sprout.answer import Assistant
 from sprout.confidence import (
+    best_and_margin,
     expected_calibration_error,
+    fit_drift_warning,
     is_low_confidence,
     reliability_diagram,
+    retrieval_config_fingerprint,
     score_confidence,
     should_abstain,
 )
-from sprout.config import Config
+from sprout.config import ConfidenceFit, Config
 from sprout.guards import (
     asserts_safety,
     citation_guard,
@@ -254,6 +257,83 @@ def test_score_confidence_monotonic_and_bounded(tiny_chunks: list[Chunk]) -> Non
     assert score_confidence([], 1) == 0.0
 
 
+def test_best_and_margin(tiny_chunks: list[Chunk]) -> None:
+    assert best_and_margin([]) == (0.0, 0.0)
+    single = [RetrievedChunk(chunk=tiny_chunks[0], score=0.4)]
+    assert best_and_margin(single) == (0.4, 0.4)
+    two = [
+        RetrievedChunk(chunk=tiny_chunks[0], score=0.4),
+        RetrievedChunk(chunk=tiny_chunks[1], score=0.25),
+    ]
+    best, margin = best_and_margin(two)
+    assert best == 0.4
+    assert margin == pytest.approx(0.15)
+
+
+def test_score_confidence_uses_config_fit_when_present(tiny_chunks: list[Chunk]) -> None:
+    retrieved = [RetrievedChunk(chunk=tiny_chunks[0], score=0.4)]
+    default = score_confidence(retrieved, 1)
+    fit = ConfidenceFit(
+        midpoint=0.9,  # far above the retrieved score -> should read as far less confident
+        steepness=20.0,
+        margin_bonus=0.0,
+        train_dataset_hash="h",
+        train_path="eval/train/x.yaml",
+        retrieval_config_hash="r",
+        n_items=1,
+        fitted_at="2026-07-08",
+    )
+    cfg = Config.model_validate({"confidence": {"fit": fit.model_dump()}})
+    fitted = score_confidence(retrieved, 1, cfg.confidence)
+    assert fitted < default
+
+
+def test_retrieval_config_fingerprint_changes_with_config() -> None:
+    a = retrieval_config_fingerprint(Config().retrieval)
+    b = retrieval_config_fingerprint(Config.model_validate({"retrieval": {"top_k": 3}}).retrieval)
+    assert a != b
+    assert a == retrieval_config_fingerprint(Config().retrieval)
+
+
+def test_fit_drift_warning_none_without_a_fit() -> None:
+    cfg = Config()
+    assert fit_drift_warning(cfg.confidence, cfg.retrieval) is None
+
+
+def test_fit_drift_warning_flags_stale_retrieval_hash() -> None:
+    live = Config()
+    fit = ConfidenceFit(
+        midpoint=0.3,
+        steepness=6.0,
+        margin_bonus=0.05,
+        train_dataset_hash="h",
+        train_path="eval/train/x.yaml",
+        retrieval_config_hash="stale-hash-does-not-match-anything",
+        n_items=10,
+        fitted_at="2026-07-08",
+    )
+    cfg = Config.model_validate({"confidence": {"fit": fit.model_dump()}})
+    warning = fit_drift_warning(cfg.confidence, live.retrieval)
+    assert warning is not None
+    assert "stale" in warning.lower()
+
+
+def test_fit_drift_warning_none_when_hash_matches() -> None:
+    live = Config()
+    fit = ConfidenceFit(
+        midpoint=0.3,
+        steepness=6.0,
+        margin_bonus=0.05,
+        train_dataset_hash="h",
+        train_path="eval/train/x.yaml",
+        retrieval_config_hash=retrieval_config_fingerprint(live.retrieval),
+        n_items=10,
+        fitted_at="2026-07-08",
+    )
+    cfg = Config.model_validate({"confidence": {"fit": fit.model_dump()}})
+    assert fit_drift_warning(cfg.confidence, live.retrieval) is None
+
+
 def test_thresholds(config: Config) -> None:
     assert should_abstain(0.1, config.confidence)
     assert not should_abstain(0.9, config.confidence)
@@ -386,6 +466,34 @@ def test_out_of_scope_refuses(assistant: Assistant) -> None:
     assert ans.refused
     assert ans.refusal_reason == "out_of_scope"
     assert not ans.sentences
+
+
+def test_confidence_signal_grounded_has_evidence_and_text(assistant: Assistant) -> None:
+    signal = assistant.confidence_signal("why are my monstera leaves yellowing")
+    assert signal.grounded
+    assert signal.best > 0.0
+    assert "overwatering" in signal.text.lower()
+
+
+def test_confidence_signal_out_of_scope_has_no_text(assistant: Assistant) -> None:
+    signal = assistant.confidence_signal("how do I patch a flat bicycle tire")
+    assert not signal.grounded
+    assert signal.text == ""
+
+
+def test_confidence_signal_bypasses_current_abstain_threshold(
+    assistant_factory: Callable[..., Assistant],
+) -> None:
+    # Even with an abstain threshold so high the engine would always refuse, the signal
+    # still reports the underlying evidence and rendered text -- that is the whole point
+    # (fitting a new threshold must not be gated by the threshold it is replacing).
+    cfg = Config.model_validate({"confidence": {"abstain_threshold": 0.999}})
+    a = assistant_factory(cfg)
+    signal = a.confidence_signal("why are my monstera leaves yellowing")
+    assert signal.grounded
+    assert signal.text
+    ans = a.answer("why are my monstera leaves yellowing")
+    assert ans.refused and ans.refusal_reason == "low_confidence"
     assert ans.display_text  # carries the refusal prose
 
 
