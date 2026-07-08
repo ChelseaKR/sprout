@@ -187,6 +187,16 @@ Yes, all of it deterministic and in-repo:
   is Bedrock Titan behind a config switch. BM25 lexical scores are computed for hybrid RRF fusion.
 - **Labeling.** Toxicity status is encoded as prose in each `## toxicity` section; the assistant
   *quotes* it and the safety guard forbids turning it into a "safe" certification.
+- **Structured toxicity table (EXP-09).** `corpus/toxicity.yaml` mirrors the same toxic/non-toxic
+  facts as a machine-readable species x animal x severity table, each row carrying its own
+  `source_name`/`url`/`license`/`fetch_date` citation exactly like a manifest entry
+  (`src/sprout/toxicity.py:ToxicityRow`). It exists for deterministic coverage accounting
+  (`sprout toxicity coverage`) and future exposure-type routing (FIX-13) — **it never
+  replaces the cited prose as the rendered answer's source of truth.** `sprout toxicity check`
+  fails the build if a row disagrees with its document's prose. Every row is `synthetic: true`
+  and stays that way — original placeholder data, not a transcription of a real veterinary
+  source — until a veterinary toxicologist reviews the schema semantics and every real row's
+  intended rendering; see the hard-gate note atop `corpus/toxicity.yaml` and R1.
 
 **Is the raw data saved?**
 Yes — `corpus/raw/` holds the committed snapshots and `corpus/processed/` the cleaned Markdown, both
