@@ -53,7 +53,7 @@ class RetrievalConfig(_Model):
     top_k: int = Field(default=6, ge=1, le=50)
     min_score: float = Field(default=0.12, ge=0.0, le=1.0)
     embedding_dim: int = Field(default=512, ge=64, le=4096)
-    embedding_provider: Literal["deterministic", "bedrock"] = "deterministic"
+    embedding_provider: Literal["deterministic", "static", "bedrock"] = "deterministic"
     hybrid: bool = True
     bm25_k1: float = Field(default=1.5, ge=0.0)
     bm25_b: float = Field(default=0.75, ge=0.0, le=1.0)
