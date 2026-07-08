@@ -27,6 +27,7 @@ from .answer import Assistant
 from .claims import check as check_claims
 from .config import Config, load_config
 from .models import Answer
+from .slo import check_all
 
 app = typer.Typer(add_completion=False, help="Sprout — grounded, evaluated plant-care assistant.")
 
@@ -356,6 +357,24 @@ def claims_check(
             typer.echo(f"  - {p}", err=True)
         raise typer.Exit(1)
     typer.echo(f"{target}: all claims reconciled with their source of truth")
+
+
+@app.command("slo-check")
+def slo_check(
+    slo_dir: Annotated[str, typer.Option("--slo-dir")] = "slos",
+    alerts_dir: Annotated[str, typer.Option("--alerts-dir")] = "alerts",
+) -> None:
+    """Schema-check the Tier-A SLO and burn-rate-alert files (STANDARDS/OBSERVABILITY-
+    STANDARD.md §§4-5): every ``slos/*.yaml`` has the five required keys, every
+    ``alerts/*.yml`` rule is a well-formed record/alert with an expr, and each SLO has
+    both a critical and a high burn-rate alert defined. Complements, but does not
+    replace, ``promtool check rules`` (see docstring in ``sprout.slo``)."""
+    problems = check_all(Path(slo_dir), Path(alerts_dir))
+    if problems:
+        for p in problems:
+            typer.echo(f"  - {p}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{slo_dir}/ and {alerts_dir}/: all SLO/alert files valid")
 
 
 @app.command()

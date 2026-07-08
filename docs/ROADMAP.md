@@ -166,13 +166,43 @@ defect caught by the tier-declaration gate. Sprout has two surfaces and states b
 - **NOT N/A — the PII/secrets-in-logs gate.** It is non-tiered and binds here exactly as in any
   Tier-A service; the whitelist above is its enforcement.
 
-**Tier A — the optional serverless API (`infra/`, behind a config switch).**
+**Tier A — the optional serverless API (`infra/`, behind `observability.tier: A`).**
 When the cloud generator and serverless deploy are enabled, the API surface adopts the full
-Tier-A stack: OTel traces + metrics with trace-correlated structured logs, RED per endpoint,
-`/livez`+`/readyz`, an SLO file, and multi-window burn-rate alerts. This surface is **scaffold
-only today** (Phase 3/4); its Tier-A controls are tracked, not yet green, and `infra/` ships no
-deployable manifest at this commit. The offline Tier-C path remains fully functional with the
-serverless surface absent.
+Tier-A stack, and every piece of it is now wired and code-reviewable, not aspirational:
+
+- **OTel traces + metrics**, `src/sprout/otel.py`: a tracer/meter provider per process,
+  W3C `traceparent` extraction on inbound requests, and RED-per-endpoint instruments
+  (`sprout_http_requests_total`, `sprout_http_request_duration_seconds` on the standard's
+  fixed second-scale buckets, `sprout_http_request_errors_total`) recorded by
+  `REDMiddleware`, keyed on the *matched route template* (never the raw path) so
+  cardinality stays bounded. `configure_observability` no-ops (never crashes the server)
+  for tier B/C or if the `observability` extra is not installed.
+- **Trace-correlated structured logs**: `src/sprout/obs.py` stamps `trace_id`/`span_id`/
+  `trace_flags` from the active span onto every Tier-A JSON log record.
+- **`/livez`+`/readyz`**: already existed in `src/sprout/server.py` before this change;
+  unaffected.
+- **An SLO file**: `slos/sprout-api-availability.yaml` and `slos/sprout-api-latency.yaml`,
+  schema-checked by `sprout slo-check` (wired into `make verify` and CI's `eval-a11y` job).
+- **Multi-window burn-rate alerts**: `alerts/burn-rate.yml` — critical (14.4×, 1h+5m) and
+  high (6×, 6h+30m) tiers, both required and both present, per the standard §5.
+- **A deployable manifest**: `infra/` is a real AWS CDK (Python) app —
+  `infra/sprout_stack.py` — deploying the existing `sprout serve` container to Lambda
+  (via the AWS Lambda Web Adapter, `infra/Dockerfile`) behind an API Gateway HTTP API,
+  with a monthly `CfnBudget` alarm. It synthesizes cleanly (`cdk synth`, verified against
+  aws-cdk-lib 2.261 while building this); see `infra/README.md`.
+
+**What is verified vs. what is not.** The OTel wiring, RED metrics, log correlation, and
+SLO/alert schema checks are exercised in `tests/test_otel.py` and `tests/test_slo.py`, and
+were additionally run end-to-end against a live local OTel Collector +
+Tempo + Mimir (`docker-compose.observability.yml`) while building this change — a real
+`/api/chat` request produced a queryable trace in Tempo and the exact
+`sprout_*_http_requests_total`/`..._duration_seconds` series in Mimir with the expected
+`method`/`route`/`status_code` labels. What is **not** yet exercised: an actual `cdk
+deploy` against a live AWS account, and the burn-rate alerts firing against real traffic
+(no production traffic exists yet). That is the same "wired, not yet exercised" posture
+this doc already uses for PyPI Trusted Publishing and signed release tags — record the
+first real `cdk deploy` here when it happens. The offline Tier-C path remains fully
+functional with the serverless surface absent, and needs none of the above.
 
 ---
 
@@ -189,7 +219,7 @@ level. The single deferred scope is noted explicitly.
 | CI/CD | APPLIES | Single `ci-gate` required check; least-privilege tokens; local/CI parity via `make verify` |
 | Release & Versioning | APPLIES | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired but unexercised; signed tags on first release (no tag has ever been cut — corrected 2026-07-05, see `docs/ROADMAP.md` REL-03 note below) |
 | Accessibility | APPLIES | WCAG **2.2 AA** target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all merge-blocking as of 2026-07-08 (previously axe/pa11y advisory-only and Lighthouse unwired); transcript view; ACR (VPAT 2.5 Rev 508) |
-| Observability | APPLIES | **Tier C** (offline CLI) + **Tier A** (optional serverless); see section above; non-CLI Tier-A controls tracked |
+| Observability | APPLIES | **Tier C** (offline CLI) + **Tier A** (optional serverless); see section above; Tier-A controls wired and unit/e2e-tested, `cdk deploy` unexercised |
 | Internationalization | APPLIES | EN/ES key + placeholder parity; \|EN − ES\| ≤ 5 pp eval parity |
 | AI Evaluation | APPLIES (RAG, red-team, model-card) | groundedness/safety/refusal/multilingual/calibration gates; judge ≠ answer model; κ + reliability; model/data cards |
 | Documentation | APPLIES | Full `docs/` set; ADRs; dated, regenerated audit artifacts |

@@ -491,9 +491,25 @@ class ServerConfig(_Model):
 
 
 class ObservabilityConfig(_Model):
+    """Declares the observability tier per ``STANDARDS/OBSERVABILITY-STANDARD.md`` §0.
+
+    ``tier: C`` (default) is the offline CLI: opt-in structured-JSON logging only. Setting
+    ``tier: A`` — alongside enabling the serverless deploy in ``infra/`` — turns on the full
+    Tier-A stack in ``server.py``: OTel traces + metrics (RED per endpoint) with
+    trace-correlated logs. The OTel exporter endpoint/protocol are read from the standard
+    ``OTEL_EXPORTER_OTLP_*`` environment variables (never from this file — the standard puts
+    exporter wiring in the container manifest, not code); with tier A selected but no
+    endpoint configured and the ``observability`` extra installed, spans/metrics export to
+    the OTel SDK's default (localhost Collector), which is a no-op if nothing is listening.
+    With tier A selected but the ``observability`` extra *not* installed, instrumentation
+    degrades to a no-op rather than crashing the server.
+    """
+
     log_format: Literal["text", "json"] = "text"
     tier: Literal["A", "B", "C"] = "C"
     service_name: str = "sprout"
+    service_version: str = "0.1.0"
+    deployment_environment: str = "production"
 
 
 class StoreConfig(_Model):
