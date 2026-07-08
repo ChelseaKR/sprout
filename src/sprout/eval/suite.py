@@ -9,14 +9,20 @@ Design invariants borrowed from the portfolio's eval harness:
   or mis-filtered suite can never pass quietly.
 * Suites self-register and are resolved by a CLI selector (``all`` or ``a,b,c``); an
   unknown name raises.
+* Third-party suites register the same way, discovered via the ``sprout.eval.suites``
+  ``importlib.metadata`` entry-point group (see :func:`load_entry_point_suites`) — a
+  suite name collision between the built-ins/an already-loaded plugin and a newly
+  discovered one is a hard error (fail-closed), never a silent overwrite. This is the
+  ADR-0013 plugin seam: an installed package can add a suite with zero fork of this repo.
 """
 
 from __future__ import annotations
 
+import importlib.metadata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -25,6 +31,17 @@ from .stats import is_underpowered, wilson_interval
 if TYPE_CHECKING:
     from .dataset import Dataset
     from .judge import Judge
+
+#: The ``importlib.metadata`` entry-point group third-party packages register suites
+#: under, e.g. in ``pyproject.toml``::
+#:
+#:     [project.entry-points."sprout.eval.suites"]
+#:     my-suite = "my_package.suite:build_suite"
+#:
+#: The entry point must resolve (``.load()``) to either a ready :class:`Suite` instance
+#: or a zero-argument callable that returns one. See ``examples/herb-garden-plugin`` for
+#: a worked, installable example.
+ENTRY_POINT_GROUP = "sprout.eval.suites"
 
 
 class Verdict(StrEnum):
@@ -96,6 +113,7 @@ class EvalContext:
     judge: Judge
 
 
+@runtime_checkable
 class Suite(Protocol):
     name: str
     metric: MetricDefinition
@@ -163,6 +181,7 @@ def fail_closed(
 
 # --- registry --------------------------------------------------------------------
 _REGISTRY: dict[str, Suite] = {}
+_entry_points_loaded = False
 
 
 def register(suite: Suite) -> Suite:
@@ -170,12 +189,65 @@ def register(suite: Suite) -> Suite:
     return suite
 
 
+def load_entry_point_suites() -> list[str]:
+    """Discover and register third-party suites from the ``sprout.eval.suites`` entry-point
+    group, alongside the in-tree registry populated by ``import sprout.eval.suites``.
+
+    Idempotent and cached for the process lifetime — the first call scans installed
+    package metadata and registers every discovered suite; later calls are a no-op. A
+    discovered suite whose ``name`` collides with an already-registered suite (built-in
+    or another plugin) is a hard error: entry-point suites never silently shadow or get
+    shadowed. Returns the names newly registered (empty on a cached call).
+    """
+    global _entry_points_loaded
+    if _entry_points_loaded:
+        return []
+    _entry_points_loaded = True
+    newly_registered: list[str] = []
+    for ep in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP):
+        try:
+            loaded = ep.load()
+        except Exception as exc:  # pragma: no cover - defensive, broken plugin install
+            raise ImportError(
+                f"failed to load suite entry point {ep.name!r} ({ep.value}): {exc}"
+            ) from exc
+        suite = loaded() if callable(loaded) and not hasattr(loaded, "run") else loaded
+        if not isinstance(suite, Suite):
+            raise TypeError(
+                f"entry point {ep.name!r} ({ep.value}) did not resolve to a Suite "
+                f"(an object with .name, .metric, and .run) — got {suite!r}"
+            )
+        if suite.name in _REGISTRY:
+            raise ValueError(
+                f"duplicate suite name {suite.name!r}: entry point {ep.name!r} ({ep.value}) "
+                "collides with an already-registered suite (built-in or another plugin); "
+                "fail-closed rather than silently shadowing it"
+            )
+        register(suite)
+        newly_registered.append(suite.name)
+    return newly_registered
+
+
+def _reset_entry_point_cache() -> None:
+    """Test-only hook: forget that entry points were scanned, so a test can re-trigger
+    discovery against a monkeypatched ``importlib.metadata.entry_points``."""
+    global _entry_points_loaded
+    _entry_points_loaded = False
+
+
 def available() -> list[str]:
+    load_entry_point_suites()
     return sorted(_REGISTRY)
 
 
 def resolve_suites(selector: str) -> list[Suite]:
-    """Resolve ``all`` or a comma-separated list of suite names. Unknown name raises."""
+    """Resolve ``all`` or a comma-separated list of suite names. Unknown name raises.
+
+    Both the built-in suites (registered when ``sprout.eval.suites`` is imported) and any
+    third-party suites registered via the ``sprout.eval.suites`` entry-point group
+    (:func:`load_entry_point_suites`) are eligible.
+    """
+    load_entry_point_suites()
     if selector.strip() == "all":
         return [_REGISTRY[name] for name in available()]
     names = [n.strip() for n in selector.split(",") if n.strip()]
