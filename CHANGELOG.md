@@ -81,6 +81,13 @@ the public evaluation harness as the headline artifact.
   override) so the grounded photo path is testable offline.
 - New `identification` and `reminders` config blocks (`config/sprout.yaml`); `identify` optional
   dependency extra (`httpx`).
+- **Accessibility CI gates are now fully merge-blocking.** `pa11y-ci` (axe-core + htmlcs runners)
+  lost its `continue-on-error: true` / `|| true` advisory-only status, and a new `lighthouse` job
+  runs Lighthouse's accessibility category (threshold 0.95) against the chat UI and the HTML eval
+  report — previously not wired into CI at all. Both jobs are now required by `ci-gate`. Fixed the
+  one real finding this surfaced: the empty-state reminders table left header cells with zero data
+  rows (`axe`'s `th-has-data-cells`), so the table is now hidden until it has at least one
+  reminder, matching the existing plain-language empty-state message.
 
 ### Security
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the

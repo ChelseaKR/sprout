@@ -112,7 +112,7 @@ restating them. Per-repo *values* live in [`docs/ROADMAP.md`](docs/ROADMAP.md) a
 | Security & Supply Chain | ✅ | ASVS L1 (offline mode); pip-audit + Semgrep blocking (CI and `make verify`); gitleaks in CI; CodeQL + zizmor workflow-SAST; SHA-pinned actions; SBOM generated + uploaded on release |
 | CI/CD | ✅ | Single `ci-gate` required check; least-privilege tokens; `make verify` mirrors CI's tools/thresholds |
 | Release & Versioning | ✅ | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
-| Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check` gate is merge-blocking; axe/pa11y run today as **advisory only**, Lighthouse **not yet wired** (gap tracked, corrected 2026-07-05); transcript view; ACR (VPAT 2.5 Rev 508) |
+| Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
 | Observability | ✅ | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
 | Internationalization | ✅ | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
 | AI Evaluation | ✅ | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, gap tracked); judge-calibration is **report-only, currently below threshold** (gap tracked); judge≠answer model; model/data cards |

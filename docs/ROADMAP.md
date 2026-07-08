@@ -81,7 +81,7 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
-| Conformance level | **WCAG 2.2 AA** | axe + pa11y + Lighthouse on chat UI, HTML eval report, transcript view | AUTO |
+| Conformance level | **WCAG 2.2 AA** | axe + pa11y (merge-blocking) and Lighthouse accessibility (merge-blocking, threshold 0.95) on chat UI + HTML eval report; transcript view not yet built (see row below) | AUTO |
 | Structural a11y check | zero violations | `sprout a11y-check` on `web/dist/index.html` + `docs/audits/eval-report.html` | AUTO |
 | Non-chat alternate view | static, paginated Q/A/citations renders | transcript-view check | AUTO |
 | Color independence | severity + provenance never color-only | manual SR review (NVDA, VoiceOver) | REVIEW |
@@ -160,7 +160,7 @@ level. The single deferred scope is noted explicitly.
 | Security & Supply Chain | APPLIES | ASVS **L1** (offline mode — no auth/persistence/network to defend); pip-audit, gitleaks, Semgrep, SHA-pinned actions, SBOM |
 | CI/CD | APPLIES | Single `ci-gate` required check; least-privilege tokens; local/CI parity via `make verify` |
 | Release & Versioning | APPLIES | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired but unexercised; signed tags on first release (no tag has ever been cut — corrected 2026-07-05, see `docs/ROADMAP.md` REL-03 note below) |
-| Accessibility | APPLIES | WCAG **2.2 AA** target; structural `sprout a11y-check` gate is merge-blocking; axe/pa11y advisory-only and Lighthouse not yet wired (gap tracked); transcript view; ACR (VPAT 2.5 Rev 508) |
+| Accessibility | APPLIES | WCAG **2.2 AA** target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all merge-blocking as of 2026-07-08 (previously axe/pa11y advisory-only and Lighthouse unwired); transcript view; ACR (VPAT 2.5 Rev 508) |
 | Observability | APPLIES | **Tier C** (offline CLI) + **Tier A** (optional serverless); see section above; non-CLI Tier-A controls tracked |
 | Internationalization | APPLIES | EN/ES key + placeholder parity; \|EN − ES\| ≤ 5 pp eval parity |
 | AI Evaluation | APPLIES (RAG, red-team, model-card) | groundedness/safety/refusal/multilingual/calibration gates; judge ≠ answer model; κ + reliability; model/data cards |

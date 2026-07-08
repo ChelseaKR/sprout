@@ -8,12 +8,13 @@ columns used here).
 **Author / contact:** Chelsea Kelly-Reif · ckellyreif@gmail.com.
 **Evaluation methods used:** the repo's deterministic structural a11y self-check
 (`sprout a11y-check`, source `src/sprout/a11y.py`) — genuinely merge-blocking — plus automated
-tooling (axe-core via pa11y, and pa11y-ci itself) run in CI today as **advisory only**
-(`continue-on-error: true`, excluded from the required `ci-gate` check; gap tracked to make
-blocking). Lighthouse CI is **not yet wired**. Manual keyboard walkthrough and manual
-screen-reader review (NVDA + Firefox on Windows, VoiceOver + Safari on macOS/iOS) are **planned
-per release but have not yet been performed** — no dated AT-pairing artifact exists yet. (Corrected
-2026-07-05: this paragraph previously claimed all of the above were performed/blocking and cited a
+tooling (axe-core via pa11y, and pa11y-ci itself), and Lighthouse's accessibility category
+(`--only-categories=accessibility`, threshold 0.95), all **merge-blocking** in CI as of
+2026-07-08 (part of the required `ci-gate` check; corrected from the prior advisory-only /
+not-wired state — see `docs/ROADMAP.md`). Manual keyboard walkthrough and manual screen-reader
+review (NVDA + Firefox on Windows, VoiceOver + Safari on macOS/iOS) are **planned per release but
+have not yet been performed** — no dated AT-pairing artifact exists yet. (Corrected 2026-07-05:
+this paragraph previously claimed all of the above were performed/blocking and cited a
 `docs/a11y/screen-reader-walkthrough-2026-06-22.md` file that was never created.)
 
 > **Why VPAT 2.5 / 508, not federal scope.** A houseplant app is not federal ICT, so Section 508
