@@ -3,8 +3,9 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        smoke a11y claims calibrate freshness audits docs workflow-lint ci-parity-check demo \
-        verify clean web-static-bundle web-static-fixtures web-static-test web-static-build
+        smoke a11y claims calibrate gate-inventory freshness audits docs workflow-lint \
+        ci-parity-check demo verify clean web-static-bundle web-static-fixtures \
+        web-static-test web-static-build
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -61,7 +62,10 @@ a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gat
 claims: ## Claims-integrity gate: docs/claims.yaml vs code/config source of truth
 	$(PY) sprout claims-check
 
-audits: eval calibrate ## Regenerate the committed eval + calibration audit artifacts
+gate-inventory: ## FIX-02: fail if any ledger AUTO row has no real enforcement mechanism
+	$(PY) sprout gate-inventory --out docs/audits
+
+audits: eval calibrate gate-inventory ## Regenerate the committed eval + calibration + gate-inventory audit artifacts
 
 docs: ## Build the docs site strictly (mirrors the CI docs gate)
 	uv sync --group docs
@@ -88,7 +92,7 @@ web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conf
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
 	cd web-static && npm ci && npm run build:site
 
-verify: lint type test security eval smoke a11y claims calibrate docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
+verify: lint type test security eval smoke a11y claims calibrate gate-inventory docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts
