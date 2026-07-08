@@ -78,6 +78,8 @@ def ingest(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
 
 def _print_answer_obj(answer: Answer) -> None:
     typer.echo(answer.display_text)
+    if answer.context_note:
+        typer.echo(f"\n{answer.context_note}")
     if answer.citations:
         typer.echo("\nSources:")
         for c in answer.citations:
@@ -94,11 +96,19 @@ def _print_answer_obj(answer: Answer) -> None:
     )
 
 
-def _print_answer(assistant: Assistant, question: str, language: str | None, debug: bool) -> None:
-    answer = assistant.answer(question, language)
+def _print_answer(
+    assistant: Assistant,
+    question: str,
+    language: str | None,
+    debug: bool,
+    *,
+    season: str | None = None,
+    light: str | None = None,
+) -> None:
+    answer = assistant.answer(question, language, season=season, light=light)
     _print_answer_obj(answer)
     if debug:
-        trace = assistant.trace(question, language)
+        trace = assistant.trace(question, language, season=season, light=light)
         typer.echo("\n--- trace ---")
         typer.echo(
             f"language={trace.language} safety={trace.is_safety_query} "
@@ -112,6 +122,27 @@ def _print_answer(assistant: Assistant, question: str, language: str | None, deb
 def ask(
     question: str,
     language: Annotated[str | None, typer.Option("--language", "-l")] = None,
+    season: Annotated[
+        str | None,
+        typer.Option(
+            "--season",
+            help=(
+                "Season as you'd say it (e.g. 'winter'). Used only to select the "
+                "matching cited passage this one time — never stored, never a fact."
+            ),
+        ),
+    ] = None,
+    light: Annotated[
+        str | None,
+        typer.Option(
+            "--light",
+            help=(
+                "Light/placement as you'd say it (e.g. 'low light', 'north window'). "
+                "Used only to select the matching cited passage this one time — never "
+                "stored, never a fact."
+            ),
+        ),
+    ] = None,
     config: ConfigOpt = _DEFAULT_CONFIG,
     debug: Annotated[bool, typer.Option("--debug")] = False,
 ) -> None:
@@ -122,7 +153,7 @@ def ask(
     except FileNotFoundError as exc:
         typer.echo(f"{exc}", err=True)
         raise typer.Exit(2) from exc
-    _print_answer(assistant, question, language, debug)
+    _print_answer(assistant, question, language, debug, season=season, light=light)
 
 
 @app.command()

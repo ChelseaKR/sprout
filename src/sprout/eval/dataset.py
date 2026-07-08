@@ -57,6 +57,13 @@ class DatasetItem(_Strict):
     expected_behavior: ExpectedBehavior | None = None
     rationale: str = ""
 
+    # EXP-05: optional per-case season/light selector, replayed through
+    # ``Assistant.answer`` exactly like a real caller's flags — lets a case assert that
+    # the qualifier changed which cited sentence was selected (e.g. a winter-vs-default
+    # pair sharing the same ``question``).
+    season: str | None = None
+    light: str | None = None
+
     target_response: TargetResponse | None = None
 
     # groundedness / accuracy

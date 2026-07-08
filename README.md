@@ -81,6 +81,14 @@ uv run sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cit
 uv run sprout remind add pothos --kind water --every 7    # local, offline reminder
 uv run sprout remind export --ics --out reminders.ics     # standards-based calendar file, any app
 uv run sprout serve                     # stateless reference UI + JSON/SSE API at :8000
+pipx install sprout              # or: uv sync && uv run sprout ...
+sprout ingest                    # build the index from the bundled corpus
+sprout ask "Why are my Monstera's leaves yellowing?"
+sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
+sprout ask "How much water does my Pothos need?" --season winter --light "north window"
+sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer (offline → fallback)
+sprout remind add pothos --kind water --every 7    # local, offline reminder
+sprout serve                     # accessible chat UI + JSON/SSE API at :8000
 make eval                        # regenerate the committed eval report, fully offline
 ```
 

@@ -13,6 +13,13 @@ This module encodes the pipeline contract as control flow:
 
 For toxicity/safety questions, the refusal *and* the answer carry a routing directive to
 a vet / poison-control line, and the assistant never certifies a plant safe.
+
+``season``/``light`` (EXP-05) are an optional, per-request selector — the same
+context-selects/corpus-asserts contract ADR-0010 built for photo-ID, generalized to the
+season/placement qualifiers a user can just state ("winter", "north window"). They are
+taken exactly as given, never inferred from locale or the system clock, used only to
+nudge which already-cited sentence the generator picks, and echoed back on the ``Answer``
+— never persisted, never treated as a citation.
 """
 
 from __future__ import annotations
@@ -44,6 +51,7 @@ from .providers.base import EmbeddingProvider, GenerationProvider
 from .retrieve import Retriever
 from .store import VectorStore
 from .verifiers import EntailmentVerifier
+from .text import token_set
 
 
 class Assistant:
@@ -89,7 +97,12 @@ class Assistant:
         return detected if detected in supported else self._config.corpus.default_language
 
     def _retrieve_and_render(
-        self, query: str, lang: str
+        self,
+        query: str,
+        lang: str,
+        *,
+        season: str | None = None,
+        light: str | None = None,
     ) -> tuple[list[RetrievedChunk], list[AnswerSentence], bool]:
         """Retrieval + generation + guards, stopping short of the confidence gate.
 
@@ -104,8 +117,9 @@ class Assistant:
             return retrieved, [], False
 
         model_query = redact_pii(query) if self._config.generation.redact_query_pii else query
+        boost_terms = self._context_boost_terms(season, light)
         candidates = self._generator.generate(
-            model_query, retrieved, self._config.generation.max_sentences
+            model_query, retrieved, self._config.generation.max_sentences, boost_terms
         )
         sentences = citation_guard(
             candidates,
@@ -116,7 +130,14 @@ class Assistant:
         sentences = safety_filter(sentences, lang, self._config.guards)
         return retrieved, sentences, True
 
-    def answer(self, query: str, language: str | None = None) -> Answer:
+    def answer(
+        self,
+        query: str,
+        language: str | None = None,
+        *,
+        season: str | None = None,
+        light: str | None = None,
+    ) -> Answer:
         lang = self._resolve_language(query, language)
         safety = is_safety_query(query, lang, self._config.guards)
         # FIX-13: classify the audience (child/animal/both/unspecified) alongside the
@@ -124,7 +145,9 @@ class Assistant:
         # route to the right escalation card(s) once a clinician-reviewed human card
         # exists. See Config.prompts.safety_directive_for.
         exposure_type = detect_exposure_type(query, lang, self._config.guards) if safety else None
-        retrieved, sentences, grounded = self._retrieve_and_render(query, lang)
+        retrieved, sentences, grounded = self._retrieve_and_render(
+            query, lang, season=season, light=light
+        )
 
         # Hard species gate: a toxicity/safety question that clearly names a plant not
         # in the corpus (via the off-corpus gazetteer) is refused before the grounding
@@ -139,6 +162,8 @@ class Assistant:
                 reason="species_not_covered",
                 abstained=False,
                 retrieved=retrieved,
+                season=season,
+                light=light,
             )
 
         if not grounded:
@@ -150,6 +175,8 @@ class Assistant:
                 reason="out_of_scope",
                 abstained=False,
                 retrieved=retrieved,
+                season=season,
+                light=light,
             )
 
         if not sentences:
@@ -161,6 +188,8 @@ class Assistant:
                 reason="no_supported_sentences",
                 abstained=False,
                 retrieved=retrieved,
+                season=season,
+                light=light,
             )
 
         confidence = score_confidence(retrieved, len(sentences), self._config.confidence)
@@ -174,9 +203,21 @@ class Assistant:
                 abstained=True,
                 confidence=confidence,
                 retrieved=retrieved,
+                season=season,
+                light=light,
             )
 
-        return self._render(query, lang, safety, exposure_type, sentences, retrieved, confidence)
+        return self._render(
+            query,
+            lang,
+            safety,
+            exposure_type,
+            sentences,
+            retrieved,
+            confidence,
+            season=season,
+            light=light,
+        )
 
     def confidence_signal(self, query: str, language: str | None = None) -> ConfidenceEvidence:
         """Retrieval evidence for one question, without applying the confidence gate.
@@ -195,6 +236,20 @@ class Assistant:
             text=" ".join(s.text for s in sentences),
         )
 
+    @staticmethod
+    def _context_boost_terms(season: str | None, light: str | None) -> frozenset[str]:
+        """Selector-only lexical boost tokens for the season/light qualifiers (EXP-05).
+
+        Tokenized the same way as every other retrieval-facing text (``text.token_set``)
+        so the words are compared on equal footing with the corpus's own prose — no new
+        corpus metadata, no controlled vocabulary to maintain. An unrecognized word simply
+        contributes no boost; it can never *filter out* a governing passage.
+        """
+        return token_set(season or "") | token_set(light or "")
+
+    def _context_items(self, season: str | None, light: str | None) -> list[str]:
+        return [v for v in (season, light) if v]
+
     def _render(
         self,
         query: str,
@@ -204,6 +259,9 @@ class Assistant:
         sentences: list[AnswerSentence],
         retrieved: list[RetrievedChunk],
         confidence: float,
+        *,
+        season: str | None = None,
+        light: str | None = None,
     ) -> Answer:
         citations = [s.citation for s in sentences]
         as_of = max((c.fetch_date for c in citations), default=None)
@@ -254,6 +312,11 @@ class Assistant:
             disagreement_notices=disagreement_notices,
             confidence_band=band,
             confidence_band_label=self._config.prompts.confidence_band_label_for(band, lang),
+            season=season,
+            light=light,
+            context_note=self._config.prompts.context_note_for(
+                lang, self._context_items(season, light)
+            ),
         )
 
     def _refuse(
@@ -267,6 +330,8 @@ class Assistant:
         abstained: bool,
         confidence: float = 0.0,
         retrieved: Sequence[RetrievedChunk] = (),
+        season: str | None = None,
+        light: str | None = None,
     ) -> Answer:
         # Route to a vet / poison-control line whenever the question was classified a
         # safety query OR the retrieved evidence itself cites a toxicity passage — so a
@@ -298,6 +363,11 @@ class Assistant:
             disclosure=self._config.prompts.disclosure_for(lang),
             confidence_band=band,
             confidence_band_label=self._config.prompts.confidence_band_label_for(band, lang),
+            season=season,
+            light=light,
+            context_note=self._config.prompts.context_note_for(
+                lang, self._context_items(season, light)
+            ),
         )
 
     def resolve_language(self, query: str, language: str | None = None) -> str:
@@ -310,14 +380,22 @@ class Assistant:
 
         return {species_slug(chunk.source) for chunk in self._store.all_chunks()}
 
-    def trace(self, query: str, language: str | None = None) -> AnswerTrace:
+    def trace(
+        self,
+        query: str,
+        language: str | None = None,
+        *,
+        season: str | None = None,
+        light: str | None = None,
+    ) -> AnswerTrace:
         """Return the full retrieval+generation trace for debugging (``--debug``)."""
         lang = self._resolve_language(query, language)
         retrieved = self._retriever.retrieve(query)
+        boost_terms = self._context_boost_terms(season, light)
         candidates = self._generator.generate(
-            query, retrieved, self._config.generation.max_sentences
+            query, retrieved, self._config.generation.max_sentences, boost_terms
         )
-        answer = self.answer(query, language)
+        answer = self.answer(query, language, season=season, light=light)
         return AnswerTrace(
             query=query,
             language=lang,

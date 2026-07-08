@@ -457,6 +457,14 @@ class PromptConfig(_Model):
             },
         }
     )
+    # EXP-05: echoes the season/light selector back to the user. Explicit that it is
+    # their own stated context, not a citation, and not retained anywhere.
+    context_note_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": "As you stated ({items}) — your own context, not a cited fact, and not saved.",
+            "es": "Según lo que indicaste ({items}): tu propio contexto, no un hecho citado, y no se guarda.",  # noqa: E501
+        }
+    )
 
     def refusal_for(self, language: str) -> str:
         return self.refusal_by_lang.get(language, self.refusal_by_lang["en"])
@@ -504,6 +512,13 @@ class PromptConfig(_Model):
         return template.format(
             mention_a=mention_a, source_a=source_a, mention_b=mention_b, source_b=source_b
         )
+
+    def context_note_for(self, language: str, items: list[str]) -> str | None:
+        """Localized echo of the season/light selector (EXP-05), or ``None`` if unused."""
+        if not items:
+            return None
+        template = self.context_note_by_lang.get(language, self.context_note_by_lang["en"])
+        return template.format(items=", ".join(items))
 
     def safety_directive_for(self, language: str, exposure_type: str | None = None) -> str:
         """The full safety message shown on every toxicity answer/refusal.
