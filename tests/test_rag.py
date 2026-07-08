@@ -47,6 +47,28 @@ def test_bm25_empty_corpus() -> None:
     assert BM25Index([]).scores("anything") == []
 
 
+def test_bm25_from_state_roundtrips_scores_without_retokenising() -> None:
+    """FIX-07: persisted postings reconstruct an index with identical scores/ranking."""
+    docs = [
+        "yellow leaves indicate overwatering",
+        "bright indirect light near a window",
+        "toxic to cats and dogs, oral irritation",
+    ]
+    original = BM25Index(docs, k1=1.3, b=0.8)
+    reloaded = BM25Index.from_state(original.to_state())
+
+    assert reloaded.k1 == original.k1
+    assert reloaded.b == original.b
+    for query in ["why are leaves yellow", "toxic to cats", "nonsense query xyz", ""]:
+        assert reloaded.scores(query) == original.scores(query)
+        assert reloaded.ranking(query) == original.ranking(query)
+
+
+def test_bm25_from_state_empty_corpus() -> None:
+    reloaded = BM25Index.from_state(BM25Index([]).to_state())
+    assert reloaded.scores("anything") == []
+
+
 # --- embedding -------------------------------------------------------------------
 def test_hashing_embedding_deterministic_and_normalised() -> None:
     emb = HashingEmbedding(dim=128)
@@ -92,6 +114,44 @@ def test_store_load_bad_format(tmp_path: Path) -> None:
     p.write_text('{"format_version": 99, "chunks": [], "vectors": []}', encoding="utf-8")
     with pytest.raises(ValueError, match="format"):
         VectorStore.load(p)
+
+
+def test_store_load_bad_format_points_at_ingest(tmp_path: Path) -> None:
+    p = tmp_path / "bad.json"
+    p.write_text('{"format_version": 1, "chunks": [], "vectors": []}', encoding="utf-8")
+    with pytest.raises(ValueError, match="sprout ingest"):
+        VectorStore.load(p)
+
+
+def test_store_persists_and_reloads_bm25_postings(tmp_path: Path, tiny_chunks: list[Chunk]) -> None:
+    """FIX-07: BM25 postings built once at ingest survive a save/load round trip."""
+    emb = HashingEmbedding(dim=64)
+    store = VectorStore()
+    for c in tiny_chunks:
+        store.add(c, emb.embed(c.text))
+    store.build_bm25()
+    assert store.bm25 is not None
+
+    p = tmp_path / "index.json"
+    store.save(p)
+    raw = p.read_text(encoding="utf-8")
+    assert '"bm25"' in raw  # postings are actually on disk, not rebuilt from nothing
+
+    reloaded = VectorStore.load(p)
+    assert reloaded.bm25 is not None
+    assert reloaded.bm25.ranking("yellow leaves") == store.bm25.ranking("yellow leaves")
+
+
+def test_store_search_bounds_to_candidate_ids(tmp_path: Path, tiny_chunks: list[Chunk]) -> None:
+    emb = HashingEmbedding(dim=64)
+    store = VectorStore()
+    for c in tiny_chunks:
+        store.add(c, emb.embed(c.text))
+    pothos_ids = {c.chunk_id for c in tiny_chunks if c.source.startswith("pothos")}
+
+    hits = store.search(emb.embed("toxic to cats"), top_k=10, candidate_ids=pothos_ids)
+    assert hits  # at least the pothos toxicity chunk scores
+    assert {rc.chunk.chunk_id for rc in hits} <= pothos_ids
 
 
 # --- retrieval -------------------------------------------------------------------
@@ -147,6 +207,42 @@ def test_hybrid_and_vector_only_agree_on_top(
     top_hybrid = a_hybrid._retriever.retrieve(q)[0].chunk.source
     top_vec = a_vec._retriever.retrieve(q)[0].chunk.source
     assert top_hybrid == top_vec == "monstera.md"
+
+
+def test_bm25_not_rebuilt_per_query(monkeypatch: pytest.MonkeyPatch, assistant: Assistant) -> None:
+    """FIX-07: BM25 is constructed once per Retriever, never re-tokenised per query."""
+    calls = {"n": 0}
+    real_init = BM25Index.__init__
+
+    def counting_init(self: BM25Index, *args: object, **kwargs: object) -> None:
+        calls["n"] += 1
+        real_init(self, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(BM25Index, "__init__", counting_init)
+    retriever = assistant._retriever
+    # A fresh BM25Index was already built once during __init__ (before the patch); prove
+    # subsequent queries build zero more.
+    for q in ["why yellow leaves", "is pothos toxic", "bright light window", "toxic to dogs"]:
+        retriever.retrieve(q)
+    assert calls["n"] == 0
+
+
+def test_bm25_uses_stores_persisted_postings_when_present(
+    config: Config, tiny_chunks: list[Chunk]
+) -> None:
+    """A Retriever built over a store with pre-built BM25 postings reuses them as-is."""
+    from sprout.answer import Assistant
+    from sprout.providers import build_generator
+
+    emb = HashingEmbedding(dim=config.retrieval.embedding_dim)
+    store = VectorStore()
+    for c in tiny_chunks:
+        store.add(c, emb.embed(c.text))
+    store.build_bm25(k1=config.retrieval.bm25_k1, b=config.retrieval.bm25_b)
+    persisted_bm25 = store.bm25
+
+    a = Assistant(config, store, emb, build_generator(config))
+    assert a._retriever._bm25 is persisted_bm25
 
 
 # --- confidence ------------------------------------------------------------------
