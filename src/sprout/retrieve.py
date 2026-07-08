@@ -4,9 +4,12 @@ Retrieval is mandatory and runs first; nothing downstream sees a passage that di
 clear it. Two ranking paths (cosine over hashing embeddings, Okapi BM25) are fused by
 Reciprocal Rank Fusion so one path's miss is caught by the other. A conservative
 species filter restricts candidates to the named plant when the question clearly names
-one — so "is pothos toxic to cats?" cannot accidentally ground in a Monstera passage.
-The returned chunks always carry their *cosine* score, so ``min_score`` keeps its
-meaning under hybrid and is the single gate that decides answer-vs-refuse.
+one — so "is pothos toxic to cats?" cannot accidentally ground in a Monstera passage. When a
+turn names no species of its own, an optional ``history_species`` (EXP-07's conversation
+selector; see ``conversation.py``) is used as a fallback — never an override, since an
+explicitly named species always wins. The returned chunks always carry their *cosine* score,
+so ``min_score`` keeps its meaning under hybrid and is the single gate that decides
+answer-vs-refuse.
 
 Two scale properties matter as the corpus grows past a few hundred chunks (FIX-07,
 ``docs/ideation/02-large-scale-fixes.md``): the BM25 index is built **once** per
@@ -177,18 +180,24 @@ class Retriever:
             token_set(name) and token_set(name) <= q_tokens for name in UNCOVERED_SPECIES_GAZETTEER
         )
 
-    def _candidates(self, query: str) -> list[Chunk]:
+    def _candidates(self, query: str, history_species: str | None = None) -> list[Chunk]:
         if not self._config.retrieval.topic_filter:
             return list(self._chunks)
         named = self._named_species(query)
+        if not named and history_species:
+            # The current turn names no species of its own: fall back to the prior turn's
+            # selector (EXP-07, history-as-selector). A species the query names explicitly
+            # always wins outright — history is consulted only when the turn is silent on
+            # species, and it can only *narrow the search*, never add or change a fact.
+            named = {history_species}
         if not named:
             return list(self._chunks)
         ids = [cid for slug in named for cid in self._chunk_ids_by_slug.get(slug, [])]
         return [self._by_chunk_id[cid] for cid in ids]
 
-    def retrieve(self, query: str) -> list[RetrievedChunk]:
+    def retrieve(self, query: str, history_species: str | None = None) -> list[RetrievedChunk]:
         rcfg = self._config.retrieval
-        candidates = self._candidates(query)
+        candidates = self._candidates(query, history_species)
         if not candidates:
             return []
         candidate_ids = {c.chunk_id for c in candidates}

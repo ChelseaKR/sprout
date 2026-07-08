@@ -557,6 +557,9 @@ class ServerConfig(_Model):
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
     max_question_chars: int = Field(default=500, ge=1, le=4000)
+    # EXP-07: turns kept per session in the in-memory conversation window
+    # (`conversation.SessionMemory`) — species-slug/topic/language selectors only, never
+    # answer text, never persisted. 0 disables conversation memory entirely.
     session_memory: int = Field(default=4, ge=0, le=50)
     # Body-size cap independent of any proxy config. Sized above the largest legitimate
     # payload — an 8 MB photo, base64-inflated ~1.33x, plus JSON/field overhead — with margin.

@@ -20,6 +20,12 @@ season/placement qualifiers a user can just state ("winter", "north window"). Th
 taken exactly as given, never inferred from locale or the system clock, used only to
 nudge which already-cited sentence the generator picks, and echoed back on the ``Answer``
 — never persisted, never treated as a citation.
+
+An optional ``history`` (:class:`~sprout.models.Turn`, EXP-07) may resolve which species a
+follow-up is about when the query itself names none. It is consulted in exactly one place —
+as a fallback input to ``Retriever``'s candidate filter — and nowhere else in this pipeline:
+it never reaches ``model_query``, the generator, or the citation guard, so history can narrow
+*which* corpus passages are searched but can never add, remove, or override a cited fact.
 """
 
 from __future__ import annotations
@@ -45,7 +51,7 @@ from .guards import (
     safety_filter,
 )
 from .lang import detect_language
-from .models import Answer, AnswerSentence, ConfidenceEvidence, RetrievedChunk
+from .models import Answer, AnswerSentence, ConfidenceEvidence, RetrievedChunk, Turn
 from .providers import build_embedding, build_entailment_verifier, build_generator
 from .providers.base import EmbeddingProvider, GenerationProvider
 from .retrieve import Retriever
@@ -89,12 +95,19 @@ class Assistant:
         """Load the persisted index from ``config.store.path`` and build the assistant."""
         return cls.from_store(config, VectorStore.load(config.store.path))
 
-    def _resolve_language(self, query: str, language: str | None) -> str:
+    def _resolve_language(
+        self, query: str, language: str | None, history: Turn | None = None
+    ) -> str:
         supported = self._config.languages.supported
         if language is not None and language in supported:
             return language
-        detected = detect_language(query, default=self._config.corpus.default_language)
-        return detected if detected in supported else self._config.corpus.default_language
+        fallback = (
+            history.language
+            if history is not None and history.language in supported
+            else self._config.corpus.default_language
+        )
+        detected = detect_language(query, default=fallback)
+        return detected if detected in supported else fallback
 
     def _retrieve_and_render(
         self,
@@ -103,6 +116,7 @@ class Assistant:
         *,
         season: str | None = None,
         light: str | None = None,
+        history_species: str | None = None,
     ) -> tuple[list[RetrievedChunk], list[AnswerSentence], bool]:
         """Retrieval + generation + guards, stopping short of the confidence gate.
 
@@ -112,7 +126,7 @@ class Assistant:
         threshold to decide what counts as training signal for a new one would be
         circular).
         """
-        retrieved = self._retriever.retrieve(query)
+        retrieved = self._retriever.retrieve(query, history_species=history_species)
         if not self._retriever.has_grounding(query, retrieved):
             return retrieved, [], False
 
@@ -134,19 +148,26 @@ class Assistant:
         self,
         query: str,
         language: str | None = None,
+        history: Turn | None = None,
         *,
         season: str | None = None,
         light: str | None = None,
     ) -> Answer:
-        lang = self._resolve_language(query, language)
+        """Answer ``query``, optionally resolving species from a prior turn's selector.
+
+        ``history`` (EXP-07) is a fallback only: if the query itself names a species, that
+        species wins outright and ``history`` is not consulted at all.
+        """
+        lang = self._resolve_language(query, language, history)
         safety = is_safety_query(query, lang, self._config.guards)
         # FIX-13: classify the audience (child/animal/both/unspecified) alongside the
         # existing safety classification, so a rendered or refused safety answer can
         # route to the right escalation card(s) once a clinician-reviewed human card
         # exists. See Config.prompts.safety_directive_for.
         exposure_type = detect_exposure_type(query, lang, self._config.guards) if safety else None
+        history_species = history.species_slug if history is not None else None
         retrieved, sentences, grounded = self._retrieve_and_render(
-            query, lang, season=season, light=light
+            query, lang, season=season, light=light, history_species=history_species
         )
 
         # Hard species gate: a toxicity/safety question that clearly names a plant not

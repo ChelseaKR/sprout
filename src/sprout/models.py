@@ -128,6 +128,19 @@ class SourceDisagreement(_Frozen):
     citation_a: Citation
     mention_b: str
     citation_b: Citation
+class Turn(_Frozen):
+    """One turn's selector context for the multi-turn conversation window.
+
+    EXP-07: history is a *selector*, never a source. A ``Turn`` carries only these three
+    closed-vocabulary fields — never the question text, never the answer text, never a
+    citation — so there is no field for an earlier turn to smuggle a fact into a later one.
+    ``species_slug`` and ``topic`` are ``None`` when a turn had no grounded answer (a
+    refusal carries no selector).
+    """
+
+    species_slug: str | None = None
+    topic: str | None = None
+    language: str
 
 
 class Answer(_Frozen):
