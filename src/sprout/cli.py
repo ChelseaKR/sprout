@@ -682,6 +682,37 @@ def remind_remove(
         raise typer.Exit(1)
 
 
+@remind_app.command("export")
+def remind_export(
+    ics: Annotated[
+        bool, typer.Option("--ics", help="Emit an RFC 5545 iCalendar (.ics) file.")
+    ] = False,
+    out: Annotated[
+        Path | None,
+        typer.Option("--out", help="Write to this file instead of stdout."),
+    ] = None,
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Export reminders as a standards-based calendar file for any calendar app.
+
+    One-directional and read-only: nothing is imported back, no sync/push channel is
+    added, and the reminders JSON store stays the single source of truth (ADR-0011).
+    """
+    if not ics:
+        typer.echo("Nothing to export: pass --ics.", err=True)
+        raise typer.Exit(1)
+    from .ics import reminders_to_ics
+
+    store, _ = _reminder_store(config)
+    reminders = store.all_reminders()
+    text = reminders_to_ics(reminders)
+    if out is not None:
+        out.write_text(text, encoding="utf-8")
+        typer.echo(f"Wrote {len(reminders)} reminder(s) to {out}.")
+    else:
+        typer.echo(text, nl=False)
+
+
 @app.command()
 def demo(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
     """Reproduce a short scripted session (the `make demo` target)."""
