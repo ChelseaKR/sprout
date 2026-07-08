@@ -193,6 +193,13 @@ def test_refusal_detects_wrong_decision() -> None:
     assert not r.passed
 
 
+def test_refusal_threshold_for_provider() -> None:
+    from sprout.eval.suites.refusal import OFFLINE_THRESHOLD, PORTFOLIO_TARGET, threshold_for
+
+    assert threshold_for("deterministic") == OFFLINE_THRESHOLD == 0.90
+    assert threshold_for("bedrock") == PORTFOLIO_TARGET == 0.95
+
+
 def test_empty_suite_fails_closed() -> None:
     # A dataset with only a multilingual-irrelevant item -> groundedness has zero items.
     item = _mk(
