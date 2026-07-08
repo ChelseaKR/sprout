@@ -51,6 +51,12 @@ Reminders are **local-first and opt-in** (`reminders.py`, `config.py::RemindersC
   devices and there is no push/notification delivery in this phase. Proactive delivery
   (web push / email / SMS) is explicitly deferred to the Family-Greenhouse integration, which
   already owns notification channels (README, Phase B) — Sprout should not grow a second one.
+  `sprout remind export --ics` (EXP-10, `docs/ideation/03-expansions.md`) makes that limit
+  livable without adding a channel: it is a pure, one-directional function from
+  `ReminderStore.all_reminders()` to an RFC 5545 `.ics` text (`src/sprout/ics.py`), so the
+  user's own calendar app becomes the notifier. There is no import path — Sprout never reads
+  an `.ics` file back — so the reminders JSON file remains the single source of truth and no
+  new sync/push/account surface is introduced.
 - **Negative.** A shared/multi-user deployment would need per-user isolation and auth around
   the store; the local-first design targets the single-user offline case and leaves
   multi-tenant concerns to a future ASVS-L2 phase, like household personalization.

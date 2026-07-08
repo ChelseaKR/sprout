@@ -40,7 +40,10 @@ sent, saved, or logged.
   device — offline, opt-in, nothing uploaded. Reminders are intentionally absent from the
   public web reference because household tasks belong in Family Greenhouse; see
   [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md) and
-  [ADR-0015](docs/adr/0015-web-is-a-reference-and-assurance-surface.md).
+  [ADR-0015](docs/adr/0015-web-is-a-reference-and-assurance-surface.md). **Exports them as
+  a standards-based `.ics` calendar** (`sprout remind export --ics`) so any calendar app
+  can notify you — one-directional, no sync/push channel added, the local JSON file stays
+  the single source of truth.
 
 ### The four hard rules (enforced, not aspirational)
 
@@ -76,6 +79,7 @@ uv run sprout ask "Why are my Monstera's leaves yellowing?"
 uv run sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
 uv run sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer
 uv run sprout remind add pothos --kind water --every 7    # local, offline reminder
+uv run sprout remind export --ics --out reminders.ics     # standards-based calendar file, any app
 uv run sprout serve                     # stateless reference UI + JSON/SSE API at :8000
 make eval                        # regenerate the committed eval report, fully offline
 ```
