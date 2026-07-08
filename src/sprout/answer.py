@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .answer_trace import AnswerTrace
-from .confidence import is_low_confidence, score_confidence, should_abstain
+from .confidence import best_and_margin, is_low_confidence, score_confidence, should_abstain
 from .config import Config
 from .guards import (
     citation_guard,
@@ -31,7 +31,7 @@ from .guards import (
     safety_filter,
 )
 from .lang import detect_language
-from .models import Answer, AnswerSentence, RetrievedChunk
+from .models import Answer, AnswerSentence, ConfidenceEvidence, RetrievedChunk
 from .providers import build_embedding, build_generator
 from .providers.base import EmbeddingProvider, GenerationProvider
 from .retrieve import Retriever
@@ -69,6 +69,29 @@ class Assistant:
         detected = detect_language(query, default=self._config.corpus.default_language)
         return detected if detected in supported else self._config.corpus.default_language
 
+    def _retrieve_and_render(
+        self, query: str, lang: str
+    ) -> tuple[list[RetrievedChunk], list[AnswerSentence], bool]:
+        """Retrieval + generation + guards, stopping short of the confidence gate.
+
+        Returns ``(retrieved, sentences, grounded)``. Shared by :meth:`answer` (which
+        applies the confidence/abstain gate on top) and :meth:`confidence_signal` (which
+        needs the same evidence *without* the gate: using the currently configured
+        threshold to decide what counts as training signal for a new one would be
+        circular).
+        """
+        retrieved = self._retriever.retrieve(query)
+        if not self._retriever.has_grounding(query, retrieved):
+            return retrieved, [], False
+
+        model_query = redact_pii(query) if self._config.generation.redact_query_pii else query
+        candidates = self._generator.generate(
+            model_query, retrieved, self._config.generation.max_sentences
+        )
+        sentences = citation_guard(candidates, retrieved, self._config.generation.support_overlap)
+        sentences = safety_filter(sentences, lang, self._config.guards)
+        return retrieved, sentences, True
+
     def answer(self, query: str, language: str | None = None) -> Answer:
         lang = self._resolve_language(query, language)
         safety = is_safety_query(query, lang, self._config.guards)
@@ -77,11 +100,12 @@ class Assistant:
         # route to the right escalation card(s) once a clinician-reviewed human card
         # exists. See Config.prompts.safety_directive_for.
         exposure_type = detect_exposure_type(query, lang, self._config.guards) if safety else None
-        retrieved = self._retriever.retrieve(query)
+        retrieved, sentences, grounded = self._retrieve_and_render(query, lang)
 
         # Hard species gate: a toxicity/safety question that clearly names a plant not
         # in the corpus (via the off-corpus gazetteer) is refused before the grounding
-        # check runs, so a spurious low-score match can never masquerade as coverage.
+        # outcome is consulted, so a spurious low-score match can never masquerade as
+        # coverage. Any generated sentences for such a query are discarded unrendered.
         if safety and self._retriever.names_uncovered_species(query):
             return self._refuse(
                 query,
@@ -93,7 +117,7 @@ class Assistant:
                 retrieved=retrieved,
             )
 
-        if not self._retriever.has_grounding(query, retrieved):
+        if not grounded:
             return self._refuse(
                 query,
                 lang,
@@ -103,13 +127,6 @@ class Assistant:
                 abstained=False,
                 retrieved=retrieved,
             )
-
-        model_query = redact_pii(query) if self._config.generation.redact_query_pii else query
-        candidates = self._generator.generate(
-            model_query, retrieved, self._config.generation.max_sentences
-        )
-        sentences = citation_guard(candidates, retrieved, self._config.generation.support_overlap)
-        sentences = safety_filter(sentences, lang, self._config.guards)
 
         if not sentences:
             return self._refuse(
@@ -122,7 +139,7 @@ class Assistant:
                 retrieved=retrieved,
             )
 
-        confidence = score_confidence(retrieved, len(sentences))
+        confidence = score_confidence(retrieved, len(sentences), self._config.confidence)
         if should_abstain(confidence, self._config.confidence):
             return self._refuse(
                 query,
@@ -136,6 +153,23 @@ class Assistant:
             )
 
         return self._render(query, lang, safety, exposure_type, sentences, retrieved, confidence)
+
+    def confidence_signal(self, query: str, language: str | None = None) -> ConfidenceEvidence:
+        """Retrieval evidence for one question, without applying the confidence gate.
+
+        Used by ``sprout fit-confidence`` to collect (best, margin) -> outcome pairs over
+        a train split. See :class:`~sprout.models.ConfidenceEvidence`.
+        """
+        lang = self._resolve_language(query, language)
+        retrieved, sentences, grounded = self._retrieve_and_render(query, lang)
+        best, margin = best_and_margin(retrieved)
+        return ConfidenceEvidence(
+            query=query,
+            best=best,
+            margin=margin,
+            grounded=grounded,
+            text=" ".join(s.text for s in sentences),
+        )
 
     def _render(
         self,
