@@ -112,6 +112,24 @@ class ConfidenceEvidence(_Frozen):
     text: str
 
 
+class SourceDisagreement(_Frozen):
+    """Two retrieved passages that state a conflicting numeric care cadence for the
+    same action ("water every 7 days" vs "water every 14 days").
+
+    The pairwise contradiction probe in ``disagreement.py`` never averages and never
+    silently picks a winner between the two candidate chunks — both mentions and both
+    citations are always carried together so the answer can disclose the conflict
+    instead of rendering whichever chunk happened to rank first (EXP-02,
+    ``docs/ideation/03-expansions.md``).
+    """
+
+    action: str
+    mention_a: str
+    citation_a: Citation
+    mention_b: str
+    citation_b: Citation
+
+
 class Answer(_Frozen):
     """The final, guard-checked answer object returned to callers and the UI."""
 
@@ -133,6 +151,8 @@ class Answer(_Frozen):
     abstained: bool = False
     disclosure: str = ""
     as_of: str | None = None
+    disagreements: tuple[SourceDisagreement, ...] = Field(default_factory=tuple)
+    disagreement_notices: tuple[str, ...] = Field(default_factory=tuple)
 
     @property
     def text(self) -> str:
@@ -150,6 +170,7 @@ class Answer(_Frozen):
         parts = [self.refusal_text or ""] if self.refused else [s.text for s in self.sentences]
         if self.safety_notice:
             parts.append(self.safety_notice)
+        parts.extend(self.disagreement_notices)
         return " ".join(p for p in parts if p).strip()
 
     @property

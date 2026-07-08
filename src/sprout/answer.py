@@ -22,6 +22,7 @@ from collections.abc import Sequence
 from .answer_trace import AnswerTrace
 from .confidence import best_and_margin, is_low_confidence, score_confidence, should_abstain
 from .config import Config
+from .disagreement import numeric_cadence_conflicts
 from .guards import (
     citation_guard,
     detect_exposure_type,
@@ -196,6 +197,19 @@ class Assistant:
             if safety
             else (detect_exposure_type(query, lang, self._config.guards) if route else None)
         )
+        # EXP-02: a pairwise numeric-cadence probe over every retrieved sibling chunk
+        # (not only the ones quoted) — when two sources give a different cadence for the
+        # same care action, surface both citations instead of only the one that ranked
+        # first. The probe only ever compares chunks sharing a topic, so a toxicity-topic
+        # conflict is always also caught by ``toxicity_cited`` above and still routes
+        # conservatively to the safety path.
+        disagreements = numeric_cadence_conflicts(sentences, retrieved)
+        disagreement_notices = tuple(
+            self._config.prompts.disagreement_notice_for(
+                lang, d.mention_a, d.citation_a.label, d.mention_b, d.citation_b.label
+            )
+            for d in disagreements
+        )
         return Answer(
             question=query,
             language=lang,
@@ -212,6 +226,8 @@ class Assistant:
             abstained=False,
             disclosure=self._config.prompts.disclosure_for(lang),
             as_of=as_of,
+            disagreements=disagreements,
+            disagreement_notices=disagreement_notices,
         )
 
     def _refuse(

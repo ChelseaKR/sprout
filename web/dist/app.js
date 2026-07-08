@@ -10,6 +10,7 @@
   const answerHeading = document.getElementById("answer-h");
   const evidencePanel = document.querySelector(".evidence-panel");
   const safetyEl = document.getElementById("safety");
+  const disagreementsEl = document.getElementById("disagreements");
   const sourcesWrap = document.getElementById("sources-wrap");
   const citationsEl = document.getElementById("citations");
   const metaEl = document.getElementById("meta");
@@ -36,6 +37,8 @@
     metaEl.textContent = "";
     safetyEl.hidden = true;
     safetyEl.textContent = "";
+    disagreementsEl.hidden = true;
+    disagreementsEl.textContent = "";
     sourcesWrap.hidden = true;
     answerHeading.textContent = "Checking the evidence";
   }
@@ -98,6 +101,16 @@
       const data = JSON.parse(event.data);
       safetyEl.textContent = data.text;
       safetyEl.hidden = false;
+    });
+
+    // EXP-02: when retrieved sources give a conflicting numeric care cadence, both
+    // citations are rendered here plainly rather than one being silently dropped.
+    source.addEventListener("disagreement", function (e) {
+      const data = JSON.parse(e.data);
+      const p = document.createElement("p");
+      p.textContent = data.text;
+      disagreementsEl.appendChild(p);
+      disagreementsEl.hidden = false;
     });
 
     source.addEventListener("done", function (event) {

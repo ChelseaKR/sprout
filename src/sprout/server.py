@@ -76,6 +76,8 @@ def _sse_events(answer: Answer) -> Iterator[dict[str, str]]:
         }
     if answer.safety_notice:
         yield {"event": "safety", "data": json.dumps({"text": answer.safety_notice})}
+    for notice in answer.disagreement_notices:
+        yield {"event": "disagreement", "data": json.dumps({"text": notice})}
     yield {
         "event": "done",
         "data": json.dumps(
@@ -318,6 +320,7 @@ def _register_identify(
                     "as_of": ans.as_of,
                     "disclosure": ans.disclosure,
                     "language": ans.language,
+                    "disagreements": [d.model_dump() for d in ans.disagreements],
                 }
             return JSONResponse(data)
         finally:
