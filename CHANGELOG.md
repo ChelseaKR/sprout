@@ -178,6 +178,14 @@ the public evaluation harness as the headline artifact.
   HTML + JSON, plus JUnit and SARIF; runs are content-hashed and **byte-identical for identical
   inputs**. Fail-closed loader (`eval/dataset.py`) rejects hash mismatches, malformed cases, and
   empty suites.
+- **`sprout.eval` as a plugin-based package** (`eval/suite.py`, ADR-0013): third-party suites are
+  discovered via the `sprout.eval.suites` `importlib.metadata` entry-point group, alongside the
+  five built-in suites, fail-closed on a name collision. The public plugin surface — `Dataset`,
+  `Judge`, `Suite`/`EvalContext`, `SuiteResult`, `MetricDefinition`, and the registry — is frozen
+  and re-exported with an explicit `__all__` from `sprout.eval`, with a semver commitment. Proven
+  by a worked, independently pip-installable second-domain example at
+  `examples/herb-garden-plugin/` (a culinary-herb corpus + a domain-specific suite, zero changes
+  to this repo's source, committed reproducible report).
 - **Synthetic, CC0-1.0 corpus** (`corpus/`) with a dated, licensed `manifest.yaml`; chunked by care
   topic with source/license/fetch-date metadata; UI shows "based on references as of &lt;date&gt;."
 - **Accessible web UI** (`web/dist/`): framework-free WCAG 2.2 AA chat interface with a non-chat

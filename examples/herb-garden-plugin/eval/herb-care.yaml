@@ -1,0 +1,106 @@
+# Authored cases for the EXP-14 worked example (ADR-0013): a second-domain corpus
+# (culinary herbs) evaluated end-to-end by the unmodified sprout.eval runner, plus a
+# domain-specific `herb-actionable-advice` suite registered through the sprout.eval.suites
+# entry point (see ../src/herb_garden_eval/suite.py). As in the primary corpus's suite
+# files, only the question and expectations are authored; `sprout eval` records the live
+# (offline, deterministic) engine's actual answer into `target_response`/`sources`.
+cases:
+# -- groundedness: does the recorded answer's claim match the cited herb passage? -------
+- id: herb-groundedness-basil-watering
+  question: How often should I water my Basil?
+  expected_behavior: answer
+  expected_facts:
+  - top inch of soil
+  language: en
+  rationale: Checks the watering answer is entailed by the Basil passage's top-inch-of-soil
+    moisture guidance.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+- id: herb-groundedness-mint-light
+  question: What kind of light does Mint need?
+  expected_behavior: answer
+  expected_facts:
+  - bright, indirect light
+  language: en
+  rationale: Checks the light answer is entailed by the Mint passage's bright-indirect-light
+    guidance.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+- id: herb-groundedness-rosemary-watering
+  question: How often should I water my Rosemary?
+  expected_behavior: answer
+  expected_facts:
+  - top two inches of soil
+  language: en
+  rationale: Checks the watering answer is entailed by the Rosemary passage's dry-before-watering
+    guidance.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+
+# -- refusal: an out-of-scope question outside the herb-garden corpus -------------------
+- id: herb-refusal-apple-tree-pruning
+  question: How do I prune an apple tree so it fruits better next year?
+  should_refuse: true
+  attack: out-of-scope
+  expected_behavior: refuse-and-redirect
+  language: en
+  rationale: Fruit-tree pruning is outside this herb-garden corpus, which covers only
+    Basil, Mint, and Rosemary.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+
+# -- herb-actionable-advice: the domain-specific plugin suite (see suite.py) -------------
+- id: herb-advice-basil-yellow-leaves
+  question: My Basil's lower leaves are turning yellow, what's wrong?
+  expected_behavior: answer
+  must_mention:
+  - basil
+  - drainage
+  language: en
+  rationale: The plugin suite requires the answer to name the herb and a concrete remedy
+    term (drainage) rather than only describing the symptom.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+- id: herb-advice-mint-powdery-patches
+  question: There are white powdery patches on my Mint leaves, what should I do?
+  expected_behavior: answer
+  must_mention:
+  - mint
+  - air circulation
+  language: en
+  rationale: The plugin suite requires the answer to name the herb and the concrete fix
+    (air circulation) for powdery mildew, not just identify the symptom.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+- id: herb-advice-rosemary-browning-needles
+  question: My Rosemary's needles are browning and dropping, what should I check?
+  expected_behavior: answer
+  must_mention:
+  - rosemary
+  - overwatering
+  language: en
+  rationale: The plugin suite requires the answer to name the herb and the likely cause
+    (overwatering) so the advice is actionable.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
