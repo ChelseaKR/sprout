@@ -42,6 +42,49 @@ def is_safety_query(query: str, language: str, cfg: GuardsConfig) -> bool:
     return False
 
 
+def _matches_any(
+    query: str, q_tokens: set[str], language: str, keywords: dict[str, list[str]]
+) -> bool:
+    for lang in {language, "en"}:
+        for kw in keywords.get(lang, []):
+            if " " in kw:
+                if contains_phrase(query, kw):
+                    return True
+            elif kw in q_tokens or any(kw in t for t in q_tokens):
+                return True
+    return False
+
+
+def detect_exposure_type(query: str, language: str, cfg: GuardsConfig) -> str:
+    """Classify a safety query's exposure audience (research item FIX-13).
+
+    Reuses the same keyword-matching approach as ``is_safety_query`` but splits it into
+    a child/human subset (``GuardsConfig.child_exposure_keywords``) and an animal subset
+    (``GuardsConfig.animal_exposure_keywords``) so the escalation card can be routed to
+    the audience the query actually names, instead of always defaulting to the animal
+    lines. Deterministic and eval-gated -- it never infers an audience the query did not
+    name.
+
+    Returns one of:
+      - ``"child"``: only child/human terms matched ("my toddler chewed a leaf").
+      - ``"animal"``: only animal terms matched ("is this toxic to my cat?").
+      - ``"both"``: both matched (ambiguous household query, e.g. "toxic to kids or
+        pets?").
+      - ``"unspecified"``: a safety/toxicity term matched but no audience was named
+        ("is this plant poisonous?").
+    """
+    q_tokens = set(tokenize(query))
+    is_child = _matches_any(query, q_tokens, language, cfg.child_exposure_keywords)
+    is_animal = _matches_any(query, q_tokens, language, cfg.animal_exposure_keywords)
+    if is_child and is_animal:
+        return "both"
+    if is_child:
+        return "child"
+    if is_animal:
+        return "animal"
+    return "unspecified"
+
+
 _INJECTION_PATTERNS: dict[str, re.Pattern[str]] = {
     "instruction_override": re.compile(
         r"\b(ignore|disregard|forget)\b.{0,30}\b(previous|above|prior|instructions?|rules?)\b",

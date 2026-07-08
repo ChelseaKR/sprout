@@ -182,6 +182,62 @@ def test_safety_directive_has_en_es_parity_and_never_certifies() -> None:
         assert "888-426-4435" in directive and "855-764-7661" in directive
 
 
+def test_detect_exposure_type_classifies_child_animal_both_unspecified() -> None:
+    # FIX-13: exposure-type routing must be deterministic and keyword-driven, matching
+    # the audience the query actually names.
+    from sprout.guards import detect_exposure_type
+
+    cfg = Config().guards
+    assert detect_exposure_type("Is this toxic to my cat?", "en", cfg) == "animal"
+    assert detect_exposure_type("My dog chewed a leaf, is that bad?", "en", cfg) == "animal"
+    assert detect_exposure_type("My toddler bit a leaf off this plant", "en", cfg) == "child"
+    assert detect_exposure_type("Is this safe for my baby?", "en", cfg) == "child"
+    assert detect_exposure_type("Is this toxic to kids or pets?", "en", cfg) == "both"
+    assert detect_exposure_type("Is this plant poisonous?", "en", cfg) == "unspecified"
+    # Spanish mirrors the English classification (multilingual parity, R4).
+    assert detect_exposure_type("¿Es tóxico para mi gato?", "es", cfg) == "animal"
+    assert detect_exposure_type("Mi niño mordió una hoja de esta planta", "es", cfg) == "child"
+
+
+def test_human_escalation_card_gated_off_by_default() -> None:
+    # FIX-13 hard gate: the human-poison-control card must not render for any exposure
+    # type until a real clinician sign-off flips ``human_card_reviewed`` to True (see
+    # docs/audits/human-poison-control-card-review.md). Default config behavior for a
+    # child-ingestion query is unchanged from before FIX-13: only the animal card shows.
+    cfg = Config()
+    assert cfg.prompts.human_card_reviewed is False
+    for exposure_type in ("child", "animal", "both", "unspecified", None):
+        directive = cfg.prompts.safety_directive_for("en", exposure_type)
+        assert "1-800-222-1222" not in directive
+        assert "poison.org" not in directive
+        # The animal card still renders exactly as before FIX-13.
+        assert "888-426-4435" in directive
+
+
+def test_human_escalation_card_renders_only_for_child_exposure_once_reviewed() -> None:
+    # Simulates post-sign-off state: a reviewer has flipped human_card_reviewed to True
+    # (docs/audits/human-poison-control-card-review.md filled in). The human card must
+    # then appear *alongside*, never instead of, the animal card, and only for
+    # audiences that name a child ("child" or "both") -- never for a pure animal query.
+    cfg = Config()
+    reviewed_prompts = cfg.prompts.model_copy(update={"human_card_reviewed": True})
+
+    for exposure_type in ("child", "both"):
+        directive = reviewed_prompts.safety_directive_for("en", exposure_type)
+        assert "1-800-222-1222" in directive
+        assert "888-426-4435" in directive  # animal card still present, not replaced
+
+    for non_child_exposure_type in ("animal", "unspecified", None):
+        directive = reviewed_prompts.safety_directive_for("en", non_child_exposure_type)
+        assert "1-800-222-1222" not in directive
+        assert "888-426-4435" in directive
+
+    # Spanish parity for the human card too.
+    directive_es = reviewed_prompts.safety_directive_for("es", "child")
+    assert "1-800-222-1222" in directive_es
+    assert "888-426-4435" in directive_es
+
+
 def test_config_rejects_unknown_keys() -> None:
     with pytest.raises(ValidationError):
         Config.model_validate({"corpus": {"nope": 1}})

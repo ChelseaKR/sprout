@@ -24,6 +24,7 @@ from .confidence import is_low_confidence, score_confidence, should_abstain
 from .config import Config
 from .guards import (
     citation_guard,
+    detect_exposure_type,
     detect_injection,
     is_safety_query,
     redact_pii,
@@ -71,6 +72,11 @@ class Assistant:
     def answer(self, query: str, language: str | None = None) -> Answer:
         lang = self._resolve_language(query, language)
         safety = is_safety_query(query, lang, self._config.guards)
+        # FIX-13: classify the audience (child/animal/both/unspecified) alongside the
+        # existing safety classification, so a rendered or refused safety answer can
+        # route to the right escalation card(s) once a clinician-reviewed human card
+        # exists. See Config.prompts.safety_directive_for.
+        exposure_type = detect_exposure_type(query, lang, self._config.guards) if safety else None
         retrieved = self._retriever.retrieve(query)
 
         # Hard species gate: a toxicity/safety question that clearly names a plant not
@@ -81,6 +87,7 @@ class Assistant:
                 query,
                 lang,
                 safety,
+                exposure_type,
                 reason="species_not_covered",
                 abstained=False,
                 retrieved=retrieved,
@@ -88,7 +95,13 @@ class Assistant:
 
         if not self._retriever.has_grounding(query, retrieved):
             return self._refuse(
-                query, lang, safety, reason="out_of_scope", abstained=False, retrieved=retrieved
+                query,
+                lang,
+                safety,
+                exposure_type,
+                reason="out_of_scope",
+                abstained=False,
+                retrieved=retrieved,
             )
 
         model_query = redact_pii(query) if self._config.generation.redact_query_pii else query
@@ -103,6 +116,7 @@ class Assistant:
                 query,
                 lang,
                 safety,
+                exposure_type,
                 reason="no_supported_sentences",
                 abstained=False,
                 retrieved=retrieved,
@@ -114,19 +128,21 @@ class Assistant:
                 query,
                 lang,
                 safety,
+                exposure_type,
                 reason="low_confidence",
                 abstained=True,
                 confidence=confidence,
                 retrieved=retrieved,
             )
 
-        return self._render(query, lang, safety, sentences, retrieved, confidence)
+        return self._render(query, lang, safety, exposure_type, sentences, retrieved, confidence)
 
     def _render(
         self,
         query: str,
         lang: str,
         safety: bool,
+        exposure_type: str | None,
         sentences: list[AnswerSentence],
         retrieved: list[RetrievedChunk],
         confidence: float,
@@ -139,6 +155,13 @@ class Assistant:
         topic_by_id = {rc.chunk.chunk_id: rc.chunk.topic for rc in retrieved}
         toxicity_cited = any(topic_by_id.get(s.chunk_id) == "toxicity" for s in sentences)
         route = safety or toxicity_cited
+        # A toxicity-cited (but not keyword-classified) query never had its exposure type
+        # detected above; classify it now so the card still routes correctly.
+        route_exposure = (
+            exposure_type
+            if safety
+            else (detect_exposure_type(query, lang, self._config.guards) if route else None)
+        )
         return Answer(
             question=query,
             language=lang,
@@ -146,7 +169,10 @@ class Assistant:
             retrieved=tuple(retrieved),
             refused=False,
             is_safety_query=route,
-            safety_notice=self._config.prompts.safety_directive_for(lang) if route else None,
+            exposure_type=route_exposure,
+            safety_notice=(
+                self._config.prompts.safety_directive_for(lang, route_exposure) if route else None
+            ),
             confidence=round(confidence, 4),
             low_confidence=is_low_confidence(confidence, self._config.confidence),
             abstained=False,
@@ -159,6 +185,7 @@ class Assistant:
         query: str,
         lang: str,
         safety: bool,
+        exposure_type: str | None,
         *,
         reason: str,
         abstained: bool,
@@ -170,6 +197,13 @@ class Assistant:
         # refusal still routes even when the input keywords alone did not trip `safety`.
         toxicity_cited = any(rc.chunk.topic == "toxicity" for rc in retrieved)
         route = safety or toxicity_cited
+        # A toxicity-cited (but not keyword-classified) refusal never had its exposure
+        # type detected in answer(); classify it now so the card still routes correctly.
+        route_exposure = (
+            exposure_type
+            if safety
+            else (detect_exposure_type(query, lang, self._config.guards) if route else None)
+        )
         return Answer(
             question=query,
             language=lang,
@@ -177,7 +211,10 @@ class Assistant:
             refusal_reason=reason,
             refusal_text=self._config.prompts.refusal_for(lang),
             is_safety_query=route,
-            safety_notice=self._config.prompts.safety_directive_for(lang) if route else None,
+            exposure_type=route_exposure,
+            safety_notice=(
+                self._config.prompts.safety_directive_for(lang, route_exposure) if route else None
+            ),
             confidence=round(confidence, 4),
             low_confidence=True,
             abstained=abstained,
