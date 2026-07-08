@@ -20,7 +20,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .answer_trace import AnswerTrace
-from .confidence import best_and_margin, is_low_confidence, score_confidence, should_abstain
+from .confidence import (
+    best_and_margin,
+    confidence_band,
+    is_low_confidence,
+    score_confidence,
+    should_abstain,
+)
 from .config import Config
 from .disagreement import numeric_cadence_conflicts
 from .guards import (
@@ -210,6 +216,7 @@ class Assistant:
             )
             for d in disagreements
         )
+        band = confidence_band(confidence, self._config.confidence)
         return Answer(
             question=query,
             language=lang,
@@ -228,6 +235,8 @@ class Assistant:
             as_of=as_of,
             disagreements=disagreements,
             disagreement_notices=disagreement_notices,
+            confidence_band=band,
+            confidence_band_label=self._config.prompts.confidence_band_label_for(band, lang),
         )
 
     def _refuse(
@@ -254,6 +263,7 @@ class Assistant:
             if safety
             else (detect_exposure_type(query, lang, self._config.guards) if route else None)
         )
+        band = confidence_band(confidence, self._config.confidence)
         return Answer(
             question=query,
             language=lang,
@@ -269,6 +279,8 @@ class Assistant:
             low_confidence=True,
             abstained=abstained,
             disclosure=self._config.prompts.disclosure_for(lang),
+            confidence_band=band,
+            confidence_band_label=self._config.prompts.confidence_band_label_for(band, lang),
         )
 
     def resolve_language(self, query: str, language: str | None = None) -> str:

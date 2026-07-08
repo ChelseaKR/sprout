@@ -158,6 +158,21 @@ def test_default_config_is_valid() -> None:
     assert "veterinario" in cfg.prompts.safety_route_for("es")
 
 
+def test_confidence_band_labels_have_en_es_parity() -> None:
+    # EXP-06: every band key resolves in every supported language, with an English
+    # fallback for unsupported ones — same contract as the other *_by_lang catalogs.
+    cfg = Config()
+    langs = set(cfg.languages.supported)
+    for band, catalog in cfg.prompts.confidence_band_labels.items():
+        assert set(catalog) >= langs, band
+    assert cfg.prompts.confidence_band_label_for("well_supported", "es") == "bien respaldada"
+    assert cfg.prompts.confidence_band_label_for(
+        "well_supported", "fr"
+    ) == cfg.prompts.confidence_band_label_for("well_supported", "en")
+    # Unknown band key falls back to the key itself rather than raising.
+    assert cfg.prompts.confidence_band_label_for("not_a_band", "en") == "not_a_band"
+
+
 def test_safety_directive_has_en_es_parity_and_never_certifies() -> None:
     # The urgency routing (E2), the non-toxic-caveat (R7), and the escalation card (E9)
     # must each exist in every supported language, and the composed directive must never
