@@ -114,7 +114,7 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 | Reproducibility | byte-identical report from identical inputs | run fingerprint excludes wall-clock | AUTO |
 | Versioning | SemVer; Keep-a-Changelog; signed tags on first release | release workflow | AUTO (mechanism wired; **never yet exercised** — no tag has ever been cut, corrected 2026-07-05; see CHANGELOG.md) |
 | Publish | PyPI Trusted Publishing (OIDC) | release workflow | AUTO (wired; unexercised — same caveat) |
-| CI parity | `make verify` uses the same tools/thresholds as the required `ci-gate` checks | manual comparison (CONTRIBUTING.md); no mechanical invocation-diff exists yet, gap tracked | REVIEW |
+| CI parity | `make verify` uses the same tools/thresholds as the required `ci-gate` checks | `sprout ci-parity-check` (`src/sprout/ci_parity.py`, `tests/test_ci_parity.py`) mechanically diffs `.github/workflows/ci.yml`'s required jobs against their `Makefile` target(s); run via `make ci-parity-check` (also a `make verify` prerequisite) and the `ci-parity` CI job (a `ci-gate` dependency) | AUTO (wired 2026-07-08, closing `ci-parity-no-mechanical-diff`; the checker's first run also surfaced two real gaps — `docs` and the `zizmor` workflow-SAST scan were required by `ci-gate` but absent from `make verify` — now closed via new `docs`/`workflow-lint` prerequisites) |
 
 ---
 

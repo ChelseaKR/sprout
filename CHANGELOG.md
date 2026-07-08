@@ -68,11 +68,12 @@ the public evaluation harness as the headline artifact.
 - **Accessible web UI** (`web/dist/`): framework-free WCAG 2.2 AA chat interface with a non-chat
   transcript/alternate view; SSE token streaming; copyable citations.
 - **`sprout` CLI** (`ingest`, `ask`, `serve`, `eval`, `eval-baseline`, `calibrate`, `a11y-check`,
-  `demo`) and a JSON/SSE API server.
+  `ci-parity-check`, `demo`) and a JSON/SSE API server.
 - **Governance and process:** `make verify` reproducing the full CI gate set
-  (`lint · type · test ≥90% · security · eval · a11y`); CONTRIBUTING, SECURITY, CODE_OF_CONDUCT,
-  DEFINITION_OF_DONE; CODEOWNERS over the safety guardrails; ADRs; dependabot; SHA-pinned Actions;
-  Conventional Commits + DCO sign-off; the `claude/* → develop → main` branch model.
+  (`lint · type · test ≥90% · security · eval · a11y · docs · workflow-lint · ci-parity-check`);
+  CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, DEFINITION_OF_DONE; CODEOWNERS over the safety
+  guardrails; ADRs; dependabot; SHA-pinned Actions; Conventional Commits + DCO sign-off; the
+  `claude/* → develop → main` branch model.
 - **Docs:** ARCHITECTURE, THREAT-MODEL, ACCESSIBILITY (+ ACR via VPAT 2.5 Rev 508), ROADMAP,
   RESPONSIBLE-TECH-AUDITS, model and data cards, and the committed `docs/audits/` eval artifacts.
 
@@ -81,6 +82,13 @@ the public evaluation harness as the headline artifact.
   override) so the grounded photo path is testable offline.
 - New `identification` and `reminders` config blocks (`config/sprout.yaml`); `identify` optional
   dependency extra (`httpx`).
+- **CI/local parity is now mechanically checked, not just asserted** (`ci-parity-no-mechanical-diff`,
+  ROADMAP.md): `src/sprout/ci_parity.py` / `sprout ci-parity-check` diffs
+  `.github/workflows/ci.yml`'s required-job commands against their `Makefile` counterparts, wired
+  as `make ci-parity-check` (a `make verify` prerequisite) and a `ci-parity` CI job (a `ci-gate`
+  dependency). Its first run surfaced two real gaps — the `docs` and `zizmor` (workflow-SAST)
+  `ci-gate` jobs had no local equivalent in `make verify` — now closed with new `docs` and
+  `workflow-lint` prerequisites on `verify`.
 
 ### Security
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the

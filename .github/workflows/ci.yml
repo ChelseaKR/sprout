@@ -118,10 +118,25 @@ jobs:
       - name: zizmor (workflow SAST)
         run: uvx zizmor --min-severity high .github/workflows/
 
+  ci-parity:
+    # Mechanically proves `make verify` covers the same commands as this file's required jobs
+    # (CONTRIBUTING.md "CI parity" note; ROADMAP.md ci-parity-no-mechanical-diff). Fails if this
+    # workflow or the Makefile changes on one side without the other.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - name: Install (dev)
+        run: uv sync --frozen
+      - name: make verify vs. ci-gate invocation diff
+        run: uv run sprout ci-parity-check
+
   ci-gate:
     # The ONLY required status check for branch protection. pa11y is advisory.
     if: always()
-    needs: [test, security, eval-a11y, docs, zizmor]
+    needs: [test, security, eval-a11y, docs, zizmor, ci-parity]
     runs-on: ubuntu-latest
     steps:
       - name: Require all gates to pass (skipped path-filtered jobs are OK)

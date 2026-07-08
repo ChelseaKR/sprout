@@ -3,7 +3,7 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        a11y calibrate audits docs demo verify clean
+        a11y calibrate audits docs workflow-lint ci-parity-check demo verify clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -57,10 +57,16 @@ docs: ## Build the docs site strictly (mirrors the CI docs gate)
 	uv sync --group docs
 	$(PY) mkdocs build --strict
 
+workflow-lint: ## Workflow SAST (mirrors the CI zizmor gate)
+	uvx zizmor --min-severity high .github/workflows/
+
+ci-parity-check: ## Mechanically diff make verify's commands against the required ci-gate jobs
+	$(PY) sprout ci-parity-check
+
 demo: ingest ## Reproduce a short scripted session
 	$(PY) sprout demo --config $(CONFIG)
 
-verify: lint type test security eval a11y ## Full local mirror of the CI gate set
+verify: lint type test security eval a11y docs workflow-lint ci-parity-check ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts
