@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Sprout Static — the same grounded, cited houseplant-care assistant, running entirely in your browser with no server."
+    />
+    <title>Sprout Static — grounded plant-care answers, no server</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#1c6b3a" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to the question box</a>
+    <header class="banner" role="banner">
+      <p class="ref-impl">
+        Reference implementation · runs entirely in this tab · no server, no account, no
+        telemetry
+      </p>
+      <h1>Sprout Static <span aria-hidden="true">🌱</span></h1>
+      <p class="tagline">
+        The same grounded plant-care answers as Sprout — hashing embedder, BM25, extractive
+        generator, and guards, ported to TypeScript and run client-side over a static
+        index. View source in devtools: every retrieval and citation decision happens in
+        this tab.
+      </p>
+    </header>
+
+    <main id="main">
+      <p id="load-status" class="status" role="status" aria-live="polite">Loading the corpus index…</p>
+
+      <form id="ask-form" aria-describedby="form-help" hidden>
+        <p id="form-help" class="help">
+          Answers are not veterinary advice. Toxicity questions are never certified “safe.”
+        </p>
+        <label for="q">Your plant-care question</label>
+        <div class="row">
+          <input
+            id="q"
+            name="q"
+            type="text"
+            autocomplete="off"
+            required
+            maxlength="500"
+            aria-describedby="form-help"
+            placeholder="Why are my Monstera's leaves yellowing?"
+          />
+          <button type="submit" id="ask-btn">Ask</button>
+        </div>
+        <fieldset class="lang">
+          <legend>Answer language</legend>
+          <label><input type="radio" name="lang" value="" checked /> Auto-detect</label>
+          <label><input type="radio" name="lang" value="en" /> English</label>
+          <label><input type="radio" name="lang" value="es" /> Español</label>
+        </fieldset>
+      </form>
+
+      <section aria-labelledby="examples-h" id="examples-section" hidden>
+        <h2 id="examples-h">Try an example</h2>
+        <ul class="examples" id="examples">
+          <li><button type="button" data-q="Why are my Monstera's leaves yellowing?">Yellowing Monstera leaves</button></li>
+          <li><button type="button" data-q="Is pothos toxic to my cat?">Is pothos toxic to my cat?</button></li>
+          <li><button type="button" data-q="How often should I water in winter?">Watering in winter</button></li>
+          <li><button type="button" data-q="¿Es tóxico el potho para los gatos?">Toxicidad del potho (ES)</button></li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="answer-h">
+        <h2 id="answer-h">Answer</h2>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <div id="answer" class="answer" aria-live="polite"></div>
+        <div id="safety" class="safety" role="alert" hidden></div>
+        <div id="sources-wrap" hidden>
+          <h3>Sources</h3>
+          <ul id="citations" class="citations"></ul>
+        </div>
+        <p id="meta" class="meta" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="about-h">
+        <h2 id="about-h">How this is different from the hosted demo</h2>
+        <p>
+          This page fetches two static JSON files — <code>data/index.json</code> (the
+          embedded, chunked corpus) and <code>data/config.json</code> (thresholds and
+          guard rules) — and runs the whole assistant in this tab: no question you type
+          is ever sent anywhere. There is no photo identification or reminders here (both
+          need either network egress or local storage wiring this reference build does
+          not add); type the plant's name instead. See
+          <a href="https://github.com/ChelseaKR/sprout/tree/main/web-static">web-static/README.md</a>
+          for the TypeScript source and the cross-language conformance test that keeps it
+          honest against the Python implementation.
+        </p>
+      </section>
+    </main>
+
+    <footer role="contentinfo">
+      <p>
+        Sprout is an independent, open-source reference implementation (Apache-2.0). The
+        bundled corpus is synthetic and CC0. This is not veterinary or medical advice.
+      </p>
+    </footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
