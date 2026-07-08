@@ -1,0 +1,19 @@
+# Auto-provisions the Tempo (traces) and Mimir (metrics, via its Prometheus-compatible
+# query API) datasources so `docker compose -f docker-compose.observability.yml up` needs
+# no manual Grafana setup.
+apiVersion: 1
+
+datasources:
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: false
+    editable: true
+
+  - name: Mimir
+    type: prometheus
+    access: proxy
+    url: http://mimir:9009/prometheus
+    isDefault: true
+    editable: true

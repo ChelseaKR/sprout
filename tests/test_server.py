@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
 from sprout.a11y import check_html
 from sprout.answer import Assistant
@@ -291,6 +292,55 @@ def test_shipped_ui_is_a_stateless_reference_surface() -> None:
     assert 'id="photo-form"' not in html
     assert "/api/reminders" not in script
     assert "/api/identify" not in script
+
+# --- Tier-A observability wiring --------------------------------------------------
+def _red_point_count(metric_reader: InMemoryMetricReader, name: str) -> int:
+    data = metric_reader.get_metrics_data()
+    assert data is not None
+    return sum(
+        len(metric.data.data_points)
+        for rm in data.resource_metrics
+        for sm in rm.scope_metrics
+        for metric in sm.metrics
+        if metric.name == name
+    )
+
+
+def test_create_app_wires_red_middleware_only_for_tier_a(
+    monkeypatch: pytest.MonkeyPatch, assistant: Assistant
+) -> None:
+    """`create_app` adds `REDMiddleware` and registers a shutdown hook when
+    `observability.tier: A`, and does neither otherwise — verified with real
+    (in-memory-exported) OTel instruments, not a bare mock, so this exercises the actual
+    wiring in `sprout.server.create_app`, not just that *something* got called."""
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    import sprout.server as server_module
+    from sprout.otel import ObservabilityHandles, configure_observability
+
+    span_exporter = InMemorySpanExporter()
+    metric_reader = InMemoryMetricReader()
+
+    def _configure(config: ObservabilityConfig) -> ObservabilityHandles | None:
+        return configure_observability(
+            config, span_exporter=span_exporter, metric_reader=metric_reader
+        )
+
+    monkeypatch.setattr(server_module, "configure_observability", _configure)
+
+    tier_a_config = Config(observability=ObservabilityConfig(tier="A"))
+    app = server_module.create_app(tier_a_config, assistant=assistant)
+    TestClient(app).get("/livez")
+
+    assert _red_point_count(metric_reader, "sprout_http_requests_total") > 0
+    points_before = _red_point_count(metric_reader, "sprout_http_requests_total")
+
+    # Tier C (the default): no middleware is added at all, so this second app's traffic
+    # cannot possibly reach the same in-memory reader — the point count is unchanged.
+    tier_c_app = server_module.create_app(Config(), assistant=assistant)
+    TestClient(tier_c_app).get("/livez")
+    points_after = _red_point_count(metric_reader, "sprout_http_requests_total")
+    assert points_after == points_before
 
 
 # --- logger ----------------------------------------------------------------------

@@ -1,0 +1,97 @@
+# Multi-window multi-burn-rate alerts — STANDARDS/OBSERVABILITY-STANDARD.md §5, Google SRE
+# Workbook. Both the long- and short-window condition must be true to fire, which kills
+# single-spike flapping. Validate with `promtool check rules alerts/burn-rate.yml`.
+#
+# Built against `slos/sprout-api-availability.yaml` (target 99.0%, so the error budget is
+# 1.0% = 0.01). Requires the recording rules below (`slo:sprout_error_rate:ratio_rate*`) to
+# be evaluated by the same Prometheus/Mimir the OTel Collector in
+# `docker-compose.observability.yml` (local) or infra's OTLP endpoint (prod) feeds.
+groups:
+  - name: sprout-slo-recording-rules
+    rules:
+      - record: slo:sprout_error_rate:ratio_rate5m
+        expr: |
+          sum(rate(sprout_http_request_errors_total[5m]))
+          /
+          sum(rate(sprout_http_requests_total[5m]))
+      - record: slo:sprout_error_rate:ratio_rate30m
+        expr: |
+          sum(rate(sprout_http_request_errors_total[30m]))
+          /
+          sum(rate(sprout_http_requests_total[30m]))
+      - record: slo:sprout_error_rate:ratio_rate1h
+        expr: |
+          sum(rate(sprout_http_request_errors_total[1h]))
+          /
+          sum(rate(sprout_http_requests_total[1h]))
+      - record: slo:sprout_error_rate:ratio_rate6h
+        expr: |
+          sum(rate(sprout_http_request_errors_total[6h]))
+          /
+          sum(rate(sprout_http_requests_total[6h]))
+      - record: slo:sprout_error_rate:ratio_rate3d
+        expr: |
+          sum(rate(sprout_http_request_errors_total[3d]))
+          /
+          sum(rate(sprout_http_requests_total[3d]))
+      - record: slo:sprout_error_rate:ratio_rate6h_ticket
+        expr: |
+          sum(rate(sprout_http_request_errors_total[6h]))
+          /
+          sum(rate(sprout_http_requests_total[6h]))
+
+  - name: sprout-slo-burn
+    rules:
+      # Page (critical): > 14.4x burn, 1h + 5m windows both true, 2% of the 28-day budget.
+      - alert: SproutErrorBudgetBurnCritical
+        expr: |
+          (slo:sprout_error_rate:ratio_rate1h{} > (14.4 * 0.01))
+          and
+          (slo:sprout_error_rate:ratio_rate5m{} > (14.4 * 0.01))
+        for: 2m
+        labels:
+          severity: page
+          service: sprout
+          slo: sprout-api-availability
+        annotations:
+          summary: "Sprout API is burning its error budget at >14.4x (page)"
+          description: >-
+            Both the 1h and 5m error-rate windows exceed 14.4x the
+            sprout-api-availability SLO's error budget (target 99.0%, budget 1.0%). At
+            this rate the 28-day budget exhausts in well under a day. See
+            slos/sprout-api-availability.yaml.
+
+      # Page (high): > 6x burn, 6h + 30m windows both true, 5% of the 28-day budget.
+      - alert: SproutErrorBudgetBurnHigh
+        expr: |
+          (slo:sprout_error_rate:ratio_rate6h{} > (6 * 0.01))
+          and
+          (slo:sprout_error_rate:ratio_rate30m{} > (6 * 0.01))
+        for: 15m
+        labels:
+          severity: page
+          service: sprout
+          slo: sprout-api-availability
+        annotations:
+          summary: "Sprout API is burning its error budget at >6x (page)"
+          description: >-
+            Both the 6h and 30m error-rate windows exceed 6x the sprout-api-availability
+            SLO's error budget. See slos/sprout-api-availability.yaml.
+
+      # Ticket: > 1x burn, 3d + 6h windows both true, 10% of the 28-day budget.
+      - alert: SproutErrorBudgetBurnTicket
+        expr: |
+          (slo:sprout_error_rate:ratio_rate3d{} > (1 * 0.01))
+          and
+          (slo:sprout_error_rate:ratio_rate6h_ticket{} > (1 * 0.01))
+        for: 1h
+        labels:
+          severity: ticket
+          service: sprout
+          slo: sprout-api-availability
+        annotations:
+          summary: "Sprout API is slowly burning its error budget (ticket)"
+          description: >-
+            Both the 3d and 6h error-rate windows exceed 1x the sprout-api-availability
+            SLO's error budget. Not urgent; file a ticket. See
+            slos/sprout-api-availability.yaml.

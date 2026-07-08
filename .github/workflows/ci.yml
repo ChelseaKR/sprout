@@ -80,6 +80,8 @@ jobs:
         run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
       - name: Gate inventory (FIX-02 — every ledger AUTO row must map to a real mechanism)
         run: uv run sprout gate-inventory --out docs/audits
+      - name: Tier-A SLO + burn-rate-alert schema gate
+        run: uv run sprout slo-check
 
   smoke:
     # Phase 1: a dedicated CI smoke suite of corpus-derived questions, distinct from the

@@ -3,7 +3,7 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        smoke a11y claims calibrate gate-inventory freshness audits docs workflow-lint \
+        smoke a11y claims calibrate gate-inventory slo freshness audits docs workflow-lint \
         ci-parity-check demo verify clean web-static-bundle web-static-fixtures \
         web-static-test web-static-build
 
@@ -65,6 +65,9 @@ claims: ## Claims-integrity gate: docs/claims.yaml vs code/config source of trut
 gate-inventory: ## FIX-02: fail if any ledger AUTO row has no real enforcement mechanism
 	$(PY) sprout gate-inventory --out docs/audits
 
+slo: ## Schema-check the Tier-A SLO + burn-rate-alert files
+	$(PY) sprout slo-check
+
 audits: eval calibrate gate-inventory ## Regenerate the committed eval + calibration + gate-inventory audit artifacts
 
 docs: ## Build the docs site strictly (mirrors the CI docs gate)
@@ -92,7 +95,7 @@ web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conf
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
 	cd web-static && npm ci && npm run build:site
 
-verify: lint type test security eval smoke a11y claims calibrate gate-inventory docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
+verify: lint type test security eval smoke a11y claims calibrate gate-inventory slo docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts

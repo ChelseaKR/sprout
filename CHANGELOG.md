@@ -89,6 +89,16 @@ the public evaluation harness as the headline artifact.
   cases with two or more) that the rendered answer actually covers; three multi-facet cases
   were added to `eval/suites/groundedness.yaml` to exercise it. See EXP-01 in
   [`docs/ideation/03-expansions.md`](docs/ideation/03-expansions.md).
+
+- **Tier-A observability for the optional serverless API** (`src/sprout/otel.py`,
+  `infra/`). `observability.tier: A` now wires real OTel traces + RED-per-endpoint metrics
+  (`REDMiddleware`, W3C `traceparent` propagation, the standard's fixed-second histogram
+  buckets), trace-correlated JSON logs (`obs.py`), schema-checked SLO/burn-rate-alert files
+  (`slos/*.yaml`, `alerts/burn-rate.yml`, `sprout slo-check`), and a deployable AWS CDK
+  stack (`infra/sprout_stack.py`: Lambda via the AWS Lambda Web Adapter, an API Gateway
+  HTTP API, a monthly budget alarm). Degrades to a no-op — never a crash — for tier B/C or
+  when the `observability` extra isn't installed. See `docs/ROADMAP.md`'s Observability
+  tier section for what is unit/e2e-tested versus not yet exercised (a live `cdk deploy`).
 - **Photo-based plant identification → grounded care lookup** (`identify.py`,
   `providers/plantnet.py`). A photo is identified into candidate species, the best confident
   match is resolved to a species **already in the cited corpus**, and that species is routed
