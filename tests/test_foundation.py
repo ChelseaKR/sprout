@@ -199,6 +199,46 @@ def test_detect_exposure_type_classifies_child_animal_both_unspecified() -> None
     assert detect_exposure_type("Mi niño mordió una hoja de esta planta", "es", cfg) == "child"
 
 
+def test_detect_exposure_type_covers_family_terms_in_both_languages() -> None:
+    # FIX-13 review fix: son/daughter/grandchild (EN) and hijo/hija/nieto (ES) are how
+    # real child-ingestion questions are phrased at least as often as "child"/"toddler";
+    # before this fix they classified "unspecified" and would never have received the
+    # human card post-sign-off.
+    from sprout.guards import detect_exposure_type
+
+    cfg = Config().guards
+    assert detect_exposure_type("My son chewed a philodendron leaf", "en", cfg) == "child"
+    assert detect_exposure_type("My daughter ate a pothos leaf", "en", cfg) == "child"
+    assert detect_exposure_type("My grandson bit this plant", "en", cfg) == "child"
+    assert detect_exposure_type("Mi hijo comió una hoja de potos", "es", cfg) == "child"
+    assert detect_exposure_type("Mi hija mordió esta planta", "es", cfg) == "child"
+    assert detect_exposure_type("Mi nieta tocó las hojas, ¿es venenosa?", "es", cfg) == "child"
+
+
+def test_detect_exposure_type_matches_whole_tokens_not_substrings() -> None:
+    # FIX-13 review fix: audience routing must not key off word fragments. Before this
+    # fix, "cat" inside "identification" classified as animal, "pet" inside "petal" and
+    # "kid" inside "kidney" polluted the classification, and adding "son" (needed above)
+    # would have matched "poison" itself, tagging every toxicity query as child.
+    from sprout.guards import detect_exposure_type
+
+    cfg = Config().guards
+    assert (
+        detect_exposure_type("Help with identification, is this plant poisonous?", "en", cfg)
+        == "unspecified"
+    )
+    assert detect_exposure_type("My toddler ate a petal from this plant", "en", cfg) == "child"
+    assert (
+        detect_exposure_type("The kidney-shaped leaves are wilting, is it toxic?", "en", cfg)
+        == "unspecified"
+    )
+    # "son" must match only as its own word, never inside "poison"/"poisonous".
+    assert detect_exposure_type("Is this plant poisonous to humans?", "en", cfg) == "unspecified"
+    # Plurals still match via their explicit list entries, not substring luck.
+    assert detect_exposure_type("Are these leaves toxic to kittens?", "en", cfg) == "animal"
+    assert detect_exposure_type("¿Es tóxica para los gatitos?", "es", cfg) == "animal"
+
+
 def test_human_escalation_card_gated_off_by_default() -> None:
     # FIX-13 hard gate: the human-poison-control card must not render for any exposure
     # type until a real clinician sign-off flips ``human_card_reviewed`` to True (see

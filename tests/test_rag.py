@@ -426,6 +426,19 @@ def test_child_ingestion_exposure_type_detected_end_to_end(assistant: Assistant)
     assert "1-800-222-1222" not in notice  # human card gated off by default
 
 
+def test_son_ingestion_phrasing_classified_child_end_to_end(assistant: Assistant) -> None:
+    # FIX-13 review fix: "my son ..." is a common child-ingestion phrasing that carried
+    # no child keyword before this fix (and could not naively get one -- "son" is a
+    # substring of "poison"). It must classify as child exposure end to end while the
+    # rendered card stays gated off by default.
+    ans = assistant.answer("my son chewed on a pothos leaf, is that poisonous?")
+    assert ans.is_safety_query
+    assert ans.exposure_type == "child"
+    notice = ans.safety_notice or ""
+    assert "888-426-4435" in notice  # animal card unchanged while gated off
+    assert "1-800-222-1222" not in notice  # human card requires clinician sign-off
+
+
 def test_animal_exposure_type_never_shows_human_card_even_if_reviewed() -> None:
     # A pure animal query must never surface the human card, even in the hypothetical
     # post-review state -- the human card is additive for a child/human audience only.
