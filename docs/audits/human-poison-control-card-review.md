@@ -40,6 +40,17 @@ and the parallel ES string in the same field. A qualified reviewer needs to conf
    services for a child, or some other framing — is the right decision. This is called
    out explicitly in the ideation item as the reviewer's call, not this codebase's.
 4. Any wording changes needed, in-line, in both languages.
+5. What an **audience-unspecified** toxicity question ("is this plant poisonous?", no
+   child or pet named) should receive once the card is live. The code currently shows
+   the human card only when the query names a child/human audience (`"child"` or
+   `"both"`) and keeps the long-standing animal-only card for `"unspecified"` — i.e.,
+   it never infers an audience the asker did not name. Whether unspecified queries
+   should instead get both cards is a triage-policy question for the reviewer.
+6. Whether the child/human detection-term lists
+   (`GuardsConfig.child_exposure_keywords`, exact-token matched, EN + ES) cover the
+   phrasings a poison-control line actually hears, and whether adult self-exposure
+   ("I ate a leaf", "my husband chewed one") should route to this card too — the
+   current scaffold detects child/family terms only.
 
 ## Sign-off record (fill in when complete)
 
@@ -54,8 +65,13 @@ and the parallel ES string in the same field. A qualified reviewer needs to conf
 
 Once this table is filled in with a real name, credential, and date, set
 `PromptConfig.human_card_reviewed = True` in `src/sprout/config.py` in the same commit as
-this file's update, and un-skip the eval cases marked `pending_clinician_review` in
-`eval/suites/safety.yaml`.
+this file's update. That same commit must also add safety-suite eval cases
+(`eval/suites/safety.yaml`) asserting that a child-ingestion question surfaces the human
+poison line — they cannot be added earlier because they would assert copy that does not
+yet render — and refresh `docs/audits/eval-baseline.json` in its own follow-up commit
+with a rationale, per `DEFINITION_OF_DONE.md`. Until then, the gated-off behavior is
+regression-tested in `tests/test_foundation.py` and `tests/test_rag.py` (exposure
+classification, flag-off default, and post-flip routing simulated via `model_copy`).
 
 ## Scope note (non-US numbers)
 

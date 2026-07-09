@@ -110,15 +110,39 @@ class GuardsConfig(_Model):
     route_terms: dict[str, list[str]] = Field(
         default_factory=lambda: locales.by_lang("guards", "route_terms", _DEFAULT_LANGUAGES)
     )
-    # Exposure-type routing (FIX-13): a subset of ``toxicity_keywords`` that names a
-    # human (vs. animal) audience, so the classifier can tell "my toddler ate a leaf"
-    # from "my cat ate a leaf" without a second keyword pass over different terms.
-    # ``tokenize`` accent-folds (strip_accents), so each accented ES form is listed
-    # alongside its folded equivalent -- the same redundant-but-harmless pattern
-    # ``toxicity_keywords`` above already uses ("tóxica"/"toxica").
+    # Exposure-type routing (FIX-13): audience terms that name a human (vs. animal)
+    # exposure, so the classifier can tell "my toddler ate a leaf" from "my cat ate a
+    # leaf". Unlike ``toxicity_keywords`` these match whole tokens only (see
+    # ``guards._matches_any``) -- substring matching misroutes the audience ("cat" in
+    # "identification", "son" in "poison") -- so every inflected form is listed
+    # explicitly. ``tokenize`` accent-folds (strip_accents); accented ES forms are
+    # listed alongside their folded equivalents for auditability, the folded form is
+    # the one that matches.
     child_exposure_keywords: dict[str, list[str]] = Field(
         default_factory=lambda: {
-            "en": ["child", "children", "baby", "toddler", "kid", "kids", "infant"],
+            "en": [
+                "child",
+                "children",
+                "baby",
+                "babies",
+                "toddler",
+                "toddlers",
+                "kid",
+                "kids",
+                "kiddo",
+                "infant",
+                "infants",
+                "son",
+                "sons",
+                "daughter",
+                "daughters",
+                "grandchild",
+                "grandchildren",
+                "grandson",
+                "grandsons",
+                "granddaughter",
+                "granddaughters",
+            ],
             "es": [
                 "niño",
                 "nino",
@@ -130,14 +154,54 @@ class GuardsConfig(_Model):
                 "ninas",
                 "bebé",
                 "bebe",
+                "bebés",
+                "bebes",
                 "infante",
+                "infantes",
+                "hijo",
+                "hijos",
+                "hija",
+                "hijas",
+                "nieto",
+                "nietos",
+                "nieta",
+                "nietas",
             ],
         }
     )
     animal_exposure_keywords: dict[str, list[str]] = Field(
         default_factory=lambda: {
-            "en": ["cat", "cats", "dog", "dogs", "pet", "pets", "kitten", "puppy"],
-            "es": ["gato", "gatos", "perro", "perros", "mascota", "mascotas"],
+            "en": [
+                "cat",
+                "cats",
+                "dog",
+                "dogs",
+                "pet",
+                "pets",
+                "kitten",
+                "kittens",
+                "kitty",
+                "puppy",
+                "puppies",
+            ],
+            "es": [
+                "gato",
+                "gatos",
+                "gata",
+                "gatas",
+                "gatito",
+                "gatitos",
+                "perro",
+                "perros",
+                "perra",
+                "perras",
+                "perrito",
+                "perritos",
+                "cachorro",
+                "cachorros",
+                "mascota",
+                "mascotas",
+            ],
         }
     )
 

@@ -101,8 +101,9 @@ the public evaluation harness as the headline artifact.
   "safe"/"non-toxic" certifications in EN and ES and routes ingestion questions to vet /
   poison-control.
 - **Exposure-type detection for the escalation card (FIX-13, scaffold)** (`guards.detect_exposure_type`):
-  classifies a safety query's audience — child/human, animal, both, or unspecified — from the
-  keyword pass already used for safety routing, and a human-poison-control card variant
+  classifies a safety query's audience — child/human, animal, both, or unspecified — by
+  exact-token matching against explicit audience keyword lists (EN + ES, including
+  son/daughter/hijo/hija family terms), and a human-poison-control card variant
   (`PromptConfig.human_escalation_card_by_lang`, US Poison Control 1-800-222-1222) exists in
   config for child/human exposure. **Gated off by default** (`human_card_reviewed = False`): the
   animal-line card (ASPCA APCC, Pet Poison Helpline) keeps rendering unchanged for every query,
