@@ -20,3 +20,10 @@ is synthetic and CC0. **This is not veterinary or medical advice.**
 
 Standards conformance and per-repo metric values live in the [Roadmap](ROADMAP.md); the
 cross-cutting rigor is referenced from the portfolio `STANDARDS/`, not restated here.
+
+## Documentation Audit
+
+Last reviewed: 2026-07-08.
+
+- [Project scope](PROJECT-SCOPE.md) names the product, users, code and data surfaces, safety boundaries, and out-of-scope items.
+- [Documentation audit](DOCUMENTATION-AUDIT.md) records the inventory, link check, findings, and remediations from the docs sweep.

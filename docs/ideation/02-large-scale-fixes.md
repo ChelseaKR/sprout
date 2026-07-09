@@ -1,7 +1,7 @@
 # Large-scale fixes — FIX-01 … FIX-13 (drafted 2026-07-01)
 
 Deep structural fixes grounded in the observations of
-[`01-deep-dive.md`](01-deep-dive.md). None restates an R-item from
+the prior deep-dive notes. None restates an R-item from
 [`../RESEARCH-ROADMAP.md`](../RESEARCH-ROADMAP.md); where a fix touches the same terrain
 as an existing item, the delta is stated. Effort tiers: **S** ≈ a day, **M** ≈ a few
 days, **L** ≈ 1–2 weeks, **XL** ≈ multi-week.

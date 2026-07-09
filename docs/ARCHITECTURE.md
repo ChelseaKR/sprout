@@ -329,5 +329,5 @@ an ADR requirement; see the [README "Hard guardrails"](../README.md) note.
 
 - [`docs/THREAT-MODEL.md`](THREAT-MODEL.md) — STRIDE analysis with mitigations mapped to code.
 - [`docs/cards/model-card.md`](cards/model-card.md) — limits stated plainly.
-- [`docs/ACCESSIBILITY.md`](ACCESSIBILITY.md) + the ACR — WCAG 2.2 AA posture.
+- [`docs/a11y/STATEMENT.md`](a11y/STATEMENT.md) + [`docs/accessibility/ACR.md`](accessibility/ACR.md) — WCAG 2.2 AA posture.
 - [`STANDARDS/`](../../STANDARDS/README.md) — the cross-cutting rigor this repo conforms to.
