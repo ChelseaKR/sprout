@@ -175,3 +175,16 @@ only when explicitly requested. Wired up as `sprout freshness [--check-links]`
 (`src/sprout/config.py`), unit-tested offline in `tests/test_freshness.py`. Verify:
 `pytest tests/test_freshness.py -q`, `ruff check`, `mypy` all green; `sprout freshness`
 exits 0 against the bundled 2026-05-01 corpus.
+
+## Implementation status — 2026-07-09
+Shipped: **E4** coverage-vs-risk (selective-prediction) curve in the calibration report —
+`sprout.confidence.coverage_risk_curve()` (ADR-0013) computes, at a fixed set of confidence
+thresholds including the engine's own 0.25 `abstain_threshold`, what fraction of labeled
+calibration cases would be answered (coverage) and what fraction of those would be wrong
+(risk); the `calibration` eval suite (`eval/suites/calibration.py`) appends the curve to its
+existing `SuiteResult.segments` table alongside the reliability bins, so `report.py` needed
+no changes to render it. Report-only: the suite's own PASS/FAIL stays keyed to ECE and
+abstention exactly as before, per ADR-0013's reasoning. Verify: `pytest tests/test_confidence.py
+-q`, `ruff check`, `mypy` all green; `sprout eval` regenerates `docs/audits/eval-report.md`
+with the new `coverage≥…` segment rows under `calibration`, and the baseline regression check
+(`diff_against_baseline`) reports no issues — purely additive.

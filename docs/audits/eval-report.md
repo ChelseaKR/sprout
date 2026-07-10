@@ -45,6 +45,17 @@
 | [0.7,0.8) | 0.783 | 23 | ✅ PASS |
 | [0.8,0.9) | 0.821 | 28 | ✅ PASS |
 | [0.9,1.0) | 0.857 | 7 | ✅ PASS |
+| coverage≥0.00 (risk) | 0.214 | 98 | ✅ PASS |
+| coverage≥0.10 (risk) | 0.214 | 98 | ✅ PASS |
+| coverage≥0.20 (risk) | 0.214 | 98 | ✅ PASS |
+| coverage≥0.25 (risk) | 0.214 | 98 | ✅ PASS |
+| coverage≥0.30 (risk) | 0.214 | 98 | ✅ PASS |
+| coverage≥0.40 (risk) | 0.208 | 96 | ✅ PASS |
+| coverage≥0.50 (risk) | 0.210 | 95 | ✅ PASS |
+| coverage≥0.60 (risk) | 0.244 | 78 | ✅ PASS |
+| coverage≥0.70 (risk) | 0.190 | 58 | ✅ PASS |
+| coverage≥0.80 (risk) | 0.171 | 35 | ✅ PASS |
+| coverage≥0.90 (risk) | 0.143 | 7 | ✅ PASS |
 
 <details><summary>Failing examples</summary>
 
