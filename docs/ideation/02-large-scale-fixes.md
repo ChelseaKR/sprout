@@ -192,7 +192,13 @@ CI is bounded with profiles. **Excellent looks like:** a committed fuzzing repor
 deny-list invariance under the perturbation classes; the recombination residual carries
 a *number*.
 
-## FIX-06 — Single-source data packaging (kill the silent dual-copy)
+## FIX-06 — Single-source data packaging (kill the silent dual-copy) — ✅ Done
+
+**Status:** Implemented option (b) — `tests/test_resources.py` now hashes `corpus/` vs
+`src/sprout/data/corpus` and `config/sprout.yaml` vs `src/sprout/data/sprout.yaml` with
+`sha256_of_obj`/byte comparison and fails CI on drift; `scripts/_materialize_content.py`
+now re-mirrors both into `src/sprout/data/` after every regeneration. Branch
+`roadmap/fix-06-fix-11-single-source-data-packagi`.
 
 **Pitch.** Make the packaged corpus/config provably identical to the repo corpus/config
 — or generated from it — so `pipx install sprout` can never serve different facts than
@@ -324,7 +330,13 @@ like:** the deployed URL passes an external scan (securityheaders.com A, zap bas
 clean), photo-endpoint abuse is rate-limited by test, and the L1→L2 step is a committed
 artifact, not a sentence.
 
-## FIX-11 — Retire or honestly re-document the phantom session window
+## FIX-11 — Retire or honestly re-document the phantom session window — ✅ Done
+
+**Status:** `ServerConfig.session_memory` removed from `config.py` and both YAML copies
+(`config/sprout.yaml`, `src/sprout/data/sprout.yaml`); `docs/RESPONSIBLE-TECH-AUDITS.md`
+§C now says "stateless per-request; no session state of any kind" and points to EXP-07
+as the designed path if session context returns. Branch
+`roadmap/fix-06-fix-11-single-source-data-packagi`.
 
 **Pitch.** `session_memory` exists in config and in the DPIA but not in the code; make
 the paperwork true this week, and let multi-turn arrive later as a designed feature.

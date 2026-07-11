@@ -1,14 +1,23 @@
-"""One-shot: turn the content-workflow JSON output into committed corpus + eval files."""
+"""One-shot: turn the content-workflow JSON output into committed corpus + eval files.
+
+Also re-mirrors ``corpus/`` and ``config/sprout.yaml`` into ``src/sprout/data/`` (the
+packaged fallback ``pipx install sprout`` ships with) so the two copies can never
+silently drift apart — see FIX-06 in docs/ideation/02-large-scale-fixes.md.
+``tests/test_resources.py`` asserts the two trees stay byte-identical; this script is
+the other half of that guarantee: regenerating content now updates both copies.
+"""
 
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 from pathlib import Path
 
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
+SRC_DATA = ROOT / "src" / "sprout" / "data"
 SRC = Path(sys.argv[1])
 data = json.loads(SRC.read_text(encoding="utf-8"))
 data = data.get("result", data)
@@ -61,3 +70,13 @@ probes = data.get("probes", [])
 print(f"documents: {len(data['documents'])} plants (x2 languages)")
 print(f"eval cases: {total_cases}")
 print(f"judge probes: {len(probes)}")
+
+# --- FIX-06: keep the packaged src/sprout/data/ mirror in sync -------------------------
+# Replace wholesale (not just overwrite) so a doc removed from corpus/ also disappears
+# from the packaged copy, instead of lingering as a stale, orphaned file.
+packaged_corpus = SRC_DATA / "corpus"
+if packaged_corpus.exists():
+    shutil.rmtree(packaged_corpus)
+shutil.copytree(ROOT / "corpus", packaged_corpus)
+shutil.copyfile(ROOT / "config" / "sprout.yaml", SRC_DATA / "sprout.yaml")
+print(f"mirrored corpus/ + config/sprout.yaml -> {SRC_DATA.relative_to(ROOT)}/")
