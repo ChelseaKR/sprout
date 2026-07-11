@@ -97,6 +97,15 @@ the public evaluation harness as the headline artifact.
   `ci-gate` jobs had no local equivalent in `make verify` — now closed with new `docs` and
   `workflow-lint` prerequisites on `verify`.
 
+### Fixed
+- **`docs/ROADMAP.md` Phase 3 status (2026-07-08):** the "Outstanding" bullet still listed
+  "commit the ACR and the OWASP-LLM red-team report" as not-yet-done, even though both
+  `docs/accessibility/ACR.md` (VPAT 2.5 Rev 508) and `docs/audits/red-team-2026-06-22.md`
+  (OWASP LLM01–LLM10:2025 coverage) had already been committed in the 2026-07-05 conformance
+  pass. Moved to "Done" with an honest caveat preserved: the red-team report remains a manual,
+  dated exercise until an automated Promptfoo `redteam` run is wired and promoted into the
+  blocking `ci-gate` (tracked in the "Red-team (OWASP LLM01–LLM10)" ledger row).
+
 ### Security
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the
   **OWASP ASVS L1** baseline; secrets via environment only; pip-audit, gitleaks, and Semgrep wired
