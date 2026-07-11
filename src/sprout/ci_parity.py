@@ -29,8 +29,11 @@ import yaml
 
 # CI jobs that back the required `ci-gate` check and are expected to have a `make verify`
 # counterpart, mapped to the Makefile target(s) whose recipe should cover the same commands.
-# `pa11y` is excluded on purpose: it is `continue-on-error: true` and explicitly documented in
-# `ci.yml` as "advisory ... excluded from ci-gate". `zizmor` has no mapping here because it is
+# `pa11y` and `lighthouse` are excluded on purpose: they are browser-based a11y jobs (Node +
+# headless Chrome — `npx pa11y-ci` / `npx lighthouse`) that are merge-blocking in CI but have no
+# `make verify` counterpart; the local structural equivalent is `make a11y` (`sprout a11y-check`),
+# and CONTRIBUTING.md documents this as the one deliberate parity exception. `zizmor` has no
+# mapping here because it is
 # compared separately (see `ZIZMOR_JOB` / `ZIZMOR_TARGET` below) — its only step is a `uses:`
 # action-adjacent CLI invocation with no per-job Makefile split.
 JOB_TO_MAKE_TARGETS: dict[str, tuple[str, ...]] = {

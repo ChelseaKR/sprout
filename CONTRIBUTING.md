@@ -21,7 +21,11 @@ make verify         # the full local mirror of the CI gate set
 workflow-lint · ci-parity-check` — the same tools, configs, and thresholds the CI-required checks
 enforce (`CI-CD-STANDARD.md` §`make verify` parity): CI invokes the equivalent commands directly
 inside `test`/`security`/`eval-a11y`/`docs`/`zizmor` jobs rather than shelling out to `make`, so
-this is tool-for-tool parity, not literally one CI step running `make verify`. A change is not
+this is tool-for-tool parity, not literally one CI step running `make verify`. The one
+deliberate exception: the browser-based accessibility jobs (`pa11y`, `lighthouse`) are
+merge-blocking in CI but need Node + headless Chrome, so they are not part of `make verify`;
+`make a11y` (`sprout a11y-check`) is the local structural equivalent, and you can run
+`npx pa11y-ci`/`npx lighthouse` by hand against a served UI when touching markup. A change is not
 done until `make verify` is green locally. There is a single required `ci-gate` check and no admin
 bypass on `main`. (As of 2026-07-05 the `security` target's `pip-audit` and `semgrep` steps are
 unconditionally blocking, matching the CI `security` job exactly; only `gitleaks` remains locally

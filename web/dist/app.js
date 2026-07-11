@@ -212,12 +212,22 @@
   // --- Reminders --------------------------------------------------------------
   const reminderForm = document.getElementById("reminder-form");
   const reminderStatus = document.getElementById("reminder-status");
+  const remindersTable = document.getElementById("reminders-table");
   const remindersBody = document.getElementById("reminders-body");
   const remindersEmpty = document.getElementById("reminders-empty");
 
   function renderReminders(reminders) {
     remindersBody.textContent = "";
-    if (!reminders.length) { remindersEmpty.hidden = false; return; }
+    if (!reminders.length) {
+      // A table with header cells but zero data rows fails axe's
+      // th-has-data-cells check (headers referring to no cells) — hide the
+      // table itself rather than leaving an empty shell visible, and show
+      // only the plain-language empty state.
+      remindersTable.hidden = true;
+      remindersEmpty.hidden = false;
+      return;
+    }
+    remindersTable.hidden = false;
     remindersEmpty.hidden = true;
     reminders.forEach(function (r) {
       const tr = document.createElement("tr");
