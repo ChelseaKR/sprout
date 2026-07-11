@@ -10,8 +10,8 @@ was added to one side and forgotten on the other. `ROADMAP.md` tracked the gap a
 This module parses ``.github/workflows/ci.yml`` and the ``Makefile``, normalizes each side's
 shell commands to a comparable form, and reports any command present on one side with no
 counterpart on the other — except for a short, explicitly documented allowlist of intentional
-one-sided steps (a packaging smoke-build, a report-only calibration run, environment-sync steps,
-and gitleaks, which CI runs as a GitHub Action rather than a shell command).
+one-sided steps (a packaging smoke-build, environment-sync steps, and gitleaks, which CI runs
+as a GitHub Action rather than a shell command).
 
 Wired in two places so drift is caught automatically rather than re-relying on a human noticing:
 
@@ -36,7 +36,7 @@ import yaml
 JOB_TO_MAKE_TARGETS: dict[str, tuple[str, ...]] = {
     "test": ("lint", "type", "test"),
     "security": ("security",),
-    "eval-a11y": ("ingest", "eval", "a11y"),
+    "eval-a11y": ("ingest", "eval", "a11y", "claims", "calibrate"),
     "docs": ("docs",),
 }
 
@@ -48,10 +48,6 @@ ALLOWED_CI_ONLY = {
     # CQ-10 packaging regression check: proves the sdist/wheel build, not a code-quality gate;
     # redundant to run on every local `make verify` invocation.
     "uv build",
-    # Judge calibration is report-only in CI today (see `ci.yml` step comment and the
-    # judge-calibration-freshness row in ROADMAP.md) — not yet a merge-blocking threshold, so it
-    # is not part of the `make verify` gate set either.
-    "uv run sprout calibrate eval/judge_probes.yaml --out docs/audits",
 }
 
 # Commands (by prefix) that legitimately exist only in the Makefile.

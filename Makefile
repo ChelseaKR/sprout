@@ -3,7 +3,7 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        a11y calibrate audits docs workflow-lint ci-parity-check demo verify clean
+        a11y claims calibrate audits docs workflow-lint ci-parity-check demo verify clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -44,12 +44,15 @@ eval: ingest ## Record the live engine, run the suites, regenerate the committed
 eval-baseline: ingest ## Regenerate the eval report AND refresh the committed baseline
 	$(PY) sprout eval --config $(CONFIG) --out docs/audits --update-baseline
 
-calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa)
-	$(PY) sprout calibrate eval/judge_probes.yaml --out docs/audits
+calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa; merge-blocking)
+	$(PY) sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
 
 a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gate)
 	$(PY) sprout a11y-check web/dist/index.html
 	$(PY) sprout a11y-check docs/audits/eval-report.html
+
+claims: ## Claims-integrity gate: docs/claims.yaml vs code/config source of truth
+	$(PY) sprout claims-check
 
 audits: eval calibrate ## Regenerate the committed eval + calibration audit artifacts
 
@@ -58,7 +61,7 @@ docs: ## Build the docs site strictly (mirrors the CI docs gate)
 	$(PY) mkdocs build --strict
 
 workflow-lint: ## Workflow SAST (mirrors the CI zizmor gate)
-	uvx zizmor --min-severity high .github/workflows/
+	uvx zizmor --offline --min-severity high .github/workflows/
 
 ci-parity-check: ## Mechanically diff make verify's commands against the required ci-gate jobs
 	$(PY) sprout ci-parity-check
@@ -66,7 +69,7 @@ ci-parity-check: ## Mechanically diff make verify's commands against the require
 demo: ingest ## Reproduce a short scripted session
 	$(PY) sprout demo --config $(CONFIG)
 
-verify: lint type test security eval a11y docs workflow-lint ci-parity-check ## Full local mirror of the CI gate set
+verify: lint type test security eval a11y claims calibrate docs workflow-lint ci-parity-check ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts

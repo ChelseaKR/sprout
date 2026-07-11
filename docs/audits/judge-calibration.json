@@ -1,15 +1,15 @@
 {
   "judge_method": "deterministic-lexical",
-  "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
+  "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
   "n_probes": 12,
-  "n_agree": 9,
-  "agreement": 0.75,
-  "cohens_kappa": 0.4,
+  "n_agree": 11,
+  "agreement": 0.9167,
+  "cohens_kappa": 0.8235,
   "per_operation": {
     "entails": {
       "n": 5,
-      "n_agree": 4,
-      "agreement": 0.8
+      "n_agree": 5,
+      "agreement": 1.0
     },
     "contains": {
       "n": 4,
@@ -18,13 +18,11 @@
     },
     "equivalent": {
       "n": 3,
-      "n_agree": 1,
-      "agreement": 0.3333
+      "n_agree": 2,
+      "agreement": 0.6667
     }
   },
   "disagreements": [
-    "g5-aloe-safe-antonym-contradiction",
-    "e2-es-yellow-leaves-synonym-paraphrase",
-    "e3-es-pothos-toxic-vs-safe"
+    "e2-es-yellow-leaves-synonym-paraphrase"
   ]
 }
