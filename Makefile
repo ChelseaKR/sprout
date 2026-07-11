@@ -44,7 +44,7 @@ eval: ingest ## Record the live engine, run the suites, regenerate the committed
 eval-baseline: ingest ## Regenerate the eval report AND refresh the committed baseline
 	$(PY) sprout eval --config $(CONFIG) --out docs/audits --update-baseline
 
-calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa; merge-blocking)
+calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa; gated, mirrors CI)
 	$(PY) sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
 
 a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gate)

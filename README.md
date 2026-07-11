@@ -115,7 +115,7 @@ restating them. Per-repo *values* live in [`docs/ROADMAP.md`](docs/ROADMAP.md) a
 | Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check` gate is merge-blocking; axe/pa11y run today as **advisory only**, Lighthouse **not yet wired** (gap tracked, corrected 2026-07-05); transcript view; ACR (VPAT 2.5 Rev 508) |
 | Observability | ✅ | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
 | Internationalization | ✅ | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
-| AI Evaluation | ✅ | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, gap tracked); judge-calibration is **report-only, currently below threshold** (gap tracked); judge≠answer model; model/data cards |
+| AI Evaluation | ✅ | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, gap tracked); judge-calibration (deterministic judge, 66 probes) gated at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
 | Documentation | ✅ | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
 | Responsible-Tech Framework | ✅ | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; no audit is N/A (added to this table 2026-07-05 — was silently omitted) |
 
