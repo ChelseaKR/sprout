@@ -1,28 +1,30 @@
 {
   "judge_method": "deterministic-lexical",
   "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
-  "n_probes": 12,
-  "n_agree": 11,
-  "agreement": 0.9167,
-  "cohens_kappa": 0.8235,
+  "n_probes": 66,
+  "n_agree": 63,
+  "agreement": 0.9545,
+  "cohens_kappa": 0.9056,
   "per_operation": {
     "entails": {
-      "n": 5,
-      "n_agree": 5,
+      "n": 27,
+      "n_agree": 27,
       "agreement": 1.0
     },
     "contains": {
-      "n": 4,
-      "n_agree": 4,
+      "n": 22,
+      "n_agree": 22,
       "agreement": 1.0
     },
     "equivalent": {
-      "n": 3,
-      "n_agree": 2,
-      "agreement": 0.6667
+      "n": 17,
+      "n_agree": 14,
+      "agreement": 0.8235
     }
   },
   "disagreements": [
-    "e2-es-yellow-leaves-synonym-paraphrase"
+    "e2-es-yellow-leaves-synonym-paraphrase",
+    "e16-es-brown-tips-synonym-paraphrase",
+    "e17-en-root-rot-synonym-paraphrase"
   ]
 }
