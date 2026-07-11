@@ -2,7 +2,7 @@
   "fingerprint": {
     "harness_version": "0.1.0",
     "seed": 1729,
-    "dataset_hash": "b87c705c52effe076f0f6fe20b365e139639f34d3fed99c308ae6c7a62196985",
+    "dataset_hash": "08d1921caa6fb82d793e333d8be450fdebd8faeb35fb460c218e559d73482e4d",
     "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
     "target": "deterministic:extractive",
     "suite_names": [
@@ -23,22 +23,22 @@
         "threshold": 0.15,
         "higher_is_better": false
       },
-      "score": 0.1083,
+      "score": 0.1263,
       "verdict": "pass",
-      "n_items": 98,
-      "ci_low": 0.6834,
-      "ci_high": 0.8468,
+      "n_items": 105,
+      "ci_low": 0.6927,
+      "ci_high": 0.8494,
       "underpowered": false,
-      "dataset_version": "sha256:b87c705c52ef",
+      "dataset_version": "sha256:08d1921caa6f",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
-      "notes": "ECE=0.108; abstention_below_0.25_enforced=True",
+      "notes": "ECE=0.126; abstention_below_0.25_enforced=True",
       "segments": [
         {
           "label": "[0.3,0.4)",
-          "score": 0.5,
-          "n": 2,
-          "verdict": "pass"
+          "score": 0.6667,
+          "n": 3,
+          "verdict": "fail"
         },
         {
           "label": "[0.4,0.5)",
@@ -48,8 +48,8 @@
         },
         {
           "label": "[0.5,0.6)",
-          "score": 0.9412,
-          "n": 17,
+          "score": 0.95,
+          "n": 20,
           "verdict": "fail"
         },
         {
@@ -60,8 +60,8 @@
         },
         {
           "label": "[0.7,0.8)",
-          "score": 0.7826,
-          "n": 23,
+          "score": 0.8077,
+          "n": 26,
           "verdict": "pass"
         },
         {
@@ -210,11 +210,11 @@
       },
       "score": 1.0,
       "verdict": "pass",
-      "n_items": 98,
-      "ci_low": 0.9623,
+      "n_items": 105,
+      "ci_low": 0.9647,
       "ci_high": 1.0,
       "underpowered": false,
-      "dataset_version": "sha256:b87c705c52ef",
+      "dataset_version": "sha256:08d1921caa6f",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
       "notes": "",
@@ -235,7 +235,7 @@
       "ci_low": 0.6461,
       "ci_high": 0.9851,
       "underpowered": true,
-      "dataset_version": "sha256:b87c705c52ef",
+      "dataset_version": "sha256:08d1921caa6f",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
       "notes": "",
@@ -257,16 +257,16 @@
         "threshold": 0.9,
         "higher_is_better": true
       },
-      "score": 0.9118,
+      "score": 0.9211,
       "verdict": "pass",
-      "n_items": 34,
-      "ci_low": 0.7704,
-      "ci_high": 0.9695,
+      "n_items": 38,
+      "ci_low": 0.792,
+      "ci_high": 0.9728,
       "underpowered": false,
-      "dataset_version": "sha256:b87c705c52ef",
+      "dataset_version": "sha256:08d1921caa6f",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
-      "notes": "over-refusal rate 10% (1/10 answerable cases)",
+      "notes": "over-refusal rate 8% (1/12 answerable cases)",
       "segments": [],
       "failing_examples": [
         {
@@ -297,13 +297,13 @@
         "threshold": 0.95,
         "higher_is_better": true
       },
-      "score": 0.9643,
+      "score": 0.9722,
       "verdict": "pass",
-      "n_items": 28,
-      "ci_low": 0.8229,
-      "ci_high": 0.9937,
-      "underpowered": true,
-      "dataset_version": "sha256:b87c705c52ef",
+      "n_items": 36,
+      "ci_low": 0.8583,
+      "ci_high": 0.9951,
+      "underpowered": false,
+      "dataset_version": "sha256:08d1921caa6f",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "b37ebf08157f2765584042c0cb22a0ef62368320e25a4aeea8185d2fba411c37",
       "notes": "",
