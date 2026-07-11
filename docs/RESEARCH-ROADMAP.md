@@ -175,3 +175,5 @@ only when explicitly requested. Wired up as `sprout freshness [--check-links]`
 (`src/sprout/config.py`), unit-tested offline in `tests/test_freshness.py`. Verify:
 `pytest tests/test_freshness.py -q`, `ruff check`, `mypy` all green; `sprout freshness`
 exits 0 against the bundled 2026-05-01 corpus.
+
+**R9 done.** The reminders panel note (`web/dist/index.html`, `<section aria-labelledby="reminders-h">`) now states all three ADR-0011 honest limits in-product: reminders live only in a local file on-device (`var/reminders.json`), are never uploaded, do not sync across devices, and have no push/notification delivery (the app must be opened to see what's due) — alongside the existing "cadence is your own setting, not a cited fact" line. Structural a11y unchanged (plain `<p>` text, no new interactive/tabindex elements). Verify: `uv run sprout a11y-check web/dist/index.html` and `uv run pytest tests/test_server.py::test_shipped_ui_passes_structural_a11y -q` both pass.
