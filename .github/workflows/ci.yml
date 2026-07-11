@@ -76,8 +76,8 @@ jobs:
           uv run sprout a11y-check docs/audits/eval-report.html
       - name: Claims-integrity gate (docs vs code/config source of truth)
         run: uv run sprout claims-check
-      - name: Judge calibration (report-only — below threshold, gap tracked; see docs/ROADMAP.md)
-        run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits
+      - name: Judge calibration (merge-blocking — antonym-polarity fix cleared the threshold, P0-4)
+        run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
 
   pa11y:
     runs-on: ubuntu-latest
