@@ -3,8 +3,9 @@
 Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest refusal),
 ``serve`` (the chat UI + API), ``eval`` (record the live engine, run the suites, regenerate
 the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``freshness``
-(offline citation-freshness check, opt-in link-liveness), ``calibrate`` (judge agreement +
-kappa), and ``demo`` (a scripted session). Everything runs offline by default.
+(offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
+their code/config source of truth), ``calibrate`` (judge agreement + kappa), and ``demo`` (a
+scripted session). Everything runs offline by default.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import yaml
 from . import __version__
 from .a11y import check_html
 from .answer import Assistant
+from .claims import check as check_claims
 from .config import Config, load_config
 from .models import Answer
 
@@ -237,6 +239,23 @@ def freshness_check(
     counts = summarize(findings)
     typer.echo(f"freshness: {counts['high']} high, {counts['warning']} warning", err=True)
     raise typer.Exit(1 if counts["high"] else 0)
+
+
+@app.command("claims-check")
+def claims_check(
+    path: Annotated[str, typer.Argument()] = "docs/claims.yaml",
+) -> None:
+    """Check every registered doc claim against its code/config source of truth."""
+    target = Path(path)
+    if not target.exists():
+        typer.echo(f"file not found: {target}", err=True)
+        raise typer.Exit(2)
+    problems = check_claims(target)
+    if problems:
+        for p in problems:
+            typer.echo(f"  - {p}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{target}: all claims reconciled with their source of truth")
 
 
 @app.command()
