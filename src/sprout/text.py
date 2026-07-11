@@ -210,9 +210,27 @@ def strip_accents(token: str) -> str:
 _strip_accents = strip_accents
 
 
+def _strip_zero_width(text: str) -> str:
+    """NFKC-normalize and drop Unicode format characters (category ``Cf``).
+
+    Category Cf covers the zero-width space/non-joiner/joiner (U+200B, U+200C, U+200D) and
+    the BOM/zero-width-no-break-space (U+FEFF) — invisible characters an adversarial input
+    can splice into a word (e.g. "safe" with a U+200B inserted between the "s" and the "a")
+    to dodge exact-phrase and token matching without changing how the text *looks* or reads
+    aloud. Characters are removed outright (not replaced with a space) so the surrounding
+    letters re-join into the original word instead of being split into spurious sub-tokens.
+    Applied before tokenisation so every consumer of ``tokenize``/``normalize`` — retrieval,
+    the citation guard, and the never-certify-safe deny-list — sees the same de-obfuscated
+    text.
+    """
+    return "".join(
+        ch for ch in unicodedata.normalize("NFKC", text) if unicodedata.category(ch) != "Cf"
+    )
+
+
 def tokenize(text: str) -> list[str]:
     """Lower-cased, accent-folded word/number tokens, in document order."""
-    return [_strip_accents(m.group(0).lower()) for m in _TOKEN_RE.finditer(text)]
+    return [_strip_accents(m.group(0).lower()) for m in _TOKEN_RE.finditer(_strip_zero_width(text))]
 
 
 def _stem(token: str) -> str:
@@ -351,8 +369,13 @@ def jaccard(a: str, b: str) -> float:
 
 
 def normalize(text: str) -> str:
-    """Collapse whitespace and lower-case for verbatim-containment checks."""
-    return re.sub(r"\s+", " ", text).strip().lower()
+    """NFKC-normalize, drop zero-width/format characters, collapse whitespace, lower-case.
+
+    Used for verbatim-containment checks (``contains_phrase``) and folded into
+    ``guards._fold`` for the never-certify-safe deny-list, so both must survive
+    zero-width-character injection between the letters of a denied phrase.
+    """
+    return re.sub(r"\s+", " ", _strip_zero_width(text)).strip().lower()
 
 
 def contains_phrase(haystack: str, phrase: str) -> bool:

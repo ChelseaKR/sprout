@@ -37,6 +37,7 @@ nav:
   - Home: index.md
   - Architecture: ARCHITECTURE.md
   - Threat model: THREAT-MODEL.md
+  - Adapt to your domain: ADAPT.md
   - Roadmap: ROADMAP.md
   - Responsible-tech audits: RESPONSIBLE-TECH-AUDITS.md
   - Accessibility:

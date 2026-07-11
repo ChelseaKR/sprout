@@ -3,7 +3,7 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        a11y calibrate audits docs demo verify clean
+        a11y claims calibrate audits docs demo verify clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -51,6 +51,9 @@ a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gat
 	$(PY) sprout a11y-check web/dist/index.html
 	$(PY) sprout a11y-check docs/audits/eval-report.html
 
+claims: ## Claims-integrity gate: docs/claims.yaml vs code/config source of truth
+	$(PY) sprout claims-check
+
 audits: eval calibrate ## Regenerate the committed eval + calibration audit artifacts
 
 docs: ## Build the docs site strictly (mirrors the CI docs gate)
@@ -60,7 +63,7 @@ docs: ## Build the docs site strictly (mirrors the CI docs gate)
 demo: ingest ## Reproduce a short scripted session
 	$(PY) sprout demo --config $(CONFIG)
 
-verify: lint type test security eval a11y calibrate ## Full local mirror of the CI gate set
+verify: lint type test security eval a11y claims calibrate ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts
