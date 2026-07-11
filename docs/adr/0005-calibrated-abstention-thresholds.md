@@ -1,6 +1,10 @@
 # 5. Calibrated abstention thresholds
 
-- Status: Accepted
+- Status: **Superseded by [0012](0012-recalibrated-abstention-thresholds-supersedes-0005.md)
+  (2026-07-05)** — the numbers below (abstain 0.45, low-confidence 0.62, logistic midpoint
+  0.22/steepness 12.0) were never the values actually shipped in code, and running the
+  calibration suite against them fails the ECE gate (0.184 > 0.15). This record is kept
+  verbatim, append-only, for history; do not treat its numbers as current. See ADR-0012.
 - Date: 2026-06-22
 - Author: Chelsea Kelly-Reif
 - Deciders: Chelsea Kelly-Reif (maintainer)

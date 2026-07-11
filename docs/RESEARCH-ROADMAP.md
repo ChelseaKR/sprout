@@ -65,7 +65,7 @@ Priority: **P0** now · **P1** next · **P2** soon. Effort: **S** ≈ an afterno
 | E4 | **Coverage-vs-risk (selective-prediction) curve** in the calibration report, beyond ECE: publish the coverage/risk tradeoff at the abstain threshold | C2,C1 | P2 | M | EV8 · **[NET-NEW]** |
 | E5 | **SME corpus-contribution workflow**: a low-/no-code "propose a cited passage + an eval case" path with provenance fields (source, license, fetch_date, lang, topic) enforced and a representational-harm checklist | B2,E1 | P2 | L | EV1,EV4 · **[NET-NEW]** |
 | E6 | **Language expansion beyond EN/ES** (the i18n seam is one module) — *gated* on parity: each new language must clear the multilingual suite, and ES/new-language copy is human-reviewed, never raw MT | A4,B2 | P2 | L | EV10 · partially **[corroborates I18N standard]** / **[NET-NEW]** for >2 langs |
-| E7 | **Citation freshness / link-liveness check**: flag when a cited source's `fetch_date` is stale or the URL no longer supports the claim — especially toxicity refs that get revised | C1,B1,E1 | P2 | M | EV6 · **[NET-NEW]** |
+| E7 | **Citation freshness / link-liveness check**: flag when a cited source's `fetch_date` is stale or the URL no longer supports the claim — especially toxicity refs that get revised | C1,B1,E1 | P2 | M | EV6 · **[NET-NEW]** · **[shipped: `sprout freshness`]** |
 | E8 | **Photo-ID "show your work"**: top-N candidate species with scores + an explicit corpus-coverage gate; never auto-act on the match | A3,A1 | P2 | M | EV9 · **[corroborates ADR-0010]** (extend) |
 | E10 | **Family Greenhouse personalization (A→B→C)**: toxicity cross-check against the user's *actual* pets/plants ("a plant in your Greenhouse is listed toxic to cats, and your profile notes a cat") — deferred, opt-in, household-data ASVS L2 | A1,A2,E1 | Later | L | EV2 · **[corroborates ROADMAP deferred]** |
 | E11 | **`corpus.yaml` generalization + "adapt this to your domain" guide** so any cited care corpus can be swapped in | E1,C2 | Later | M | — · **[corroborates ROADMAP Phase 4]** |
@@ -164,3 +164,14 @@ real interviews this exercise exists to design.
 ---
 ## Implementation status — 2026-06-30 (working tree, uncommitted)
 Shipped this pass: **R6** doc-drift fix (photo-ID non-goal reconciled with ADR-0010) · **R3** model + data cards · conservative safety framing (**R7/E9** "non-toxic ≠ safe" + escalation to ASPCA/Pet-Poison-Helpline; never asserts safe). Verify: `make verify` green. Deferred: R1 toxicity corpus + R2 eval cases (need a veterinary-toxicologist / SME).
+
+## Implementation status — 2026-07-03
+Shipped: **E7** citation freshness / link-liveness check — `sprout.freshness.check_freshness()`
+parses each manifest entry's `fetch_date` and flags stale citations (365d default, 180d for
+toxicity-topic entries or titles/topics that mention toxicity), plus an opt-in, network-gated
+`check_liveness()` that HEAD/GETs cited URLs (skipping the synthetic `example.invalid` host)
+only when explicitly requested. Wired up as `sprout freshness [--check-links]`
+(`src/sprout/cli.py`), config-over-code thresholds under `corpus.freshness`
+(`src/sprout/config.py`), unit-tested offline in `tests/test_freshness.py`. Verify:
+`pytest tests/test_freshness.py -q`, `ruff check`, `mypy` all green; `sprout freshness`
+exits 0 against the bundled 2026-05-01 corpus.

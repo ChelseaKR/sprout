@@ -1,7 +1,8 @@
-"""CLI tests: version, ingest, ask, demo, a11y-check, and an end-to-end eval run."""
+"""CLI tests: version, ingest, ask, demo, a11y-check, freshness, and an end-to-end eval run."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import yaml
@@ -9,6 +10,7 @@ from typer.testing import CliRunner
 
 from sprout import __version__
 from sprout.cli import app
+from sprout.eval.dataset import load_suite_dir, write_sidecar
 
 runner = CliRunner()
 
@@ -141,6 +143,44 @@ def test_a11y_check(tmp_path: Path) -> None:
     assert missing.exit_code == 2
 
 
+def test_freshness_check(tmp_path: Path) -> None:
+    from datetime import date, timedelta
+
+    cfg = _project(tmp_path)
+    fresh = runner.invoke(app, ["freshness", "--config", str(cfg)])
+    assert fresh.exit_code == 0
+    assert "no stale or dead citations" in fresh.stdout
+
+    stale_date = (date.today() - timedelta(days=900)).isoformat()
+    stale_manifest = {
+        "documents": [
+            {
+                "file": "monstera.md",
+                "title": "Monstera care",
+                "source_name": "Synthetic Notes",
+                "url": "https://example.invalid/monstera",
+                "license": "CC0-1.0",
+                "fetch_date": stale_date,
+                "language": "en",
+                "topic": "toxicity",
+            }
+        ]
+    }
+    manifest_path = tmp_path / "stale-manifest.yaml"
+    manifest_path.write_text(yaml.safe_dump(stale_manifest), encoding="utf-8")
+    stale_cfg = tmp_path / "stale.yaml"
+    stale_cfg.write_text(
+        yaml.safe_dump({"corpus": {"manifest": str(manifest_path)}}), encoding="utf-8"
+    )
+    stale = runner.invoke(app, ["freshness", "--config", str(stale_cfg)])
+    assert stale.exit_code == 1
+    assert "high" in stale.output.lower()
+    assert "monstera.md" in stale.output
+
+    linked = runner.invoke(app, ["freshness", "--config", str(stale_cfg), "--check-links"])
+    assert linked.exit_code == 1  # the stale finding alone still fails the gate offline
+
+
 def test_identify_offline_falls_back(tmp_path: Path) -> None:
     cfg = _project(tmp_path)
     assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
@@ -205,3 +245,102 @@ def test_eval_end_to_end(tmp_path: Path) -> None:
     assert (out / "eval-report.md").exists()
     assert (out / "eval-report.html").exists()
     assert (out / "eval-baseline.json").exists()
+
+
+def test_eval_baseline_regression_gate(tmp_path: Path) -> None:
+    """`sprout eval` must fail when the committed baseline is stale or regressed (P0-5).
+
+    Previously ``diff_against_baseline`` existed but was only ever called from tests —
+    the CLI path never loaded the baseline, so a stale baseline (fingerprint no longer
+    matching the current run) went unnoticed. This exercises the CLI-level gate end to
+    end: a clean re-run passes, and a corrupted/stale committed baseline fails the command
+    even though every suite still individually clears its own threshold.
+    """
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    suite_dir = tmp_path / "suites"
+    out = tmp_path / "audits"
+    # Pin the suite-hash sidecar so the non-`--update-baseline` path (verify_hash=True)
+    # accepts this dataset, mirroring the real `eval/suites.sha256` in the repo.
+    dataset = load_suite_dir(suite_dir, verify_hash=False)
+    write_sidecar(dataset, suite_dir.parent / "suites.sha256")
+
+    base_args = [
+        "eval",
+        "--config",
+        str(cfg),
+        "--suites",
+        "groundedness,safety,refusal",
+        "--suite-dir",
+        str(suite_dir),
+        "--out",
+        str(out),
+    ]
+    assert runner.invoke(app, [*base_args, "--update-baseline"]).exit_code == 0
+
+    # A clean re-run against the freshly-written baseline has no regression.
+    clean = runner.invoke(app, base_args)
+    assert clean.exit_code == 0, clean.output
+    assert "Baseline regression check: no issues" in clean.output
+
+    # Corrupt the committed baseline's dataset hash to reproduce the exact staleness
+    # defect the audit found (AIEV-26): the gate must fail loudly, not silently pass.
+    baseline_path = out / "eval-baseline.json"
+    stale = json.loads(baseline_path.read_text(encoding="utf-8"))
+    stale["fingerprint"]["dataset_hash"] = "deadbeef" * 8
+    baseline_path.write_text(json.dumps(stale), encoding="utf-8")
+
+    stale_result = runner.invoke(app, base_args)
+    assert stale_result.exit_code == 1
+    assert "dataset_hash" in stale_result.output
+    assert "Baseline regression check FAILED" in stale_result.output
+
+
+_PROBES = {
+    "labeled_date": "2026-06-22",
+    "probes": [
+        {
+            "id": "p1",
+            "kind": "contains",
+            "text_a": "water weekly",
+            "text_b": "water weekly",
+            "human_label": True,
+        }
+    ],
+}
+
+
+def test_calibrate_reports_by_default_and_gates_on_flag(tmp_path: Path) -> None:
+    probes_path = tmp_path / "probes.yaml"
+    probes_path.write_text(yaml.safe_dump(_PROBES), encoding="utf-8")
+    out = tmp_path / "audits"
+
+    report_only = runner.invoke(app, ["calibrate", str(probes_path), "--out", str(out)])
+    assert report_only.exit_code == 0, report_only.output
+    assert (out / "judge-calibration.json").exists()
+    assert "no labeled_date" not in report_only.output
+
+
+def test_calibrate_warns_on_stale_probe_set(tmp_path: Path) -> None:
+    """AIEV-20: a probe set older than 30 days triggers a freshness warning (not yet a
+    failure — flipping to fail is P0-4 step 3, gated on the calibration quality fix)."""
+    stale = dict(_PROBES, labeled_date="2026-01-01")
+    probes_path = tmp_path / "stale_probes.yaml"
+    probes_path.write_text(yaml.safe_dump(stale), encoding="utf-8")
+    out = tmp_path / "audits"
+
+    result = runner.invoke(app, ["calibrate", str(probes_path), "--out", str(out)])
+    assert result.exit_code == 0
+    assert "days old" in result.output
+    assert "freshness target" in result.output
+
+
+def test_calibrate_warns_when_labeled_date_missing(tmp_path: Path) -> None:
+    no_date = {"probes": _PROBES["probes"]}
+    probes_path = tmp_path / "no_date_probes.yaml"
+    probes_path.write_text(yaml.safe_dump(no_date), encoding="utf-8")
+    out = tmp_path / "audits"
+
+    result = runner.invoke(app, ["calibrate", str(probes_path), "--out", str(out)])
+    assert result.exit_code == 0
+    assert "no labeled_date field" in result.output

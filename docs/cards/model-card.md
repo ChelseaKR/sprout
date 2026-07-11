@@ -196,8 +196,11 @@ These are the two behaviors that make Sprout honest about its limits.
 - Confidence is a transparent function of **retrieval evidence** — the best passage's cosine score,
   nudged by its margin over the runner-up, through a fixed logistic. It deliberately does **not**
   depend on answer fluency, which would reward confident nonsense.
-- Below `abstain_threshold` (default **0.45**) the assistant **refuses rather than guesses**. Below
-  `low_confidence_threshold` (default **0.62**) it answers but flags the answer for human review.
+- Below `abstain_threshold` (default **0.25**) the assistant **refuses rather than guesses**. Below
+  `low_confidence_threshold` (default **0.50**) it answers but flags the answer for human review.
+  (Per [ADR-0012](../adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md), which
+  supersedes ADR-0005; the earlier 0.45/0.62 figures never matched the shipped, calibrated
+  values and are corrected here as of 2026-07-05.)
 - The harness checks that these stated confidences track correctness via a **reliability diagram**
   and **Expected Calibration Error (ECE)** in the calibration suite — a confidence Sprout cannot
   back up is a test failure, not a footnote.

@@ -9,7 +9,11 @@
 - [ ] Docs / CHANGELOG updated; ISO 25010 quality characteristic named
 - [ ] Eval report regenerated if behavior changed; no baseline regression
 - [ ] Rollback plan noted (config flag or revert)
+- [ ] New runtime dependency? One-line why + alternatives considered (below, or "n/a")
 
 ## ISO 25010 characteristic(s) this PR touches
+
+## New runtime dependency? Why + alternatives considered
+<!-- n/a if none -->
 
 ## Rollback plan

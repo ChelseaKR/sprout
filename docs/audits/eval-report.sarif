@@ -11,7 +11,7 @@
               "id": "sprout-eval/calibration",
               "name": "expected-calibration-error",
               "shortDescription": {
-                "text": "Expected Calibration Error over (stated confidence, correctness) pairs (<=0.15), with abstention enforced below the 0.25 confidence threshold."
+                "text": "Expected Calibration Error over (stated confidence, correctness) pairs (<=0.15), with abstention enforced below the 0.25 confidence threshold (ADR-0012)."
               }
             },
             {

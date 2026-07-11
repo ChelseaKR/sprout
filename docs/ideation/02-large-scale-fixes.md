@@ -129,6 +129,26 @@ animals in both languages.
 
 ## FIX-05 — Adversarial hardening of the guards via property-based fuzzing
 
+**Status:** ✅ Done (2026-07-03, `roadmap/fix-05-property-based-fuzzing-of-the-gua`).
+`tests/test_guard_fuzzing.py` fuzzes `asserts_safety` and `citation_guard`
+(`_supported_by`) with Hypothesis. Findings: zero-width injection defeated *both* the
+deny-list phrase match and the (separate) negation/harm-token check — `text.normalize`
+and `text.tokenize` both needed the NFKC + format-character strip, since the harm-token
+path reads `tokenize` directly rather than `normalize`. Homoglyph substitution
+(Cyrillic а/е/о for Latin a/e/o) defeated the phrase match; closed with a minimal,
+documented 3-entry table in `guards._fold` (ADR-0012, since `guards.py` is
+CODEOWNERS-guarded). Case perturbation was already an invariant (no fix needed).
+Two residuals were found, fixed only partially in scope, and pinned as tests rather than
+left unmeasured: homoglyph substitution into a harm token (e.g. "not"/"toxic") still
+defeats the negation/harm-token check (deliberately not routed through the homoglyph
+fold, to avoid changing retrieval/stemming for every other caller); letter-spacing
+("s a f e") defeats every path and is undefended. The `citation_guard` same-plant
+cross-chunk recombination admit-rate is quantified at a bounded, deterministic
+Monte-Carlo sample (`0.05 <= rate <= 0.70`) instead of the prior qualitative-only model
+card note, and a cross-species non-leakage invariant is pinned. See ADR-0012 for the
+full write-up; "file every surviving bypass as an eval case" (item (d) below) and the
+model-card admit-rate rewrite are follow-on work, not done in this pass.
+
 **Pitch.** Use the already-declared-but-unused `hypothesis` dependency to attack
 `asserts_safety`, `_supported_by`, and `citation_guard` with the inputs a cloud
 generator or adversarial corpus could actually produce.
