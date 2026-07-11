@@ -76,11 +76,14 @@ content-hashed and reproducible). The species set is the common-houseplant core,
 
 | Toxicity posture (ASPCA-style, illustrative) | Example species |
 |---|---|
-| Toxic to cats and/or dogs | Monstera (*Monstera deliciosa*), Pothos (*Epipremnum aureum*), Philodendron, Snake plant (*Dracaena trifasciata*), Peace lily (*Spathiphyllum*), ZZ plant (*Zamioculcas*), Dieffenbachia, Aloe vera, English ivy |
-| Generally non-toxic (per ASPCA-style listing) | Spider plant (*Chlorophytum*), Boston fern, Calathea / prayer plant, Areca palm, African violet, Hoya, Phalaenopsis orchid |
+| Toxic to cats and/or dogs | Monstera (*Monstera deliciosa*), Pothos (*Epipremnum aureum*), Philodendron, Snake plant (*Dracaena trifasciata*), Peace lily (*Spathiphyllum*), ZZ plant (*Zamioculcas*), Aloe vera, English ivy |
+| Generally non-toxic (per ASPCA-style listing) | Spider plant (*Chlorophytum*), Boston fern, Calathea / prayer plant, Phalaenopsis orchid |
 
 (The exact roster is whatever the committed `corpus/manifest.yaml` enumerates; this table is the
-intended composition, not a contract on individual rows.)
+intended composition, not a contract on individual rows. **Planned, not yet in the corpus:**
+Dieffenbachia, Areca palm, African violet, Hoya — candidates for a future species-roster expansion;
+they are not part of the bundled `corpus/manifest.yaml` today and any question about them correctly
+falls to the refusal path.)
 
 > **A "generally non-toxic" listing is not a safety guarantee.** This column tracks an ASPCA-style
 > *classification* so the safety suite exercises real-shaped facts — it is **not** a clearance to let

@@ -68,13 +68,21 @@ the public evaluation harness as the headline artifact.
 - **Accessible web UI** (`web/dist/`): framework-free WCAG 2.2 AA chat interface with a non-chat
   transcript/alternate view; SSE token streaming; copyable citations.
 - **`sprout` CLI** (`ingest`, `ask`, `serve`, `eval`, `eval-baseline`, `calibrate`, `a11y-check`,
-  `demo`) and a JSON/SSE API server.
+  `ci-parity-check`, `demo`) and a JSON/SSE API server.
 - **Governance and process:** `make verify` reproducing the full CI gate set
-  (`lint · type · test ≥90% · security · eval · a11y`); CONTRIBUTING, SECURITY, CODE_OF_CONDUCT,
-  DEFINITION_OF_DONE; CODEOWNERS over the safety guardrails; ADRs; dependabot; SHA-pinned Actions;
-  Conventional Commits + DCO sign-off; the `claude/* → develop → main` branch model.
+  (`lint · type · test ≥90% · security · eval · a11y · docs · workflow-lint · ci-parity-check`);
+  CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, DEFINITION_OF_DONE; CODEOWNERS over the safety
+  guardrails; ADRs; dependabot; SHA-pinned Actions; Conventional Commits + DCO sign-off; the
+  `claude/* → develop → main` branch model.
 - **Docs:** ARCHITECTURE, THREAT-MODEL, ACCESSIBILITY (+ ACR via VPAT 2.5 Rev 508), ROADMAP,
   RESPONSIBLE-TECH-AUDITS, model and data cards, and the committed `docs/audits/` eval artifacts.
+- **Promptfoo red-team config** (`eval/redteam/promptfooconfig.yaml`) covering OWASP Top 10 for
+  LLM Applications (LLM01-LLM10:2025) against the live `POST /api/chat` pipeline, in EN and ES.
+  Fills the gap `docs/ROADMAP.md` had been carrying since 2026-07-05 ("planned — no Promptfoo
+  config exists"); complements the manual, dated exercise in
+  `docs/audits/red-team-2026-06-22.md`. Advisory `redteam` CI job (opt-in, needs
+  `ANTHROPIC_API_KEY`, excluded from `ci-gate`) added to `.github/workflows/ci.yml`; see
+  `eval/redteam/README.md`.
 
 ### Changed
 - `create_app` accepts an optional `identifier` override (mirroring the existing `assistant`
@@ -88,6 +96,22 @@ the public evaluation harness as the headline artifact.
   one real finding this surfaced: the empty-state reminders table left header cells with zero data
   rows (`axe`'s `th-has-data-cells`), so the table is now hidden until it has at least one
   reminder, matching the existing plain-language empty-state message.
+- **CI/local parity is now mechanically checked, not just asserted** (`ci-parity-no-mechanical-diff`,
+  ROADMAP.md): `src/sprout/ci_parity.py` / `sprout ci-parity-check` diffs
+  `.github/workflows/ci.yml`'s required-job commands against their `Makefile` counterparts, wired
+  as `make ci-parity-check` (a `make verify` prerequisite) and a `ci-parity` CI job (a `ci-gate`
+  dependency). Its first run surfaced two real gaps — the `docs` and `zizmor` (workflow-SAST)
+  `ci-gate` jobs had no local equivalent in `make verify` — now closed with new `docs` and
+  `workflow-lint` prerequisites on `verify`.
+
+### Fixed
+- **`docs/ROADMAP.md` Phase 3 status (2026-07-08):** the "Outstanding" bullet still listed
+  "commit the ACR and the OWASP-LLM red-team report" as not-yet-done, even though both
+  `docs/accessibility/ACR.md` (VPAT 2.5 Rev 508) and `docs/audits/red-team-2026-06-22.md`
+  (OWASP LLM01–LLM10:2025 coverage) had already been committed in the 2026-07-05 conformance
+  pass. Moved to "Done" with an honest caveat preserved: the red-team report remains a manual,
+  dated exercise until an automated Promptfoo `redteam` run is wired and promoted into the
+  blocking `ci-gate` (tracked in the "Red-team (OWASP LLM01–LLM10)" ledger row).
 
 ### Security
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the
