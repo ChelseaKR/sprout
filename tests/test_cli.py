@@ -1,10 +1,11 @@
-"""CLI tests: version, ingest, ask, demo, a11y-check, and an end-to-end eval run."""
+"""CLI tests: version, ingest, ask, demo, a11y-check, freshness, and an end-to-end eval run."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 from typer.testing import CliRunner
 
@@ -143,6 +144,44 @@ def test_a11y_check(tmp_path: Path) -> None:
     assert missing.exit_code == 2
 
 
+def test_freshness_check(tmp_path: Path) -> None:
+    from datetime import date, timedelta
+
+    cfg = _project(tmp_path)
+    fresh = runner.invoke(app, ["freshness", "--config", str(cfg)])
+    assert fresh.exit_code == 0
+    assert "no stale or dead citations" in fresh.stdout
+
+    stale_date = (date.today() - timedelta(days=900)).isoformat()
+    stale_manifest = {
+        "documents": [
+            {
+                "file": "monstera.md",
+                "title": "Monstera care",
+                "source_name": "Synthetic Notes",
+                "url": "https://example.invalid/monstera",
+                "license": "CC0-1.0",
+                "fetch_date": stale_date,
+                "language": "en",
+                "topic": "toxicity",
+            }
+        ]
+    }
+    manifest_path = tmp_path / "stale-manifest.yaml"
+    manifest_path.write_text(yaml.safe_dump(stale_manifest), encoding="utf-8")
+    stale_cfg = tmp_path / "stale.yaml"
+    stale_cfg.write_text(
+        yaml.safe_dump({"corpus": {"manifest": str(manifest_path)}}), encoding="utf-8"
+    )
+    stale = runner.invoke(app, ["freshness", "--config", str(stale_cfg)])
+    assert stale.exit_code == 1
+    assert "high" in stale.output.lower()
+    assert "monstera.md" in stale.output
+
+    linked = runner.invoke(app, ["freshness", "--config", str(stale_cfg), "--check-links"])
+    assert linked.exit_code == 1  # the stale finding alone still fails the gate offline
+
+
 def test_identify_offline_falls_back(tmp_path: Path) -> None:
     cfg = _project(tmp_path)
     assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
@@ -207,6 +246,53 @@ def test_eval_end_to_end(tmp_path: Path) -> None:
     assert (out / "eval-report.md").exists()
     assert (out / "eval-report.html").exists()
     assert (out / "eval-baseline.json").exists()
+
+
+def test_eval_raises_refusal_gate_for_semantic_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`sprout eval` must raise the refusal gate to the 0.95 portfolio target once the
+    semantic (Bedrock/Titan) embedding provider is configured, instead of silently keeping
+    the 0.90 offline-hashing-embedder floor — see docs/ROADMAP.md's AI evaluation table.
+
+    ``TitanEmbedding.embed`` is monkeypatched to a local deterministic stand-in so this
+    stays a no-network, no-credentials unit test; ``bedrock.py`` itself is excluded from
+    coverage and only exercised against a live/injectable AWS client in integration.
+    """
+    from sprout.providers.bedrock import TitanEmbedding
+    from sprout.providers.deterministic import HashingEmbedding
+
+    def _fake_embed(self: TitanEmbedding, text: str) -> list[float]:
+        return HashingEmbedding(dim=self.dim).embed(text)
+
+    monkeypatch.setattr(TitanEmbedding, "embed", _fake_embed)
+
+    cfg_path = _project(tmp_path)
+    cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+    cfg["retrieval"] = {"embedding_provider": "bedrock"}
+    cfg_path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+
+    assert runner.invoke(app, ["ingest", "--config", str(cfg_path)]).exit_code == 0
+    out = tmp_path / "audits"
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "--config",
+            str(cfg_path),
+            "--suites",
+            "refusal",
+            "--suite-dir",
+            str(tmp_path / "suites"),
+            "--out",
+            str(out),
+            "--update-baseline",
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    report = (out / "eval-report.md").read_text(encoding="utf-8")
+    assert "0.950" in report
+    assert "0.900" not in report
 
 
 def test_eval_baseline_regression_gate(tmp_path: Path) -> None:

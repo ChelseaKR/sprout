@@ -17,18 +17,26 @@ make install        # uv sync (venv + dev deps)
 make verify         # the full local mirror of the CI gate set
 ```
 
-`make verify` runs, in order, `lint · type · test (≥90%) · security · eval · a11y` — the same
-tools, configs, and thresholds the CI-required checks enforce (`CI-CD-STANDARD.md` §`make verify`
-parity): CI invokes the equivalent commands directly inside `test`/`security`/`eval-a11y`/`docs`
-jobs rather than shelling out to `make`, so this is tool-for-tool parity, not literally one CI step
-running `make verify`. A change is not done until `make verify` is green locally. There is a
-single required `ci-gate` check and no admin bypass on `main`. (As of 2026-07-05 the `security`
-target's `pip-audit` and `semgrep` steps are unconditionally blocking, matching the CI `security`
-job exactly; only `gitleaks` remains locally best-effort when the binary isn't installed, hard-failing
-if `CI=true` is set and it's still missing — see `Makefile` §`security`.)
+`make verify` runs, in order, `lint · type · test (≥90%) · security · eval · a11y · docs ·
+workflow-lint · ci-parity-check` — the same tools, configs, and thresholds the CI-required checks
+enforce (`CI-CD-STANDARD.md` §`make verify` parity): CI invokes the equivalent commands directly
+inside `test`/`security`/`eval-a11y`/`docs`/`zizmor` jobs rather than shelling out to `make`, so
+this is tool-for-tool parity, not literally one CI step running `make verify`. A change is not
+done until `make verify` is green locally. There is a single required `ci-gate` check and no admin
+bypass on `main`. (As of 2026-07-05 the `security` target's `pip-audit` and `semgrep` steps are
+unconditionally blocking, matching the CI `security` job exactly; only `gitleaks` remains locally
+best-effort when the binary isn't installed, hard-failing if `CI=true` is set and it's still
+missing — see `Makefile` §`security`.)
+
+The parity claim above is no longer just prose: `make ci-parity-check` (`sprout ci-parity-check`,
+implemented in `src/sprout/ci_parity.py`) mechanically diffs `.github/workflows/ci.yml`'s required
+jobs against the `Makefile` targets that are supposed to mirror them and fails on any unexplained
+one-sided command. It runs as part of `make verify` and as its own `ci-parity` job in CI (a
+dependency of `ci-gate`), so drift between the two is caught the moment it's introduced instead of
+relying on a human noticing.
 
 Useful individual targets: `make fmt`, `make lint`, `make type`, `make test`, `make eval`,
-`make eval-baseline`, `make a11y`, `make demo`. Run `make help` for the full list.
+`make eval-baseline`, `make a11y`, `make docs`, `make demo`. Run `make help` for the full list.
 
 ## Branch model
 

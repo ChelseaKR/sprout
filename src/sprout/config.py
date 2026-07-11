@@ -20,11 +20,21 @@ class _Model(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class FreshnessConfig(_Model):
+    """Thresholds for the offline citation-freshness check (research item E7)."""
+
+    max_age_days: int = Field(default=365, ge=1, le=3650)
+    # Toxicity citations get a stricter window: a stale "not listed as toxic" source is
+    # a safety hazard, not just a horticulture nicety.
+    toxicity_max_age_days: int = Field(default=180, ge=1, le=3650)
+
+
 class CorpusConfig(_Model):
     path: str = "corpus/processed"
     glob: str = "**/*.md"
     manifest: str = "corpus/manifest.yaml"
     default_language: str = "en"
+    freshness: FreshnessConfig = Field(default_factory=FreshnessConfig)
 
 
 class ChunkConfig(_Model):
@@ -139,6 +149,16 @@ class GuardsConfig(_Model):
                 "baby",
                 "toddler",
                 "chew",
+                "rabbit",
+                "rabbits",
+                "bird",
+                "birds",
+                "hamster",
+                "hamsters",
+                "guinea pig",
+                "reptile",
+                "turtle",
+                "tortoise",
             ],
             "es": [
                 "tóxica",
@@ -161,6 +181,16 @@ class GuardsConfig(_Model):
                 "niño",
                 "niña",
                 "bebé",
+                "conejo",
+                "conejos",
+                "pajaro",
+                "pajaros",
+                "ave",
+                "aves",
+                "hamster",
+                "reptil",
+                "tortuga",
+                "cobaya",
             ],
         }
     )
@@ -408,7 +438,6 @@ class ServerConfig(_Model):
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
     max_question_chars: int = Field(default=500, ge=1, le=4000)
-    session_memory: int = Field(default=4, ge=0, le=50)
 
 
 class ObservabilityConfig(_Model):
