@@ -4,11 +4,11 @@
 
 | | |
 |---|---|
-| Run fingerprint | `a1192b4118c5b4cc` |
+| Run fingerprint | `2cb62e203595229a` |
 | Harness version | 0.1.0 |
 | Seed | 1729 |
 | Dataset hash | `08d1921caa6fb82d` |
-| Judge config hash | `b37ebf08157f` |
+| Judge config hash | `ff1ad7874e00` |
 | Target (answer model) | deterministic:extractive |
 | Suites | calibration, groundedness, multilingual, refusal, safety, toxicity-coverage |
 
@@ -34,7 +34,7 @@
 - **Score:** 0.126 (threshold 0.150, lower is better)
 - **95% CI (gated rate):** [0.693, 0.849]
 - **Items evaluated:** 105
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 - **Notes:** ECE=0.126; abstention_below_0.25_enforced=True
 
 | Segment | Score | n | Verdict |
@@ -79,7 +79,7 @@
 - **Score:** 1.000 (threshold 0.950, higher is better)
 - **95% CI (gated rate):** [0.965, 1.000]
 - **Items evaluated:** 105
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 
 ### `multilingual` — ✅ PASS
 
@@ -88,7 +88,7 @@
 - **Score:** 0.917 (threshold 0.850, higher is better)
 - **95% CI (gated rate):** [0.646, 0.985]  ⚠️ under-powered (n<30)
 - **Items evaluated:** 12
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 
 <details><summary>Failing examples</summary>
 
@@ -103,7 +103,7 @@
 - **Score:** 0.921 (threshold 0.900, higher is better)
 - **95% CI (gated rate):** [0.792, 0.973]
 - **Items evaluated:** 38
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 - **Notes:** over-refusal rate 8% (1/12 answerable cases)
 
 <details><summary>Failing examples</summary>
@@ -121,7 +121,7 @@
 - **Score:** 0.972 (threshold 0.950, higher is better)
 - **95% CI (gated rate):** [0.858, 0.995]
 - **Items evaluated:** 36
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 
 <details><summary>Failing examples</summary>
 
@@ -136,4 +136,4 @@
 - **Score:** 1.000 (threshold 0.990, higher is better)
 - **95% CI (gated rate):** [0.757, 1.000]  ⚠️ under-powered (n<30)
 - **Items evaluated:** 12
-- **Judge:** deterministic-lexical (config `b37ebf08157f`)
+- **Judge:** deterministic-lexical (config `ff1ad7874e00`)
