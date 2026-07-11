@@ -30,6 +30,8 @@ from sprout.eval.suite import (
     fail_closed,
     resolve_suites,
 )
+from sprout.eval.suites.toxicity_coverage import ASPCA_TOXIC_PLANTS, ToxicityCoverageSuite
+from sprout.models import Document
 
 PROV = Provenance(source="synthetic", license="CC0-1.0", added="2026-06-22")
 JUDGE = DeterministicJudge()
@@ -147,7 +149,14 @@ def _run(dataset: Dataset, **kw: object) -> RunResult:
 def test_all_suites_pass_on_good_golden(golden: Dataset) -> None:
     result = _run(golden)
     by_name = {s.suite: s for s in result.suite_results}
-    assert set(by_name) == {"groundedness", "safety", "calibration", "refusal", "multilingual"}
+    assert set(by_name) == {
+        "groundedness",
+        "safety",
+        "calibration",
+        "refusal",
+        "multilingual",
+        "toxicity-coverage",
+    }
     for name, s in by_name.items():
         assert s.passed, f"{name} should pass: {s.notes} {s.failing_examples}"
     assert result.passed
@@ -166,6 +175,59 @@ def test_safety_fails_when_certifying_safe() -> None:
     safety = next(s for s in result.suite_results if s.suite == "safety")
     assert not safety.passed
     assert "certifies safe" in safety.failing_examples[0].detail
+
+
+def _fake_document(slug: str, text: str) -> Document:
+    return Document(
+        doc_id=slug,
+        source=f"{slug}.md",
+        title=slug,
+        language="en",
+        text=text,
+        source_name="synthetic",
+        url="https://example.invalid",
+        license="CC0-1.0",
+        fetch_date="2026-06-22",
+    )
+
+
+def test_toxicity_coverage_passes_on_bundled_corpus() -> None:
+    # A zero-item PASS can never sneak through (suite.py fail-closes on n_items == 0), so the
+    # ASPCA list must itself be non-empty for that guarantee to mean anything here.
+    assert ASPCA_TOXIC_PLANTS
+    ctx = EvalContext(dataset=_golden(), judge=JUDGE)
+    result = ToxicityCoverageSuite().run(ctx)
+    assert result.n_items == len(ASPCA_TOXIC_PLANTS)
+    assert result.passed, f"{result.notes} {result.failing_examples}"
+
+
+def test_toxicity_coverage_fails_on_missing_section_or_routing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_load_corpus(_cfg: object) -> list[Document]:
+        docs = []
+        for slug in ASPCA_TOXIC_PLANTS:
+            if slug == "monstera":
+                text = "## Watering\nWater it when the soil is dry.\n"  # no Toxicity section
+            elif slug == "pothos":
+                # Has a Toxicity section that mentions toxicity, but never routes to a vet
+                # or poison-control line.
+                text = "## Toxicity\nThe cited reference lists Pothos as toxic to cats.\n"
+            else:
+                text = (
+                    "## Toxicity\nThe cited reference lists it as toxic to cats and dogs; "
+                    "contact a veterinarian or an animal poison-control line promptly.\n"
+                )
+            docs.append(_fake_document(slug, text))
+        return docs
+
+    monkeypatch.setattr("sprout.eval.suites.toxicity_coverage.load_corpus", fake_load_corpus)
+    ctx = EvalContext(dataset=_golden(), judge=JUDGE)
+    result = ToxicityCoverageSuite().run(ctx)
+    assert not result.passed
+    by_id = {o.item_id: o for o in result.failing_examples}
+    assert "no toxicity section" in by_id["monstera"].detail
+    assert "no vet/poison routing" in by_id["pothos"].detail
 
 
 def test_groundedness_fails_on_unsupported_claim() -> None:
@@ -246,7 +308,7 @@ def test_runner_fail_closed_on_suite_exception() -> None:
 
 
 def test_resolve_suites() -> None:
-    assert len(resolve_suites("all")) == 5
+    assert len(resolve_suites("all")) == 6
     assert [s.name for s in resolve_suites("safety,refusal")] == ["safety", "refusal"]
     with pytest.raises(KeyError, match="unknown suite"):
         resolve_suites("nope")
