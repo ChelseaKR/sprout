@@ -142,17 +142,27 @@ def evaluate(
     from .eval.report import diff_against_baseline, load_run_result, render_markdown, write_reports
     from .eval.runner import run_evaluation
     from .eval.suite import resolve_suites
+    from .eval.suites.refusal import threshold_for as refusal_threshold_for
 
     cfg = _load(config)
     assistant = Assistant.from_config(cfg)
     dataset = load_suite_dir(suite_dir, verify_hash=not update_baseline)
     golden = record(assistant, dataset, cfg)
+    resolved_suites = resolve_suites(suites)
+    # The refusal suite's committed threshold is the offline hashing-embedder floor (0.90).
+    # Once the semantic Bedrock/Titan embedding path is configured, enforce the stated
+    # portfolio target (0.95) instead of silently continuing to accept the offline floor —
+    # see docs/ROADMAP.md's AI evaluation suites table.
+    threshold_overrides = {}
+    if any(s.name == "refusal" for s in resolved_suites):
+        threshold_overrides["refusal"] = refusal_threshold_for(cfg.retrieval.embedding_provider)
     result = run_evaluation(
         golden,
         build_judge(judge),
-        resolve_suites(suites),
+        resolved_suites,
         target=_target_name(cfg),
         statistical_gate=statistical_gate,
+        threshold_overrides=threshold_overrides,
     )
     write_reports(result, out)
     typer.echo(render_markdown(result))
