@@ -80,8 +80,11 @@ jobs:
         run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
 
   pa11y:
+    # Browser cross-check (axe + htmlcs runners, see web/.pa11yci.json) against the live-rendered
+    # chat UI. Merge-blocking: was advisory-only (continue-on-error + `|| true`); promoted per
+    # docs/ROADMAP.md gap tracking once the one real finding it caught (empty reminders table
+    # tripping axe's th-has-data-cells) was fixed rather than papered over.
     runs-on: ubuntu-latest
-    continue-on-error: true # advisory browser cross-check; excluded from ci-gate
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -92,11 +95,62 @@ jobs:
           node-version: "20"
       - name: Install + ingest
         run: uv sync --frozen --extra serve && uv run sprout ingest
-      - name: Serve and pa11y the UI
+      - name: Serve and pa11y the UI (axe + htmlcs runners, merge-blocking)
         run: |
           uv run sprout serve &
           sleep 5
-          npx --yes pa11y-ci --config web/.pa11yci.json || true
+          npx --yes pa11y-ci --config web/.pa11yci.json
+
+  lighthouse:
+    # Lighthouse's accessibility category, scoped with --only-categories so this stays a
+    # focused a11y gate (not a performance/SEO budget). Covers the chat UI and the committed
+    # HTML eval report, per the WCAG 2.2 AA conformance row in docs/ROADMAP.md. Was previously
+    # not wired into CI at all.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+      - name: Install + ingest
+        run: uv sync --frozen --extra serve && uv run sprout ingest
+      - name: Regenerate the HTML eval report
+        run: uv run sprout eval --out docs/audits
+      - name: Serve + Lighthouse accessibility audit (chat UI + eval report, merge-blocking, threshold 0.95)
+        run: |
+          uv run sprout serve &
+          python3 -m http.server 4173 --directory docs/audits &
+          sleep 5
+
+          npx --yes lighthouse http://127.0.0.1:8000/ \
+            --only-categories=accessibility --output=json --output-path=lh-chat-ui.json \
+            --chrome-flags="--headless=new --no-sandbox" --quiet
+          npx --yes lighthouse http://127.0.0.1:4173/eval-report.html \
+            --only-categories=accessibility --output=json --output-path=lh-eval-report.json \
+            --chrome-flags="--headless=new --no-sandbox" --quiet
+
+          python3 -c "
+          import json, sys
+          failed = False
+          for label, path in [('chat UI', 'lh-chat-ui.json'), ('eval report', 'lh-eval-report.json')]:
+              score = json.load(open(path))['categories']['accessibility']['score']
+              print(f'{label} Lighthouse accessibility score: {score}')
+              if score is None or score < 0.95:
+                  failed = True
+          sys.exit(1 if failed else 0)
+          "
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lighthouse-reports
+          path: |
+            lh-chat-ui.json
+            lh-eval-report.json
+          retention-days: 14
 
   redteam:
     # Promptfoo OWASP LLM01-LLM10 red team (eval/redteam/promptfooconfig.yaml) — see
@@ -176,9 +230,10 @@ jobs:
         run: uv run sprout ci-parity-check
 
   ci-gate:
-    # The ONLY required status check for branch protection. pa11y is advisory.
+    # The ONLY required status check for branch protection. axe, pa11y, and Lighthouse
+    # accessibility are all merge-blocking (see docs/ROADMAP.md).
     if: always()
-    needs: [test, security, eval-a11y, docs, zizmor, ci-parity]
+    needs: [test, security, eval-a11y, pa11y, lighthouse, docs, zizmor, ci-parity]
     runs-on: ubuntu-latest
     steps:
       - name: Require all gates to pass (skipped path-filtered jobs are OK)
