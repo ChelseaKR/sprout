@@ -4,8 +4,9 @@ Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest ref
 ``serve`` (the chat UI + API), ``eval`` (record the live engine, run the suites, regenerate
 the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``freshness``
 (offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
-their code/config source of truth), ``calibrate`` (judge agreement + kappa), and ``demo`` (a
-scripted session). Everything runs offline by default.
+their code/config source of truth), ``calibrate`` (judge agreement + kappa),
+``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
+(a scripted session). Everything runs offline by default.
 """
 
 from __future__ import annotations
@@ -321,6 +322,31 @@ def calibrate(
         f"meets_threshold={record.meets_threshold}"
     )
     raise typer.Exit(1 if gate and not record.meets_threshold else 0)
+
+
+@app.command("ci-parity-check")
+def ci_parity_check(
+    workflow: Annotated[str, typer.Option("--workflow")] = ".github/workflows/ci.yml",
+    makefile: Annotated[str, typer.Option("--makefile")] = "Makefile",
+) -> None:
+    """Mechanically diff `make verify`'s commands against the required `ci-gate` jobs.
+
+    Fails if a CI job required by `ci-gate` runs a command `make verify` doesn't (drift the
+    other direction is also reported), except for the small documented allowlist in
+    `sprout.ci_parity` (packaging smoke-build, environment sync, and gitleaks — which CI
+    runs as an Action, not a shell command).
+    """
+    from .ci_parity import check_parity, format_reports
+
+    workflow_path, makefile_path = Path(workflow), Path(makefile)
+    for p in (workflow_path, makefile_path):
+        if not p.exists():
+            typer.echo(f"file not found: {p}", err=True)
+            raise typer.Exit(2)
+    reports = check_parity(workflow_path, makefile_path)
+    typer.echo(format_reports(reports))
+    if not all(r.ok for r in reports):
+        raise typer.Exit(1)
 
 
 @app.command()
