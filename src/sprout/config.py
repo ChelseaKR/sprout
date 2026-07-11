@@ -149,6 +149,16 @@ class GuardsConfig(_Model):
                 "baby",
                 "toddler",
                 "chew",
+                "rabbit",
+                "rabbits",
+                "bird",
+                "birds",
+                "hamster",
+                "hamsters",
+                "guinea pig",
+                "reptile",
+                "turtle",
+                "tortoise",
             ],
             "es": [
                 "tóxica",
@@ -171,6 +181,16 @@ class GuardsConfig(_Model):
                 "niño",
                 "niña",
                 "bebé",
+                "conejo",
+                "conejos",
+                "pajaro",
+                "pajaros",
+                "ave",
+                "aves",
+                "hamster",
+                "reptil",
+                "tortuga",
+                "cobaya",
             ],
         }
     )
@@ -418,7 +438,6 @@ class ServerConfig(_Model):
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
     max_question_chars: int = Field(default=500, ge=1, le=4000)
-    session_memory: int = Field(default=4, ge=0, le=50)
 
 
 class ObservabilityConfig(_Model):

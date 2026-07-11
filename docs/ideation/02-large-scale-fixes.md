@@ -8,7 +8,23 @@ days, **L** ≈ 1–2 weeks, **XL** ≈ multi-week.
 
 ---
 
-## FIX-01 — Claims-integrity gate: no number in the docs without a machine-checked source
+## FIX-01 — Claims-integrity gate: no number in the docs without a machine-checked source — ✅ Done
+
+**Status:** Implemented as specified — `docs/claims.yaml` registers the abstention
+thresholds, `low_confidence_threshold`, `min_score`, `support_overlap`, the refusal
+target, and the WCAG conformance level, each pinned to `config/sprout.yaml`,
+`RefusalSuite().metric.threshold`, `docs/audits/eval-report.json`, or a fixed policy
+decision via an explicit `<!-- claim:ID --> ` marker; `src/sprout/claims.py::check()`
+resolves every source live and checks both directions (registry vs. source, and doc
+text vs. registry); `sprout claims-check` is wired into `Makefile verify` and
+`ci.yml`. All four known drifts reconciled: abstention thresholds and
+`low_confidence_threshold` corrected to 0.25/0.50 in the model card, the responsible-tech
+audit, and the ROADMAP ledger; the red-team report got an erratum note (not a
+silent rewrite, per its own dated-artifact status); the refusal target corrected to
+0.90 in the ROADMAP ledger; `CLAUDE.md`'s three AAA mentions corrected to AA; the
+data-card species table's four non-corpus species (Dieffenbachia, Areca palm, African
+violet, Hoya) moved to a labeled "planned, not yet in the corpus" note. Branch
+`roadmap/fix-01-claims-integrity-gate-docs-claims`.
 
 **Pitch.** Make every numeric self-claim in the documentation provably equal to the
 value the code enforces — the honesty ethos applied to Sprout's own paperwork.
@@ -70,7 +86,7 @@ and is flake-prone (pin browser, retry policy). **Excellent looks like:** a
 `docs/audits/gate-inventory.md` table generated in CI mapping every AUTO row → CI step →
 last status, with zero "declared but unenforced" rows.
 
-## FIX-03 — Unknown-species hard gate for toxicity questions
+## FIX-03 — Unknown-species hard gate for toxicity questions — ✅ Done (2026-07-03)
 
 **Pitch.** Never answer a toxicity question about a plant the corpus does not cover —
 even when generic toxicity passages score well enough to ground.
@@ -102,7 +118,19 @@ species names are not safety *advice* but ship with the SME review anyway.
 questions refuse-with-routing; zero cited answers naming a different species than the
 question.
 
-## FIX-04 — Routing coverage: topic-aware refusals and species-inclusive vocabulary
+**Shipped.** `UNCOVERED_SPECIES_GAZETTEER` (`src/sprout/retrieve.py`) holds a deny-list
+of common EN/ES houseplant names absent from the corpus; `Retriever.names_uncovered_species`
+returns true only when a gazetteer entry's tokens are present *and* `_named_species`
+resolves to nothing, so a query naming both a covered and an uncovered species still gets
+the normal grounded path. `Assistant.answer` checks this hard gate right after computing
+`safety`, ahead of the grounding check, and refuses with `refusal_reason="species_not_covered"`
+using the existing localized `refusal_for(lang)` copy (no new SME-copy gate needed — the
+existing refusal text already reads as "no cited reference"). New cases in
+`eval/suites/refusal.yaml` (refusal-027/028) and `eval/suites/safety.yaml`
+(safety-035/036) cover named-but-uncovered EN/ES toxicity questions; unit tests in
+`tests/test_rag.py` cover the gazetteer/`_named_species` boundary directly.
+
+## FIX-04 — Routing coverage: topic-aware refusals and species-inclusive vocabulary — ✅ Done (2026-07-03)
 
 **Pitch.** Attach vet/poison routing wherever the *evidence* says toxicity, not only
 where input keywords do — and stop assuming every pet is a cat or dog.
@@ -126,6 +154,20 @@ borderline queries — acceptable by design (conservative direction is the house
 copy itself unchanged so no new SME gate. **Excellent looks like:** safety suite at
 1.000 on the routing criterion across an expanded case set, including non-cat/dog
 animals in both languages.
+
+**Shipped.** `Assistant._refuse` now accepts `retrieved` and computes
+`toxicity_cited = any(rc.chunk.topic == "toxicity" for rc in retrieved)`, ORing it with
+`safety` for both `is_safety_query` and `safety_notice` on the returned `Answer` — every
+`_refuse(...)` call site in `answer()` (out_of_scope, no_supported_sentences,
+low_confidence, and the new species_not_covered gate) now passes `retrieved`, mirroring
+the routing `_render` already did for answered cases.
+`GuardsConfig.toxicity_keywords` gained rabbit/rabbits/bird/birds/hamster/hamsters/
+guinea pig/reptile/turtle/tortoise (EN) and conejo/conejos/pajaro/pajaros/ave/aves/
+hamster/reptil/tortuga/cobaya (ES). `safety-025` remains a known, tracked offline miss
+(pre-existing before this fix — the offline hashing embedder does not separate this one
+ES phrasing; the suite still passes overall at its threshold) rather than a regression;
+new per-animal regression cases (safety-029…034, refusal-029/030) cover the expanded
+vocabulary in both languages without breaking it.
 
 ## FIX-05 — Adversarial hardening of the guards via property-based fuzzing
 
@@ -176,7 +218,13 @@ CI is bounded with profiles. **Excellent looks like:** a committed fuzzing repor
 deny-list invariance under the perturbation classes; the recombination residual carries
 a *number*.
 
-## FIX-06 — Single-source data packaging (kill the silent dual-copy)
+## FIX-06 — Single-source data packaging (kill the silent dual-copy) — ✅ Done
+
+**Status:** Implemented option (b) — `tests/test_resources.py` now hashes `corpus/` vs
+`src/sprout/data/corpus` and `config/sprout.yaml` vs `src/sprout/data/sprout.yaml` with
+`sha256_of_obj`/byte comparison and fails CI on drift; `scripts/_materialize_content.py`
+now re-mirrors both into `src/sprout/data/` after every regeneration. Branch
+`roadmap/fix-06-fix-11-single-source-data-packagi`.
 
 **Pitch.** Make the packaged corpus/config provably identical to the repo corpus/config
 — or generated from it — so `pipx install sprout` can never serve different facts than
@@ -308,7 +356,13 @@ like:** the deployed URL passes an external scan (securityheaders.com A, zap bas
 clean), photo-endpoint abuse is rate-limited by test, and the L1→L2 step is a committed
 artifact, not a sentence.
 
-## FIX-11 — Retire or honestly re-document the phantom session window
+## FIX-11 — Retire or honestly re-document the phantom session window — ✅ Done
+
+**Status:** `ServerConfig.session_memory` removed from `config.py` and both YAML copies
+(`config/sprout.yaml`, `src/sprout/data/sprout.yaml`); `docs/RESPONSIBLE-TECH-AUDITS.md`
+§C now says "stateless per-request; no session state of any kind" and points to EXP-07
+as the designed path if session context returns. Branch
+`roadmap/fix-06-fix-11-single-source-data-packagi`.
 
 **Pitch.** `session_memory` exists in config and in the DPIA but not in the code; make
 the paperwork true this week, and let multi-turn arrive later as a designed feature.

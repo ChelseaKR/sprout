@@ -50,6 +50,44 @@ _GENERIC = frozenset(
     }
 )
 
+# Off-corpus gazetteer: common houseplant names the corpus has no cited passage for.
+# Every entry here is deliberately chosen so it cannot resolve via ``_named_species``
+# (it shares no slug token, once generic terms are excluded, and no ``species_aliases``
+# key with any corpus species). Used only to hard-refuse a safety/toxicity question
+# that clearly names one of these plants, rather than let a spurious low-score match
+# masquerade as coverage. Not exhaustive — a deny-list of common toxic houseplants.
+UNCOVERED_SPECIES_GAZETTEER: frozenset[str] = frozenset(
+    {
+        # English
+        "dieffenbachia",
+        "dumb cane",
+        "sago palm",
+        "azalea",
+        "oleander",
+        "lily of the valley",
+        "amaryllis",
+        "caladium",
+        "croton",
+        "kalanchoe",
+        "cyclamen",
+        "foxglove",
+        "elephant ear",
+        "asparagus fern",
+        # Spanish
+        "diefenbaquia",
+        "palma sago",
+        "adelfa",
+        "lirio de los valles",
+        "amarilis",
+        "caladio",
+        # "croton" and "kalanchoe" are identical in English and Spanish (see above).
+        "ciclamen",
+        "dedalera",
+        "oreja de elefante",
+        "esparraguera",
+    }
+)
+
 
 def _canonical_slug(source: str) -> str:
     """Language-invariant species key: 'pothos.es.md' and 'pothos.md' -> 'pothos'."""
@@ -89,6 +127,21 @@ class Retriever:
             if alias_tokens and alias_tokens <= q_tokens:
                 named.add(slug)
         return named
+
+    def names_uncovered_species(self, query: str) -> bool:
+        """True when the query clearly names a gazetteer plant absent from the corpus.
+
+        Requires (a) a gazetteer entry's tokens to be a subset of the query's content
+        tokens, AND (b) ``_named_species`` resolves to nothing — so a query that also
+        names a *covered* species (e.g. comparing pothos with dieffenbachia) is left to
+        the normal grounded path instead of being hard-refused.
+        """
+        if self._named_species(query):
+            return False
+        q_tokens = token_set(query)
+        return any(
+            token_set(name) and token_set(name) <= q_tokens for name in UNCOVERED_SPECIES_GAZETTEER
+        )
 
     def _candidates(self, query: str) -> list[Chunk]:
         if not self._config.retrieval.topic_filter:
