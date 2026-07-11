@@ -98,6 +98,45 @@ jobs:
           sleep 5
           npx --yes pa11y-ci --config web/.pa11yci.json || true
 
+  redteam:
+    # Promptfoo OWASP LLM01-LLM10 red team (eval/redteam/promptfooconfig.yaml) — see
+    # eval/redteam/README.md. Generation + grading call Anthropic and need
+    # ANTHROPIC_API_KEY, so this is opt-in/advisory (like pa11y) until the key is
+    # provisioned as a repo secret and a maintainer has watched a run go clean; it is
+    # deliberately excluded from ci-gate's needs: list until then.
+    runs-on: ubuntu-latest
+    continue-on-error: true # advisory; excluded from ci-gate
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+      - name: Check for ANTHROPIC_API_KEY
+        id: gate
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: echo "run=$HAS_KEY" >> "$GITHUB_OUTPUT"
+      - name: Install + ingest
+        if: steps.gate.outputs.run == 'true'
+        run: uv sync --frozen --extra serve && uv run sprout ingest
+      - name: Serve the chat API
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          uv run sprout serve &
+          sleep 5
+      - name: Promptfoo red team (OWASP LLM01-LLM10)
+        if: steps.gate.outputs.run == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        working-directory: eval/redteam
+        run: npx --yes promptfoo@latest redteam run --no-progress-bar
+      - name: No ANTHROPIC_API_KEY secret — skipped
+        if: steps.gate.outputs.run != 'true'
+        run: echo "::notice::ANTHROPIC_API_KEY not configured; see eval/redteam/README.md. Skipping (advisory job, not gate-blocking)."
+
   docs:
     runs-on: ubuntu-latest
     steps:
