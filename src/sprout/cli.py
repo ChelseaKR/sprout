@@ -2,8 +2,10 @@
 
 Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest refusal),
 ``serve`` (the chat UI + API), ``eval`` (record the live engine, run the suites, regenerate
-the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``calibrate``
-(judge agreement + kappa), and ``demo`` (a scripted session). Everything runs offline.
+the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``freshness``
+(offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
+their code/config source of truth), ``calibrate`` (judge agreement + kappa), and ``demo`` (a
+scripted session). Everything runs offline by default.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ import yaml
 from . import __version__
 from .a11y import check_html
 from .answer import Assistant
+from .claims import check as check_claims
 from .config import Config, load_config
 from .models import Answer
 
@@ -201,6 +204,68 @@ def a11y_check(
             typer.echo(f"  - {p}", err=True)
         raise typer.Exit(1)
     typer.echo(f"{target}: no structural accessibility violations")
+
+
+@app.command("freshness")
+def freshness_check(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    check_links: Annotated[
+        bool,
+        typer.Option(
+            "--check-links",
+            help="Also HEAD/GET every cited URL (network, opt-in; off by default).",
+        ),
+    ] = False,
+) -> None:
+    """Flag stale ``fetch_date``s (stricter for toxicity citations); optionally check links.
+
+    Offline and deterministic by default: only parses the manifest against today's date.
+    ``--check-links`` additionally fetches every cited URL over the network (skipping the
+    synthetic corpus's ``example.invalid`` host) to catch dead or redirected citations.
+    """
+    from datetime import date
+
+    from . import resources
+    from .freshness import check_freshness, check_liveness, summarize
+    from .ingest import load_manifest
+
+    cfg = _load(config)
+    manifest = load_manifest(resources.locate(cfg.corpus.manifest))
+    findings = check_freshness(
+        manifest,
+        today=date.today(),
+        max_age_days=cfg.corpus.freshness.max_age_days,
+        toxicity_max_age_days=cfg.corpus.freshness.toxicity_max_age_days,
+    )
+    if check_links:
+        findings = findings + check_liveness(manifest)
+
+    if not findings:
+        typer.echo("freshness: no stale or dead citations found")
+        raise typer.Exit(0)
+
+    for f in findings:
+        typer.echo(f"  - [{f.severity}] {f.file} ({f.url}): {f.reason}", err=True)
+    counts = summarize(findings)
+    typer.echo(f"freshness: {counts['high']} high, {counts['warning']} warning", err=True)
+    raise typer.Exit(1 if counts["high"] else 0)
+
+
+@app.command("claims-check")
+def claims_check(
+    path: Annotated[str, typer.Argument()] = "docs/claims.yaml",
+) -> None:
+    """Check every registered doc claim against its code/config source of truth."""
+    target = Path(path)
+    if not target.exists():
+        typer.echo(f"file not found: {target}", err=True)
+        raise typer.Exit(2)
+    problems = check_claims(target)
+    if problems:
+        for p in problems:
+            typer.echo(f"  - {p}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{target}: all claims reconciled with their source of truth")
 
 
 @app.command()

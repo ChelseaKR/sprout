@@ -57,12 +57,12 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 
 | Suite / metric | Target | Measured by | Gate |
 |---|---|---|---|
-| **groundedness** (every claim entailed by its cited passage) | **≥ 0.95** | `eval/suites/groundedness` + judge entailment | AUTO |
+| **groundedness** (every claim entailed by its cited passage) | **≥ 0.95**<!-- claim:roadmap-groundedness-threshold --> | `eval/suites/groundedness` + judge entailment | AUTO |
 | **safety** (cite a toxicity ref, never certify "safe," route to vet/poison-control) | **≥ 0.95** | `eval/suites/safety` + deny-list guard | AUTO |
-| **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | **0.90 offline / ≥ 0.95 portfolio** — `sprout eval` now auto-selects the gate from `retrieval.embedding_provider` (`refusal.threshold_for`): the offline hashing embedder keeps its documented 0.90 floor (per the suite's own docstring — it cannot fully separate every unknown-species/jailbreak phrasing from in-scope), and the run auto-raises the gate to the ≥ 0.95 portfolio target the moment `embedding_provider: bedrock` (Titan) is configured. CI still exercises the offline default only, so 0.90 remains what's actually measured today — corrected 2026-07-08, was a hardcoded 0.90 with no enforcement path to 0.95 at all | `eval/suites/refusal` | AUTO |
+| **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | **0.90 offline / ≥ 0.95 portfolio**<!-- claim:roadmap-refusal-target --> — `sprout eval` now auto-selects the gate from `retrieval.embedding_provider` (`refusal.threshold_for`): the offline hashing embedder keeps its documented 0.90 floor (per the suite's own docstring — it cannot fully separate every unknown-species/jailbreak phrasing from in-scope), and the run auto-raises the gate to the ≥ 0.95 portfolio target the moment `embedding_provider: bedrock` (Titan) is configured. CI still exercises the offline default only, so 0.90 remains what's actually measured today — corrected 2026-07-08, was a hardcoded 0.90 with no enforcement path to 0.95 at all | `eval/suites/refusal` | AUTO |
 | **multilingual** (ES preserves the facts + citations of its EN mirror) | **≥ 0.85** | `eval/suites/multilingual` + judge equivalence | AUTO |
 | **calibration** (stated confidence tracks correctness) | **ECE ≤ 0.15** | `eval/suites/calibration` (reliability diagram + ECE) | AUTO |
-| Abstention enforced below threshold | answered cases below 0.25 confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | calibration suite invariant | AUTO |
+| Abstention enforced below threshold | answered cases below 0.25<!-- claim:roadmap-abstention-enforced --> confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | calibration suite invariant | AUTO |
 | EN/ES pass-rate parity | **\|EN − ES\| ≤ 5 pp** | bilingual benchmark slice | AUTO |
 | Hallucination rate | 0% by construction (extractive + citation guard) | citation guard unit tests + groundedness suite | AUTO |
 | Judge ↔ human agreement | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate` on the dated probe set | **report-only — currently below threshold (0.750 agreement, κ 0.400); CI step does not pass `--gate`, corrected 2026-07-05 (was declared AUTO while a step literally named "gate" could not fail); gap tracked. See `docs/audits/judge-calibration.md`.** |
@@ -234,11 +234,14 @@ implementation" banner.*
 ### Phase 4 — generalize
 *A `corpus.yaml` so any care corpus can be swapped in; "adapt this to your domain" doc.*
 
-**Status: not started.**
+**Status: guide done; personalization phases deferred.**
 - The seam exists (`config/sprout.yaml` already points the whole system at a corpus path,
-  manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). Remaining
-  work is the "adapt this to your domain" guide and, separately, the deferred Family Greenhouse
-  personalization phases (A → B → C) above.
+  manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). The
+  "adapt this to your domain" guide is written ([`docs/ADAPT.md`](ADAPT.md), linked in the site
+  nav) and walks an adopter through swapping the corpus, manifest, domain vocabulary,
+  retrieval/abstention tuning, languages, and generator/embedding provider using only that
+  config seam. Remaining Phase 4 scope is the deferred Family Greenhouse personalization phases
+  (A → B → C) above.
 
 ---
 
