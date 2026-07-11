@@ -17,6 +17,8 @@ a vet / poison-control line, and the assistant never certifies a plant safe.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from .answer_trace import AnswerTrace
 from .confidence import is_low_confidence, score_confidence, should_abstain
 from .config import Config
@@ -71,8 +73,23 @@ class Assistant:
         safety = is_safety_query(query, lang, self._config.guards)
         retrieved = self._retriever.retrieve(query)
 
+        # Hard species gate: a toxicity/safety question that clearly names a plant not
+        # in the corpus (via the off-corpus gazetteer) is refused before the grounding
+        # check runs, so a spurious low-score match can never masquerade as coverage.
+        if safety and self._retriever.names_uncovered_species(query):
+            return self._refuse(
+                query,
+                lang,
+                safety,
+                reason="species_not_covered",
+                abstained=False,
+                retrieved=retrieved,
+            )
+
         if not self._retriever.has_grounding(query, retrieved):
-            return self._refuse(query, lang, safety, reason="out_of_scope", abstained=False)
+            return self._refuse(
+                query, lang, safety, reason="out_of_scope", abstained=False, retrieved=retrieved
+            )
 
         model_query = redact_pii(query) if self._config.generation.redact_query_pii else query
         candidates = self._generator.generate(
@@ -83,13 +100,24 @@ class Assistant:
 
         if not sentences:
             return self._refuse(
-                query, lang, safety, reason="no_supported_sentences", abstained=False
+                query,
+                lang,
+                safety,
+                reason="no_supported_sentences",
+                abstained=False,
+                retrieved=retrieved,
             )
 
         confidence = score_confidence(retrieved, len(sentences))
         if should_abstain(confidence, self._config.confidence):
             return self._refuse(
-                query, lang, safety, reason="low_confidence", abstained=True, confidence=confidence
+                query,
+                lang,
+                safety,
+                reason="low_confidence",
+                abstained=True,
+                confidence=confidence,
+                retrieved=retrieved,
             )
 
         return self._render(query, lang, safety, sentences, retrieved, confidence)
@@ -135,15 +163,21 @@ class Assistant:
         reason: str,
         abstained: bool,
         confidence: float = 0.0,
+        retrieved: Sequence[RetrievedChunk] = (),
     ) -> Answer:
+        # Route to a vet / poison-control line whenever the question was classified a
+        # safety query OR the retrieved evidence itself cites a toxicity passage — so a
+        # refusal still routes even when the input keywords alone did not trip `safety`.
+        toxicity_cited = any(rc.chunk.topic == "toxicity" for rc in retrieved)
+        route = safety or toxicity_cited
         return Answer(
             question=query,
             language=lang,
             refused=True,
             refusal_reason=reason,
             refusal_text=self._config.prompts.refusal_for(lang),
-            is_safety_query=safety,
-            safety_notice=self._config.prompts.safety_directive_for(lang) if safety else None,
+            is_safety_query=route,
+            safety_notice=self._config.prompts.safety_directive_for(lang) if route else None,
             confidence=round(confidence, 4),
             low_confidence=True,
             abstained=abstained,

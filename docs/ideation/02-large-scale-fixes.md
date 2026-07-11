@@ -86,7 +86,7 @@ and is flake-prone (pin browser, retry policy). **Excellent looks like:** a
 `docs/audits/gate-inventory.md` table generated in CI mapping every AUTO row → CI step →
 last status, with zero "declared but unenforced" rows.
 
-## FIX-03 — Unknown-species hard gate for toxicity questions
+## FIX-03 — Unknown-species hard gate for toxicity questions — ✅ Done (2026-07-03)
 
 **Pitch.** Never answer a toxicity question about a plant the corpus does not cover —
 even when generic toxicity passages score well enough to ground.
@@ -118,7 +118,19 @@ species names are not safety *advice* but ship with the SME review anyway.
 questions refuse-with-routing; zero cited answers naming a different species than the
 question.
 
-## FIX-04 — Routing coverage: topic-aware refusals and species-inclusive vocabulary
+**Shipped.** `UNCOVERED_SPECIES_GAZETTEER` (`src/sprout/retrieve.py`) holds a deny-list
+of common EN/ES houseplant names absent from the corpus; `Retriever.names_uncovered_species`
+returns true only when a gazetteer entry's tokens are present *and* `_named_species`
+resolves to nothing, so a query naming both a covered and an uncovered species still gets
+the normal grounded path. `Assistant.answer` checks this hard gate right after computing
+`safety`, ahead of the grounding check, and refuses with `refusal_reason="species_not_covered"`
+using the existing localized `refusal_for(lang)` copy (no new SME-copy gate needed — the
+existing refusal text already reads as "no cited reference"). New cases in
+`eval/suites/refusal.yaml` (refusal-027/028) and `eval/suites/safety.yaml`
+(safety-035/036) cover named-but-uncovered EN/ES toxicity questions; unit tests in
+`tests/test_rag.py` cover the gazetteer/`_named_species` boundary directly.
+
+## FIX-04 — Routing coverage: topic-aware refusals and species-inclusive vocabulary — ✅ Done (2026-07-03)
 
 **Pitch.** Attach vet/poison routing wherever the *evidence* says toxicity, not only
 where input keywords do — and stop assuming every pet is a cat or dog.
@@ -142,6 +154,20 @@ borderline queries — acceptable by design (conservative direction is the house
 copy itself unchanged so no new SME gate. **Excellent looks like:** safety suite at
 1.000 on the routing criterion across an expanded case set, including non-cat/dog
 animals in both languages.
+
+**Shipped.** `Assistant._refuse` now accepts `retrieved` and computes
+`toxicity_cited = any(rc.chunk.topic == "toxicity" for rc in retrieved)`, ORing it with
+`safety` for both `is_safety_query` and `safety_notice` on the returned `Answer` — every
+`_refuse(...)` call site in `answer()` (out_of_scope, no_supported_sentences,
+low_confidence, and the new species_not_covered gate) now passes `retrieved`, mirroring
+the routing `_render` already did for answered cases.
+`GuardsConfig.toxicity_keywords` gained rabbit/rabbits/bird/birds/hamster/hamsters/
+guinea pig/reptile/turtle/tortoise (EN) and conejo/conejos/pajaro/pajaros/ave/aves/
+hamster/reptil/tortuga/cobaya (ES). `safety-025` remains a known, tracked offline miss
+(pre-existing before this fix — the offline hashing embedder does not separate this one
+ES phrasing; the suite still passes overall at its threshold) rather than a regression;
+new per-animal regression cases (safety-029…034, refusal-029/030) cover the expanded
+vocabulary in both languages without breaking it.
 
 ## FIX-05 — Adversarial hardening of the guards via property-based fuzzing
 
