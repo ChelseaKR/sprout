@@ -107,6 +107,36 @@ def test_out_of_scope_has_no_grounding(assistant: Assistant) -> None:
     assert not assistant._retriever.has_grounding(q, retrieved)
 
 
+# --- species gazetteer (FIX-03) ---------------------------------------------------
+def test_names_uncovered_species_true_for_gazetteer_plant(assistant: Assistant) -> None:
+    assert assistant._retriever.names_uncovered_species("is dieffenbachia toxic to my cat")
+    assert assistant._retriever.names_uncovered_species(
+        "¿es tóxica la diefenbaquia para mis gatos?"
+    )
+
+
+def test_names_uncovered_species_false_for_covered_species(assistant: Assistant) -> None:
+    # "pothos" resolves via `_named_species`, so the gazetteer hard gate must not fire
+    # even though the query also happens to share no gazetteer tokens.
+    assert not assistant._retriever.names_uncovered_species("is pothos toxic to my cat")
+
+
+def test_names_uncovered_species_false_when_both_named(assistant: Assistant) -> None:
+    # A query that names both a covered species and a gazetteer plant is left to the
+    # normal grounded path (it can still answer about the covered species).
+    assert not assistant._retriever.names_uncovered_species(
+        "is dieffenbachia more toxic than pothos to cats"
+    )
+
+
+def test_names_uncovered_species_false_for_unrelated_query(assistant: Assistant) -> None:
+    assert not assistant._retriever.names_uncovered_species("how do I patch a bicycle tire")
+
+
+def test_named_species_empty_for_gazetteer_only_query(assistant: Assistant) -> None:
+    assert assistant._retriever._named_species("is dieffenbachia toxic to my cat") == set()
+
+
 def test_hybrid_and_vector_only_agree_on_top(
     config: Config, assistant_factory: Callable[..., Assistant]
 ) -> None:
@@ -149,6 +179,42 @@ def test_is_safety_query() -> None:
     assert is_safety_query("is pothos toxic to cats", "en", g)
     assert is_safety_query("es el potho toxico para gatos", "es", g)
     assert not is_safety_query("why are my monstera leaves yellow", "en", g)
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "will my rubber plant harm a rabbit",
+        "could a bird nibble my snake plant",
+        "my hamster got into a jade plant",
+        "will a guinea pig get sick from my dracaena",
+        "will a reptile be harmed by a philodendron",
+        "will a turtle be harmed by an aloe leaf",
+        "is a tortoise okay near a monstera",
+    ],
+)
+def test_is_safety_query_expanded_animal_vocabulary_en(query: str) -> None:
+    # None of these contain a pre-existing keyword ("toxic"/"pet"/"safe"/"cat"/"dog"/
+    # "chew"/…) so a match here can only come from the newly-added animal terms.
+    assert is_safety_query(query, "en", Config().guards)
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "mi conejo mordio una hoja de dracena",
+        "mi pajaro se acerco a la calatea",
+        "un ave podria enfermarse con mi zamioculca",
+        "mi hamster se acerco a la sabila",
+        "un reptil podria enfermarse cerca de mi filodendro",
+        "mi tortuga mordisqueo una hoja de calatea",
+        "mi cobaya se acerco a la planta zz",
+    ],
+)
+def test_is_safety_query_expanded_animal_vocabulary_es(query: str) -> None:
+    # None of these contain a pre-existing keyword ("tóxica"/"gato"/"perro"/"comer"/…)
+    # so a match here can only come from the newly-added Spanish animal terms.
+    assert is_safety_query(query, "es", Config().guards)
 
 
 @pytest.mark.parametrize(
@@ -221,6 +287,72 @@ def test_out_of_scope_refuses(assistant: Assistant) -> None:
     assert ans.refusal_reason == "out_of_scope"
     assert not ans.sentences
     assert ans.display_text  # carries the refusal prose
+
+
+def test_species_not_covered_hard_gate_refuses(assistant: Assistant) -> None:
+    # "dieffenbachia" is a real houseplant, but it is not in the (tiny) corpus and is
+    # in the off-corpus gazetteer, so the species hard gate must refuse before any
+    # grounding/generation step runs.
+    ans = assistant.answer("is dieffenbachia toxic to my cat")
+    assert ans.refused
+    assert ans.refusal_reason == "species_not_covered"
+    assert not ans.sentences
+    assert ans.is_safety_query
+    assert ans.safety_notice and "poison-control" in ans.safety_notice.lower()
+
+
+def test_species_not_covered_hard_gate_es(assistant: Assistant) -> None:
+    ans = assistant.answer("¿es tóxica la diefenbaquia para mis gatos?", language="es")
+    assert ans.refused
+    assert ans.refusal_reason == "species_not_covered"
+    assert ans.is_safety_query
+
+
+def test_species_not_covered_gate_does_not_fire_for_covered_species(
+    assistant: Assistant,
+) -> None:
+    # A covered species must never be caught by the gazetteer hard gate.
+    ans = assistant.answer("is pothos toxic to my cat")
+    assert not ans.refused
+    assert ans.refusal_reason is None
+
+
+def test_species_not_covered_gate_requires_safety_query(assistant: Assistant) -> None:
+    # The hard gate only applies to safety/toxicity questions — a plain out-of-scope
+    # mention of an uncovered plant still refuses, but via the normal grounding gate.
+    ans = assistant.answer("how tall does a dieffenbachia typically grow")
+    assert ans.refused
+    assert ans.refusal_reason == "out_of_scope"
+
+
+def test_refusal_routes_when_retrieved_cites_toxicity(assistant: Assistant) -> None:
+    # `_refuse` must thread `retrieved` into routing: even when `safety` is False, a
+    # refusal whose retrieved evidence includes a toxicity-topic chunk still routes.
+    pothos_tox = next(c for c in assistant._store.all_chunks() if c.chunk_id == "pothos-tox")
+    retrieved = [RetrievedChunk(chunk=pothos_tox, score=0.01)]  # below min_score
+    ans = assistant._refuse(
+        "some unrelated query",
+        "en",
+        False,
+        reason="low_confidence",
+        abstained=True,
+        retrieved=retrieved,
+    )
+    assert ans.is_safety_query
+    assert ans.safety_notice and "poison-control" in ans.safety_notice.lower()
+
+
+def test_refusal_does_not_route_without_safety_or_toxicity(assistant: Assistant) -> None:
+    ans = assistant._refuse(
+        "how do I patch a flat bicycle tire",
+        "en",
+        False,
+        reason="out_of_scope",
+        abstained=False,
+        retrieved=[],
+    )
+    assert not ans.is_safety_query
+    assert ans.safety_notice is None
 
 
 def test_safety_query_cites_routes_and_never_certifies(assistant: Assistant) -> None:

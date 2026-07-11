@@ -210,9 +210,27 @@ def strip_accents(token: str) -> str:
 _strip_accents = strip_accents
 
 
+def _strip_zero_width(text: str) -> str:
+    """NFKC-normalize and drop Unicode format characters (category ``Cf``).
+
+    Category Cf covers the zero-width space/non-joiner/joiner (U+200B, U+200C, U+200D) and
+    the BOM/zero-width-no-break-space (U+FEFF) — invisible characters an adversarial input
+    can splice into a word (e.g. "safe" with a U+200B inserted between the "s" and the "a")
+    to dodge exact-phrase and token matching without changing how the text *looks* or reads
+    aloud. Characters are removed outright (not replaced with a space) so the surrounding
+    letters re-join into the original word instead of being split into spurious sub-tokens.
+    Applied before tokenisation so every consumer of ``tokenize``/``normalize`` — retrieval,
+    the citation guard, and the never-certify-safe deny-list — sees the same de-obfuscated
+    text.
+    """
+    return "".join(
+        ch for ch in unicodedata.normalize("NFKC", text) if unicodedata.category(ch) != "Cf"
+    )
+
+
 def tokenize(text: str) -> list[str]:
     """Lower-cased, accent-folded word/number tokens, in document order."""
-    return [_strip_accents(m.group(0).lower()) for m in _TOKEN_RE.finditer(text)]
+    return [_strip_accents(m.group(0).lower()) for m in _TOKEN_RE.finditer(_strip_zero_width(text))]
 
 
 def _stem(token: str) -> str:
@@ -261,6 +279,58 @@ def has_negation(text: str) -> bool:
     return any(tok in _NEGATIONS for tok in tokenize(text))
 
 
+# Safety-relevant antonym pairs (bilingual, gender/number-inflected). Deliberately a
+# small, curated, domain-specific list — this project's whole safety surface is the
+# toxic/non-toxic axis — rather than a general antonym dictionary, so it stays auditable
+# and cannot introduce false contradictions on unrelated vocabulary. ``has_negation``
+# catches "is not toxic"; this catches the polarity flip that carries no negation marker
+# at all, e.g. "is safe" asserted against a source that says "is toxic".
+_ANTONYM_PAIRS: frozenset[frozenset[str]] = frozenset(
+    {
+        frozenset({"safe", "toxic"}),
+        frozenset({"safe", "poisonous"}),
+        frozenset({"nontoxic", "toxic"}),
+        frozenset({"harmless", "toxic"}),
+        frozenset({"harmless", "poisonous"}),
+        frozenset({"harmless", "dangerous"}),
+        frozenset({"edible", "toxic"}),
+        frozenset({"edible", "poisonous"}),
+        frozenset({"seguro", "toxico"}),
+        frozenset({"segura", "toxica"}),
+        frozenset({"seguros", "toxicos"}),
+        frozenset({"seguras", "toxicas"}),
+        frozenset({"seguro", "venenoso"}),
+        frozenset({"segura", "venenosa"}),
+        frozenset({"inofensivo", "toxico"}),
+        frozenset({"inofensiva", "toxica"}),
+        frozenset({"comestible", "venenoso"}),
+        frozenset({"comestible", "venenosa"}),
+        frozenset({"comestible", "toxico"}),
+        frozenset({"comestible", "toxica"}),
+    }
+)
+
+
+def has_antonym_conflict(a: str, b: str) -> bool:
+    """True if ``a`` and ``b`` assert opposite sides of a known safety antonym pair.
+
+    "Aloe is safe for dogs" flatly contradicts a source that says "Aloe is toxic to
+    dogs" even though neither sentence contains an explicit negation marker, so
+    ``has_negation`` alone cannot catch it. Only flags a conflict when each text
+    contains exactly one, differing side of a pair — a text that mentions both sides
+    (rare, e.g. quoting a contrast) is left to the coverage/negation checks instead of
+    being guessed at here.
+    """
+    toks_a = set(tokenize(a))
+    toks_b = set(tokenize(b))
+    for pair in _ANTONYM_PAIRS:
+        side_a = toks_a & pair
+        side_b = toks_b & pair
+        if side_a and side_b and not (side_a & side_b):
+            return True
+    return False
+
+
 def split_sentences(text: str) -> list[str]:
     """Split into trimmed sentences on terminal punctuation, preserving decimals.
 
@@ -299,8 +369,13 @@ def jaccard(a: str, b: str) -> float:
 
 
 def normalize(text: str) -> str:
-    """Collapse whitespace and lower-case for verbatim-containment checks."""
-    return re.sub(r"\s+", " ", text).strip().lower()
+    """NFKC-normalize, drop zero-width/format characters, collapse whitespace, lower-case.
+
+    Used for verbatim-containment checks (``contains_phrase``) and folded into
+    ``guards._fold`` for the never-certify-safe deny-list, so both must survive
+    zero-width-character injection between the letters of a denied phrase.
+    """
+    return re.sub(r"\s+", " ", _strip_zero_width(text)).strip().lower()
 
 
 def contains_phrase(haystack: str, phrase: str) -> bool:

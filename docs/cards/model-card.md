@@ -196,8 +196,8 @@ These are the two behaviors that make Sprout honest about its limits.
 - Confidence is a transparent function of **retrieval evidence** — the best passage's cosine score,
   nudged by its margin over the runner-up, through a fixed logistic. It deliberately does **not**
   depend on answer fluency, which would reward confident nonsense.
-- Below `abstain_threshold` (default **0.25**) the assistant **refuses rather than guesses**. Below
-  `low_confidence_threshold` (default **0.50**) it answers but flags the answer for human review.
+- Below `abstain_threshold` (default **0.25**)<!-- claim:model-card-abstain-threshold --> the assistant **refuses rather than guesses**. Below
+  `low_confidence_threshold` (default **0.50**)<!-- claim:model-card-low-confidence-threshold --> it answers but flags the answer for human review.
   (Per [ADR-0012](../adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md), which
   supersedes ADR-0005; the earlier 0.45/0.62 figures never matched the shipped, calibrated
   values and are corrected here as of 2026-07-05.)

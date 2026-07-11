@@ -2,8 +2,11 @@
 
 Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest refusal),
 ``serve`` (the chat UI + API), ``eval`` (record the live engine, run the suites, regenerate
-the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``calibrate``
-(judge agreement + kappa), and ``demo`` (a scripted session). Everything runs offline.
+the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``freshness``
+(offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
+their code/config source of truth), ``calibrate`` (judge agreement + kappa),
+``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
+(a scripted session). Everything runs offline by default.
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ import yaml
 from . import __version__
 from .a11y import check_html
 from .answer import Assistant
+from .claims import check as check_claims
 from .config import Config, load_config
 from .models import Answer
 
@@ -139,17 +143,27 @@ def evaluate(
     from .eval.report import diff_against_baseline, load_run_result, render_markdown, write_reports
     from .eval.runner import run_evaluation
     from .eval.suite import resolve_suites
+    from .eval.suites.refusal import threshold_for as refusal_threshold_for
 
     cfg = _load(config)
     assistant = Assistant.from_config(cfg)
     dataset = load_suite_dir(suite_dir, verify_hash=not update_baseline)
     golden = record(assistant, dataset, cfg)
+    resolved_suites = resolve_suites(suites)
+    # The refusal suite's committed threshold is the offline hashing-embedder floor (0.90).
+    # Once the semantic Bedrock/Titan embedding path is configured, enforce the stated
+    # portfolio target (0.95) instead of silently continuing to accept the offline floor —
+    # see docs/ROADMAP.md's AI evaluation suites table.
+    threshold_overrides = {}
+    if any(s.name == "refusal" for s in resolved_suites):
+        threshold_overrides["refusal"] = refusal_threshold_for(cfg.retrieval.embedding_provider)
     result = run_evaluation(
         golden,
         build_judge(judge),
-        resolve_suites(suites),
+        resolved_suites,
         target=_target_name(cfg),
         statistical_gate=statistical_gate,
+        threshold_overrides=threshold_overrides,
     )
     write_reports(result, out)
     typer.echo(render_markdown(result))
@@ -193,6 +207,68 @@ def a11y_check(
     typer.echo(f"{target}: no structural accessibility violations")
 
 
+@app.command("freshness")
+def freshness_check(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    check_links: Annotated[
+        bool,
+        typer.Option(
+            "--check-links",
+            help="Also HEAD/GET every cited URL (network, opt-in; off by default).",
+        ),
+    ] = False,
+) -> None:
+    """Flag stale ``fetch_date``s (stricter for toxicity citations); optionally check links.
+
+    Offline and deterministic by default: only parses the manifest against today's date.
+    ``--check-links`` additionally fetches every cited URL over the network (skipping the
+    synthetic corpus's ``example.invalid`` host) to catch dead or redirected citations.
+    """
+    from datetime import date
+
+    from . import resources
+    from .freshness import check_freshness, check_liveness, summarize
+    from .ingest import load_manifest
+
+    cfg = _load(config)
+    manifest = load_manifest(resources.locate(cfg.corpus.manifest))
+    findings = check_freshness(
+        manifest,
+        today=date.today(),
+        max_age_days=cfg.corpus.freshness.max_age_days,
+        toxicity_max_age_days=cfg.corpus.freshness.toxicity_max_age_days,
+    )
+    if check_links:
+        findings = findings + check_liveness(manifest)
+
+    if not findings:
+        typer.echo("freshness: no stale or dead citations found")
+        raise typer.Exit(0)
+
+    for f in findings:
+        typer.echo(f"  - [{f.severity}] {f.file} ({f.url}): {f.reason}", err=True)
+    counts = summarize(findings)
+    typer.echo(f"freshness: {counts['high']} high, {counts['warning']} warning", err=True)
+    raise typer.Exit(1 if counts["high"] else 0)
+
+
+@app.command("claims-check")
+def claims_check(
+    path: Annotated[str, typer.Argument()] = "docs/claims.yaml",
+) -> None:
+    """Check every registered doc claim against its code/config source of truth."""
+    target = Path(path)
+    if not target.exists():
+        typer.echo(f"file not found: {target}", err=True)
+        raise typer.Exit(2)
+    problems = check_claims(target)
+    if problems:
+        for p in problems:
+            typer.echo(f"  - {p}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{target}: all claims reconciled with their source of truth")
+
+
 @app.command()
 def calibrate(
     probes: Annotated[str, typer.Argument()] = "eval/judge_probes.yaml",
@@ -202,15 +278,14 @@ def calibrate(
 ) -> None:
     """Calibrate the judge against human-labeled probes (agreement + Cohen's kappa).
 
-    Reports by default (exit 0); pass ``--gate`` to fail when below threshold. CI wires
-    ``--judge deterministic --gate`` as a regression smoke-floor on the reproducible
-    offline judge (66+ labeled probes as of 2026-07-08) — it catches gross
-    coverage/negation breakage, not a certification of human-level semantic judgment: the
-    deterministic judge still cannot detect antonym contradictions ("safe" vs "toxic") or
-    morphological synonyms by design (see the disagreements list in the report). Before an
-    LLM judge backs a real production judging decision, calibrate and gate *it* separately
-    with live credentials outside CI (``--judge llm --gate``) — the LLM judge is never hit
-    in CI (see ``eval/llm_judge.py``).
+    Reports by default (exit 0); pass ``--gate`` to fail when below threshold. CI runs
+    the offline deterministic judge with ``--gate`` (P0-4: with the negation/antonym
+    polarity guard it clears the threshold; 66 labeled probes as of 2026-07-08) as a
+    regression smoke-floor — it catches gross coverage/negation/polarity breakage, not a
+    certification of human-level semantic judgment (morphological synonyms and low-overlap
+    paraphrase remain documented blind spots; see the disagreements list in the report).
+    Re-gate the calibrated LLM judge (``--judge llm --gate``, run with live credentials
+    outside CI — the LLM judge is never hit in CI) before it backs a production run.
 
     Also warns (does not yet fail — AIEV-20, tied to the P0-4 remediation) when the probe
     set's ``labeled_date`` is more than 30 days old, per the ROADMAP "judge-calibration
@@ -251,6 +326,31 @@ def calibrate(
         f"meets_threshold={record.meets_threshold}"
     )
     raise typer.Exit(1 if gate and not record.meets_threshold else 0)
+
+
+@app.command("ci-parity-check")
+def ci_parity_check(
+    workflow: Annotated[str, typer.Option("--workflow")] = ".github/workflows/ci.yml",
+    makefile: Annotated[str, typer.Option("--makefile")] = "Makefile",
+) -> None:
+    """Mechanically diff `make verify`'s commands against the required `ci-gate` jobs.
+
+    Fails if a CI job required by `ci-gate` runs a command `make verify` doesn't (drift the
+    other direction is also reported), except for the small documented allowlist in
+    `sprout.ci_parity` (packaging smoke-build, environment sync, and gitleaks — which CI
+    runs as an Action, not a shell command).
+    """
+    from .ci_parity import check_parity, format_reports
+
+    workflow_path, makefile_path = Path(workflow), Path(makefile)
+    for p in (workflow_path, makefile_path):
+        if not p.exists():
+            typer.echo(f"file not found: {p}", err=True)
+            raise typer.Exit(2)
+    reports = check_parity(workflow_path, makefile_path)
+    typer.echo(format_reports(reports))
+    if not all(r.ok for r in reports):
+        raise typer.Exit(1)
 
 
 @app.command()

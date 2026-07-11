@@ -141,15 +141,12 @@ def to_markdown(record: CalibrationRecord) -> str:
             "",
             f"Disagreements: {', '.join(record.disagreements) or 'none'}",
             "",
-            "> The deterministic lexical judge is the **reproducible offline floor**, not a "
-            "human-aligned gate-backer: by design it still cannot detect antonym contradictions "
-            '("safe" vs "toxic") or morphological synonyms (see the disagreements above) — those '
-            "are the kinds of errors a CI gate on this record will *not* catch. CI gates this "
-            "record (`sprout calibrate --gate`) as a regression smoke-floor on the reproducible "
-            "offline judge, catching gross coverage/negation breakage; it is not a certification "
-            "of human-level semantic judgment. Backing a real production judging decision still "
-            "requires calibrating and gating the LLM judge separately "
-            "(`--judge llm --gate`, run with live credentials outside CI).",
+            "> The deterministic lexical judge is the **reproducible offline floor**: lexical "
+            "coverage plus a negation/antonym polarity guard, not a general-purpose semantic "
+            "judge. It still misses morphological synonyms and paraphrase that share little "
+            "surface vocabulary, which is why production gates should ultimately be backed by "
+            "the calibrated LLM judge (`--judge llm`) as the probe set grows. Pass `--gate` to "
+            "`sprout calibrate` to fail the build below threshold; run without it to report only.",
             "",
         ]
     )

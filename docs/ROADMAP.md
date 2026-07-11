@@ -57,21 +57,21 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 
 | Suite / metric | Target | Measured by | Gate |
 |---|---|---|---|
-| **groundedness** (every claim entailed by its cited passage) | **≥ 0.95** | `eval/suites/groundedness` + judge entailment | AUTO |
+| **groundedness** (every claim entailed by its cited passage) | **≥ 0.95**<!-- claim:roadmap-groundedness-threshold --> | `eval/suites/groundedness` + judge entailment | AUTO |
 | **safety** (cite a toxicity ref, never certify "safe," route to vet/poison-control) | **≥ 0.95** | `eval/suites/safety` + deny-list guard | AUTO |
-| **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | **0.90 wired** (offline-embedder floor per the suite's own docstring: the hashing embedder cannot fully separate every unknown-species/jailbreak phrasing from in-scope; portfolio target is **≥ 0.95**, which the Bedrock/Titan semantic path is expected to clear — gap tracked, corrected 2026-07-05, was silently declared 0.95) | `eval/suites/refusal` | AUTO |
+| **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | **0.90 offline / ≥ 0.95 portfolio**<!-- claim:roadmap-refusal-target --> — `sprout eval` now auto-selects the gate from `retrieval.embedding_provider` (`refusal.threshold_for`): the offline hashing embedder keeps its documented 0.90 floor (per the suite's own docstring — it cannot fully separate every unknown-species/jailbreak phrasing from in-scope), and the run auto-raises the gate to the ≥ 0.95 portfolio target the moment `embedding_provider: bedrock` (Titan) is configured. CI still exercises the offline default only, so 0.90 remains what's actually measured today — corrected 2026-07-08, was a hardcoded 0.90 with no enforcement path to 0.95 at all | `eval/suites/refusal` | AUTO |
 | **multilingual** (ES preserves the facts + citations of its EN mirror) | **≥ 0.85** | `eval/suites/multilingual` + judge equivalence | AUTO |
 | **calibration** (stated confidence tracks correctness) | **ECE ≤ 0.15** | `eval/suites/calibration` (reliability diagram + ECE) | AUTO |
-| Abstention enforced below threshold | answered cases below 0.25 confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | calibration suite invariant | AUTO |
+| Abstention enforced below threshold | answered cases below 0.25<!-- claim:roadmap-abstention-enforced --> confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | calibration suite invariant | AUTO |
 | EN/ES pass-rate parity | **\|EN − ES\| ≤ 5 pp** | bilingual benchmark slice | AUTO |
 | Hallucination rate | 0% by construction (extractive + citation guard) | citation guard unit tests + groundedness suite | AUTO |
-| Judge ↔ human agreement (deterministic judge, CI floor) | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate` on the dated probe set | **AUTO (gated 2026-07-08) — probe set expanded 12 → 66 (within the 50–100 target) across all 16 corpus species; agreement 0.909, κ 0.807, both clear threshold; CI step now passes `--gate` and fails the build on regression. This gates the reproducible offline judge as a coverage/negation smoke-floor only — it still cannot detect antonym contradictions ("safe" vs "toxic") or morphological synonyms by design (6 known disagreements are committed, not hidden). See `docs/audits/judge-calibration.md`.** |
-| Judge ↔ human agreement (LLM judge, production gate) | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate --judge llm` | **not yet done — the LLM judge needs a live Anthropic credential and is deliberately never invoked in CI (see `eval/llm_judge.py`); calibrating and gating it (`--judge llm --gate`) before it backs any production judging decision is a separate, still-outstanding step, tracked here rather than conflated with the deterministic-judge CI floor above.** |
-| Judge-calibration freshness | probe set re-labeled within 30 days | `labeled_date` on `eval/judge_probes.yaml`, checked by `sprout calibrate` | **warn-only (wired 2026-07-05, P1-19) — re-labeled 2026-07-08 alongside the 12→66 expansion, 0 days old; `sprout calibrate` prints a warning past 30 days but does not yet fail the command (ties to P0-4: flips to a hard failure once the LLM judge is calibrated and `--gate` is enabled)** |
+| Judge ↔ human agreement (deterministic judge, CI floor) | ≥ 0.80 raw · Cohen’s κ ≥ 0.60 | `sprout calibrate --gate` on the dated probe set | **AUTO (gated 2026-07-08, P0-4) — probe set expanded 12 → 66 (within the 50–100 target) across all 16 corpus species, and the judge’s negation-only polarity guard gained `has_antonym_conflict` for antonym flips carrying no negation marker ("safe" vs "toxic"); measured on the combined set: agreement 0.955, κ 0.906, both clear threshold; the CI/`make verify` step passes `--gate` and fails the build on regression. This gates the reproducible offline judge as a coverage/polarity smoke-floor only — morphological synonyms and low-overlap paraphrase remain documented blind spots (3 known disagreements are committed, not hidden). See `docs/audits/judge-calibration.md`.** |
+| Judge ↔ human agreement (LLM judge, production gate) | ≥ 0.80 raw · Cohen’s κ ≥ 0.60 | `sprout calibrate --judge llm` | **not yet done — the LLM judge needs a live Anthropic credential and is deliberately never invoked in CI (see `eval/llm_judge.py`); calibrating and gating it (`--judge llm --gate`) before it backs any production judging decision is a separate, still-outstanding step, tracked here rather than conflated with the deterministic-judge CI floor above.** |
+| Judge-calibration freshness | probe set re-labeled within 30 days | `labeled_date` on `eval/judge_probes.yaml`, checked by `sprout calibrate` | **warn-only (wired 2026-07-05, P1-19) — re-labeled 2026-07-08 alongside the 12→66 expansion; `sprout calibrate` prints a warning past 30 days but does not yet fail the command (ties to P0-4: flips to a hard failure once the LLM judge is calibrated and `--gate` is enabled)** |
 | Fail-closed loader | hash mismatch / malformed case / empty suite / bad judge output → FAIL | `eval/dataset.py` + `runner.fail_closed` | AUTO |
 | Model card completeness | required HF front-matter present | `tests/test_model_card.py` | AUTO (wired 2026-07-05 — see P1-11; previously declared AUTO with no lint) |
 | Card honesty / limits framing | truthful, not box-ticking | owner review per release | REVIEW |
-| Red-team (OWASP LLM01–LLM10) | 0 open critical findings | Promptfoo `redteam` on prompt/model PRs | **planned — no Promptfoo config exists; the refusal/adversarial eval suite plus the manual dated red-team report (`docs/audits/red-team-2026-06-22.md`) are the standing substitute today; corrected 2026-07-05, was declared AUTO; gap tracked** |
+| Red-team (OWASP LLM01–LLM10) | 0 open critical findings | Promptfoo `redteam` on prompt/model PRs | **config committed 2026-07-08 (`eval/redteam/promptfooconfig.yaml`, `eval/redteam/README.md`) — covers OWASP LLM01–LLM10 against the live `POST /api/chat` pipeline in EN+ES; wired as an advisory, non-blocking `redteam` CI job (`.github/workflows/ci.yml`) that needs `ANTHROPIC_API_KEY`; gap now: the key is not yet provisioned as a repo secret and no run has completed, so it is not yet in `ci-gate` and "0 open critical findings" is not yet a measured number — the refusal/adversarial eval suite plus the manual dated red-team report (`docs/audits/red-team-2026-06-22.md`) remain the standing substitute until a run is observed clean and the job is promoted to blocking** |
 | Garak (LLM vulnerability scanner) | n/a | — | **N/A-with-reason** — the offline deterministic default has no LLM to scan (extractive generation, no model in the loop); revisit when the Bedrock/Anthropic generator seam is activated in a production configuration. Added 2026-07-05 (previously unrecorded — AIEV-14). |
 
 **Provider note (per standard §0):** Sprout standardizes on Anthropic Claude — Haiku to answer,
@@ -115,7 +115,7 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 | Reproducibility | byte-identical report from identical inputs | run fingerprint excludes wall-clock | AUTO |
 | Versioning | SemVer; Keep-a-Changelog; signed tags on first release | release workflow | AUTO (mechanism wired; **never yet exercised** — no tag has ever been cut, corrected 2026-07-05; see CHANGELOG.md) |
 | Publish | PyPI Trusted Publishing (OIDC) | release workflow | AUTO (wired; unexercised — same caveat) |
-| CI parity | `make verify` uses the same tools/thresholds as the required `ci-gate` checks | manual comparison (CONTRIBUTING.md); no mechanical invocation-diff exists yet, gap tracked | REVIEW |
+| CI parity | `make verify` uses the same tools/thresholds as the required `ci-gate` checks | `sprout ci-parity-check` (`src/sprout/ci_parity.py`, `tests/test_ci_parity.py`) mechanically diffs `.github/workflows/ci.yml`'s required jobs against their `Makefile` target(s); run via `make ci-parity-check` (also a `make verify` prerequisite) and the `ci-parity` CI job (a `ci-gate` dependency) | AUTO (wired 2026-07-08, closing `ci-parity-no-mechanical-diff`; the checker's first run also surfaced two real gaps — `docs` and the `zizmor` workflow-SAST scan were required by `ci-gate` but absent from `make verify` — now closed via new `docs`/`workflow-lint` prerequisites) |
 
 ---
 
@@ -215,12 +215,13 @@ the CI smoke suite. Commit a baseline scoreboard, mediocre numbers included.*
   fixed). The eval job (`eval-a11y` in `ci.yml`) is inside the required `ci-gate` check. The
   judge-calibration probe set (`eval/judge_probes.yaml`, expanded 2026-07-08 from 12 to **66
   probes** across all 16 corpus species — within the 50–100 target) is committed and its κ is
-  measured, and now **clears** the standard's threshold (agreement 0.909 ≥ 0.80, κ 0.807 ≥ 0.60);
-  the CI step passes `--gate` and fails the build on regression — see AI evaluation suites table
-  above and `docs/audits/judge-calibration.md`.
-- Outstanding: this gates the *deterministic* judge as a reproducible coverage/negation
-  smoke-floor only — it still cannot detect antonym contradictions or morphological synonyms by
-  design (6 known disagreements are committed, not hidden). Calibrating and gating the *LLM*
+  measured, and now **clears** the standard’s threshold (agreement 0.955 ≥ 0.80, κ 0.906 ≥ 0.60,
+  measured with the P0-4 antonym-polarity guard in place); the CI step passes `--gate` and fails
+  the build on regression — see AI evaluation suites table above and
+  `docs/audits/judge-calibration.md`.
+- Outstanding: this gates the *deterministic* judge as a reproducible coverage/polarity
+  smoke-floor only — morphological synonyms and low-overlap paraphrase remain documented blind
+  spots (3 known disagreements are committed, not hidden). Calibrating and gating the *LLM*
   judge (`--judge llm --gate`) before it backs a real production judging decision is separate,
   still-outstanding work that needs a live Anthropic credential and cannot run in CI.
 
@@ -232,19 +233,33 @@ implementation" banner.*
 **Status: in progress (current phase).**
 - Done: calibration suite + two-threshold abstention (`confidence.py`), EN/ES throughout
   (`lang.py`, per-language bundles, parity suite), framework-free WCAG 2.2 chat UI shipped in
-  `web/dist/`, structural a11y check, structured PII-free logging.
+  `web/dist/`, structural a11y check, structured PII-free logging, the **ACR**
+  (`docs/accessibility/ACR.md`, VPAT 2.5 Rev 508) and a dedicated **OWASP-LLM red-team report**
+  (`docs/audits/red-team-2026-06-22.md`, LLM01–LLM10:2025 coverage table, 0 open critical
+  findings) — both committed in the 2026-07-05 conformance pass. Corrected here 2026-07-08: this
+  bullet previously still listed the ACR and the red-team report as *outstanding* after they had
+  already been committed (DOC-defect, same class as the other 2026-07-05/07-08 "declared vs.
+  actual" corrections in this file). **Caveat that remains real:** the red-team report is a
+  structured *manual* exercise, not yet backed by an automated, per-PR mechanical check — see the
+  "Red-team (OWASP LLM01–LLM10)" row in the AI evaluation ledger above, which honestly carries
+  that gap (no Promptfoo run has completed against a provisioned key yet).
 - Outstanding: tune only against committed eval failures (no tuning to the test set); commit the
   model card at `docs/cards/model-card.md` and the data card; deploy the UI behind a real URL
-  with the reference-implementation banner; commit the ACR and the OWASP-LLM red-team report.
+  with the reference-implementation banner; get a clean Promptfoo `redteam` run wired and
+  promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical
+  check rather than only the manual, dated one (tracked in the ledger row above).
 
 ### Phase 4 — generalize
 *A `corpus.yaml` so any care corpus can be swapped in; "adapt this to your domain" doc.*
 
-**Status: not started.**
+**Status: guide done; personalization phases deferred.**
 - The seam exists (`config/sprout.yaml` already points the whole system at a corpus path,
-  manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). Remaining
-  work is the "adapt this to your domain" guide and, separately, the deferred Family Greenhouse
-  personalization phases (A → B → C) above.
+  manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). The
+  "adapt this to your domain" guide is written ([`docs/ADAPT.md`](ADAPT.md), linked in the site
+  nav) and walks an adopter through swapping the corpus, manifest, domain vocabulary,
+  retrieval/abstention tuning, languages, and generator/embedding provider using only that
+  config seam. Remaining Phase 4 scope is the deferred Family Greenhouse personalization phases
+  (A → B → C) above.
 
 ---
 
