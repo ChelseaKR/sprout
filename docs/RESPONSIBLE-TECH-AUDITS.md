@@ -189,10 +189,11 @@ no personal data to protect**, by design.
 
 - **No query persistence in the demo.** The assistant holds the question in memory for the
   duration of a request and returns an `Answer`; nothing writes the question to disk. The
-  optional server keeps at most a small in-memory session window
-  (`ServerConfig.session_memory`, default 4) and has **no database** — there is no mutable
-  server state to leak or subpoena (README: "No database, no agentic loop"). Survivability:
-  corpus and index rebuild from `make ingest`.
+  optional server is stateless per-request; no session state of any kind — it has **no
+  database** — there is no mutable server state to leak or subpoena (README: "No database,
+  no agentic loop"). Survivability: corpus and index rebuild from `make ingest`. If
+  multi-turn session context is ever added, EXP-07 (grounded multi-turn) is the designed
+  path — it would re-introduce this row behind its own DPIA entry, not silently.
 - **PII-free logs *by construction*.** The structured logger does not redact PII after the
   fact; it physically *cannot* log it. `obs.py` whitelists a closed set of low-cardinality
   fields (`language`, `refused`, `refusal_reason`, `is_safety_query`, `confidence`, counts,
