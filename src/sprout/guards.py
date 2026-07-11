@@ -85,13 +85,33 @@ def redact_pii(text: str) -> str:
 # --- output guards ---------------------------------------------------------------
 
 
+# Minimal Latin-lookalike table: only the characters a fuzz test
+# (tests/test_guard_fuzzing.py) demonstrated as a deny-list bypass (Cyrillic lookalikes
+# substituted for Latin a/e/o, e.g. "safe" with the "a" swapped for U+0430). Deliberately
+# small and auditable rather than a full confusables table; keys are written as \u escapes
+# (not literal glyphs) so the confusable pair stays visually explicit in the source — see
+# docs/adr/0012-deny-list-homoglyph-folding.md.
+_HOMOGLYPHS: dict[str, str] = {
+    "\u0430": "a",  # CYRILLIC SMALL LETTER A
+    "\u0435": "e",  # CYRILLIC SMALL LETTER IE
+    "\u043e": "o",  # CYRILLIC SMALL LETTER O
+}
+
+
+def _fold_homoglyphs(text: str) -> str:
+    """Map the minimal Cyrillic lookalike table above onto their Latin counterparts."""
+    return "".join(_HOMOGLYPHS.get(ch, ch) for ch in text)
+
+
 def _fold(text: str) -> str:
-    """Normalise for safety matching: lower-case, collapse space, fold accents and hyphens.
+    """Normalise for safety matching: lower-case, collapse space, fold accents/hyphens/homoglyphs.
 
     Accent- and hyphen-folding keep the deny-list robust to "non-toxic" vs "non toxic" and
     Spanish accent variants, consistent with how the rest of the pipeline tokenises.
+    Homoglyph-folding closes the Cyrillic-lookalike bypass found by property-based fuzzing
+    (FIX-05); it is intentionally narrow, see ``_HOMOGLYPHS`` above.
     """
-    return strip_accents(normalize(text)).replace("-", " ")
+    return _fold_homoglyphs(strip_accents(normalize(text))).replace("-", " ")
 
 
 def asserts_safety(text: str, language: str, cfg: GuardsConfig) -> bool:

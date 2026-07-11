@@ -18,9 +18,24 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+          fetch-depth: 0 # full history + tag objects, needed to verify the tag signature below
+      - name: Verify the pushed tag is a signed, annotated tag (REL-08)
+        # `git tag -v` needs the signer's public key (GPG) or gitsign's Sigstore/OIDC trust
+        # config already available on the runner — neither is provisioned by this workflow
+        # today, so this step will need that key/config added before the first real release
+        # (tracked; see the 2026-07-05 remediation execution log). It still fails closed: an
+        # unsigned or unverifiable tag stops the release here rather than silently publishing.
+        run: git tag -v "$GITHUB_REF_NAME"
+      # No caching here either: this whole workflow triggers on `push: tags`, i.e. a
+      # release event, so a cache poisoned by an earlier, less-trusted run could be
+      # consumed here even though this job itself holds no write credentials (zizmor
+      # `cache-poisoning`, high severity — found 2026-07-05, applies workflow-wide on a
+      # tag-push trigger, not just to the job holding OIDC/attestation permissions).
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: false
       - name: Re-run the full gate set at the tagged commit
-        run: uv sync --extra serve && uv run sprout ingest && make verify
+        run: uv sync --frozen --extra serve && uv run sprout ingest && make verify
 
   build-and-publish:
     needs: verify
@@ -34,13 +49,26 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      # No caching in the OIDC signing/publish job: this job holds id-token: write +
+      # attestations: write, and a poisoned/stale cache is the standard's canonical
+      # cache-poisoning exposure for a provenance job (SEC-30, CICD-24). The `verify`
+      # job above has no credentials and may cache freely.
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: false
       - name: Build sdist + wheel
         run: uv build
+      - name: Install the built package so the SBOM reflects real, non-empty deps
+        run: uv sync --frozen --no-dev
       - name: Generate SBOM (CycloneDX)
-        run: uvx cyclonedx-py environment --output-format json --outfile sbom.cdx.json || true
+        run: uvx cyclonedx-py environment --output-format json --outfile sbom.cdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom
+          path: sbom.cdx.json
       - name: Attest build provenance (SLSA)
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           subject-path: "dist/*"
       - name: Publish to PyPI (Trusted Publishing)

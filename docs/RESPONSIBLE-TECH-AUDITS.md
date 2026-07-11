@@ -189,10 +189,11 @@ no personal data to protect**, by design.
 
 - **No query persistence in the demo.** The assistant holds the question in memory for the
   duration of a request and returns an `Answer`; nothing writes the question to disk. The
-  optional server keeps at most a small in-memory session window
-  (`ServerConfig.session_memory`, default 4) and has **no database** — there is no mutable
-  server state to leak or subpoena (README: "No database, no agentic loop"). Survivability:
-  corpus and index rebuild from `make ingest`.
+  optional server is stateless per-request; no session state of any kind — it has **no
+  database** — there is no mutable server state to leak or subpoena (README: "No database,
+  no agentic loop"). Survivability: corpus and index rebuild from `make ingest`. If
+  multi-turn session context is ever added, EXP-07 (grounded multi-turn) is the designed
+  path — it would re-introduce this row behind its own DPIA entry, not silently.
 - **PII-free logs *by construction*.** The structured logger does not redact PII after the
   fact; it physically *cannot* log it. `obs.py` whitelists a closed set of low-cardinality
   fields (`language`, `refused`, `refusal_reason`, `is_safety_query`, `confidence`, counts,
@@ -258,8 +259,11 @@ is regenerated on release. The future household-data path triggers a full **ISO 
 lands, because it would process personal data and be exposed to external users.
 
 **Enforcement.**
-- **AUTO** — no-PII-in-logs proven by the whitelisting logger + a `jq`-on-structured-logs
-  integration test (rule owned by [`OBSERVABILITY-STANDARD.md`](../../STANDARDS/OBSERVABILITY-STANDARD.md));
+- **AUTO** — no-PII-in-logs proven by the whitelisting logger + a structured-logs integration
+  test (`tests/test_server.py::test_json_logs_are_valid_json_and_pii_free_end_to_end`, added
+  2026-07-05 — parses every emitted log line as JSON over a real request carrying sentinel PII
+  and asserts only `_ALLOWED_FIELDS` appear; the raw question text never reaches a line) (rule
+  owned by [`OBSERVABILITY-STANDARD.md`](../../STANDARDS/OBSERVABILITY-STANDARD.md));
   secret scanning (gitleaks pre-commit **and** CI, no `|| true`) and the no-secrets-in-config
   invariant per [`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md).
   Sentinel-PII job is AUTO once household data ships.
@@ -287,9 +291,12 @@ path. An empty survivor set is a refusal, not a guess.
 **Confidence signposting.** Each answer carries a calibrated confidence in [0,1] computed from
 *retrieval evidence* (best cosine + margin over the runner-up), deliberately **not** from
 answer fluency, which would reward confident nonsense (`confidence.score_confidence`). Two
-thresholds turn the score into behavior: below `abstain_threshold` (default 0.45) the
-assistant **refuses rather than guesses**; below `low_confidence_threshold` (default 0.62) it
-answers but flags the answer for review (`Answer.low_confidence`). The calibration eval suite
+thresholds turn the score into behavior: below `abstain_threshold` (default 0.25)<!-- claim:responsible-tech-abstain-threshold --> the
+assistant **refuses rather than guesses**; below `low_confidence_threshold` (default 0.50)<!-- claim:responsible-tech-low-confidence-threshold --> it
+answers but flags the answer for review (`Answer.low_confidence`). Values per
+[ADR-0012](adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md), which supersedes
+ADR-0005 — the earlier 0.45/0.62 figures cited here never matched the shipped, calibrated
+values; corrected 2026-07-05. The calibration eval suite
 holds these stated confidences to reality with a **reliability diagram and ECE** — the
 assistant is accountable to its own confidence, not merely emitting one.
 
@@ -316,8 +323,10 @@ The classification decision is committed (see Governance §).
 **Enforcement.**
 - **AUTO** — the citation/grounding guard (no ungrounded code path; codified portfolio-wide in
   [`AI-EVALUATION-STANDARD.md`](../../STANDARDS/AI-EVALUATION-STANDARD.md)); disclosure-string
-  presence tests (the not-vet-advice and safety-route strings must render); model-card /
-  datasheet YAML completeness lint; calibration ECE + reliability checked in the eval gate.
+  presence tests (the not-vet-advice and safety-route strings must render); calibration ECE +
+  reliability checked in the eval gate; model-card YAML front-matter completeness
+  (`tests/test_model_card.py`, added 2026-07-05 — a prior version of this line claimed this
+  lint existed when it did not, AIEV-22; it is real now).
 - **REVIEW** — honesty-of-framing review; model card approved by the owner before production
   deploy.
 
@@ -346,12 +355,18 @@ Authentication). A committed **ACR (VPAT 2.5 Rev 508)** at
 
 **Enforcement** (thresholds owned by
 [`ACCESSIBILITY-STANDARD.md`](../../STANDARDS/ACCESSIBILITY-STANDARD.md)):
-- **AUTO** — axe-core (`wcag2a,wcag2aa,wcag22aa`) zero critical/serious/moderate, Lighthouse
-  a11y ≥ 0.9, `pa11y-ci` **blocking** (no `continue-on-error`/`|| true`) with a curated,
-  justified ignore list — on both the chat UI and the HTML report; merge-blocking in
-  `make verify`.
-- **REVIEW** — committed screen-reader walkthrough (NVDA+Firefox/Chrome, VoiceOver+Safari) per
-  primary task and per release; ARIA APG pattern audit for the chat widget; ACR re-committed.
+- **AUTO, merge-blocking today** — the deterministic structural self-check (`sprout a11y-check`)
+  on both the chat UI and the HTML report, wired into `make verify` and the required `ci-gate`.
+- **Corrected 2026-07-05 — not yet AUTO, despite prior wording here:** axe-core
+  (`wcag2a,wcag2aa,wcag22aa`) and `pa11y-ci` both run only inside the `pa11y` CI job, which is
+  `continue-on-error: true` and excluded from `ci-gate` (advisory, not blocking); Lighthouse a11y
+  scoring is not wired at all. This paragraph previously claimed `pa11y-ci` was "blocking (no
+  `continue-on-error`/`\|\| true`)," which was false — see `docs/ROADMAP.md` for the tracked gap
+  to wire these for real (P1-3).
+- **REVIEW, planned but not yet performed** — the screen-reader walkthrough (NVDA+Firefox/Chrome,
+  VoiceOver+Safari) and the ARIA APG pattern audit for the chat widget have not yet been carried
+  out; no dated artifact exists for either yet. ACR re-committed (this is a genuine review-gated
+  artifact).
 
 ---
 
@@ -387,8 +402,12 @@ posture level rather than a whole audit.
   fail-closed"). There is no fail-open path.
 
 **Supply-chain & secret hygiene** (all owned by the security standard; AUTO unless noted):
-- **SAST/SCA** — Semgrep `ci --sarif` blocking on HIGH/CRITICAL; **CodeQL** required;
-  `pip-audit` blocking on fixed HIGH+CRITICAL.
+- **SAST/SCA** — Semgrep blocking (`p/python` ruleset, `--error`) in CI and `make verify`;
+  **CodeQL** wired as a scheduled + per-PR workflow (`.github/workflows/codeql.yml`, added
+  2026-07-05); `pip-audit` blocking, no `\|\| true`, in CI and `make verify` (corrected
+  2026-07-05 — the Makefile copy previously muted it). Neither CodeQL nor `zizmor` (below) is
+  yet a **required** branch-protection status check — that is a server-side setting only a repo
+  admin can apply (⛔ tracked, not something a workflow file alone can do).
 - **Secret scanning** — gitleaks **pre-commit and CI**, no `|| true`.
 - **Pinning** — every GitHub Actions `uses:` pinned to a **full 40-char SHA**; dependencies
   pinned via `uv.lock`; Dependabot for the documented bump path.
@@ -398,16 +417,28 @@ posture level rather than a whole audit.
 - **Secret management** — API keys (Bedrock/Anthropic) read from environment variables only
   (`ANTHROPIC_API_KEY`, AWS creds); `config.py` reads no secrets and forbids unknown keys
   (`extra='forbid'`) so a misspelled threshold fails at load rather than silently defaulting.
+- **Container image scanning** — **not yet wired.** A `Dockerfile` exists but no CI job builds
+  or scans the image (no Trivy/Grype step). Tracked as a gap (added 2026-07-05 — this row was
+  previously blank rather than declared; the standard requires no blank declarations); planned
+  as a container-build + CVE-scan CI job.
+- **VEX (Vulnerability Exploitability eXchange)** — **none; N/A-with-reason today.** No
+  vulnerability has ever been waived in this repo, so there is nothing to document; a VEX
+  statement will be authored and committed the first time a finding is waived rather than fixed.
+  (Added 2026-07-05 — this row was previously blank rather than declared.)
 
 **Residual risk.** The offline hashing embedder can produce a small spurious cosine via hash
 collision; mitigated by the dual gate in `Retriever.has_grounding` (min_score **and** a shared
 content token), accepted as low residual risk and recorded in the register with the owner.
 
 **Enforcement.**
-- **AUTO** — Semgrep/CodeQL/pip-audit/gitleaks/SHA-pin/SBOM+signing as above; single `ci-gate`
-  required check; least-privilege tokens; `make verify` parity.
-- **REVIEW** — threat-model + residual-risk-register sign-off, committed dated; `zizmor`
-  workflow-SAST review for any PR touching `.github/workflows/`.
+- **AUTO** — Semgrep/pip-audit/gitleaks/SHA-pin/SBOM+signing as above, all inside the single
+  `ci-gate` required check; `zizmor` workflow-SAST (added 2026-07-05) also runs unconditionally
+  in `ci-gate` — genuinely merge-blocking, not review-only as a prior version of this line said.
+  CodeQL runs on its own schedule + per-PR workflow (not yet folded into `ci-gate` — GitHub
+  Actions cannot cross-reference another workflow's job in a `needs:` list; making it a required
+  check is the same server-side branch-protection step noted above). Least-privilege tokens;
+  `make verify` uses the same tools/thresholds as CI.
+- **REVIEW** — threat-model + residual-risk-register sign-off, committed dated.
 
 ---
 
@@ -423,7 +454,7 @@ dated artifacts; regenerated on release.
 | **Statement of Applicability** (42 Annex A) | ISO 42001 | authored if/when a production AI system ships; offline reference build is not a production AIMS | `docs/audits/iso42001-soa.md` (staged) |
 | **EU AI Act risk classification** | EU AI Act Annex III + GPAI | **minimal-risk, not Annex III.** Rationale: a houseplant-care information assistant is not a listed high-risk use; no biometric, no employment/credit/essential-service decisioning; not a GPAI model (it *uses* a model). Decision committed, re-run on material change. | `docs/audits/eu-ai-act-classification.md` |
 | **Conformity-assessment package** | EU AI Act Art. 17/18/47 | **N/A** — not high-risk per the classification above | n/a |
-| **Red-team report** | OWASP LLM Top 10 v2.0; PyRIT/Garak | the refusal/adversarial eval suite is the standing red-team (injection, "just tell me it's fine," out-of-scope); a focused report is authored before any cloud-seam major-model release | `docs/audits/redteam-2026-06-22.md` |
+| **Red-team report** | OWASP LLM Top 10 v2.0; PyRIT/Garak | the refusal/adversarial eval suite is the standing red-team (injection, "just tell me it's fine," out-of-scope); a focused report is authored before any cloud-seam major-model release | `docs/audits/red-team-2026-06-22.md` |
 | **Environmental footprint** | NIST AI 600-1 Risk 5; EU AI Act GPAI | offline default: **no inference cost, no training** — negligible. Cloud seam: per-call estimate surfaced via `estimated_cost_usd`; recorded in the model-card CO2 row | model-card CO2 row |
 
 **Framework versions confirmed at build time (2026-06-22):** NIST AI RMF 1.0 + GenAI Profile

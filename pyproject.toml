@@ -37,13 +37,13 @@ keywords = [
 dependencies = [
     "pydantic>=2.7",
     "pyyaml>=6.0",
-    "typer>=0.12",
+    "typer>=0.26.8",
     "jinja2>=3.1",
 ]
 
 [project.optional-dependencies]
-serve = ["fastapi>=0.115", "uvicorn>=0.29", "sse-starlette>=2.1"]
-bedrock = ["boto3>=1.35"]
+serve = ["fastapi>=0.139.0", "uvicorn>=0.51.0", "sse-starlette>=2.1"]
+bedrock = ["boto3>=1.43.45"]
 anthropic = ["httpx>=0.27"]
 identify = ["httpx>=0.27"]
 lang = ["langdetect>=1.0.9"]
@@ -64,14 +64,14 @@ Changelog = "https://github.com/ChelseaKR/sprout/blob/main/CHANGELOG.md"
 dev = [
     "pytest>=8.2",
     "pytest-cov>=5.0",
-    "ruff>=0.6",
-    "mypy>=1.11",
+    "ruff>=0.15.21",
+    "mypy>=2.2.0",
     "pip-audit>=2.7",
-    "hypothesis>=6.100",
+    "hypothesis>=6.156.4",
     "types-pyyaml>=6.0",
     "httpx>=0.27",
-    "fastapi>=0.115",
-    "uvicorn>=0.29",
+    "fastapi>=0.139.0",
+    "uvicorn>=0.51.0",
     "sse-starlette>=2.1",
 ]
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5"]

@@ -1,3 +1,8 @@
+# labeled_date: when these human labels were last authored/reviewed. `sprout calibrate`
+# warns (does not yet fail — see P0-4/AIEV-20) when this is more than 30 days old, per the
+# ROADMAP's "judge-calibration freshness" row. Update this only when the human labels
+# themselves are actually re-reviewed, not on unrelated edits.
+labeled_date: "2026-06-22"
 probes:
 - id: g1-pothos-toxic
   kind: entails

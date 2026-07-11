@@ -10,6 +10,18 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+> **2026-07-05 correction:** this project has **never been tagged or released** — `git tag`
+> returns nothing, and no release workflow has ever run. A previous version of this file carried
+> a `[0.1.0] - 2026-06-22` released section, `CITATION.cff` claimed `date-released: 2026-06-22`,
+> and a locally-built (never-published) wheel sat in `dist/`. That was a documentation defect
+> (REL-03): a version was declared released that was never tagged, published, or verified. That
+> section's content is folded back into `[Unreleased]` below, un-dated, until an actual signed
+> `v0.1.0` tag is cut and `release.yml` runs end to end. See the 2026-07-05 remediation execution
+> log at the end of this repo's audit trail for the full discrepancy.
+
+An offline-first, grounded, evaluated, multilingual (EN/ES) houseplant-care RAG assistant, with
+the public evaluation harness as the headline artifact.
+
 ### Added
 - **Photo-based plant identification → grounded care lookup** (`identify.py`,
   `providers/plantnet.py`). A photo is identified into candidate species, the best confident
@@ -26,19 +38,6 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   sub-commands (add/list/due/done/remove), reminder endpoints under `/api/reminders`, and an
   accessible reminders panel in the chat UI. See
   [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md).
-
-### Changed
-- `create_app` accepts an optional `identifier` override (mirroring the existing `assistant`
-  override) so the grounded photo path is testable offline.
-- New `identification` and `reminders` config blocks (`config/sprout.yaml`); `identify` optional
-  dependency extra (`httpx`).
-
-## [0.1.0] - 2026-06-22
-
-Initial reference-implementation release: an offline-first, grounded, evaluated, multilingual
-(EN/ES) houseplant-care RAG assistant, with the public evaluation harness as the headline artifact.
-
-### Added
 - **Grounded extractive assistant.** Retrieval-mandatory pipeline
   (`guards(input) → retrieve → extractive generate → guards(output) → confidence/abstention`)
   that answers only from the cited corpus, with an inline citation to the governing passage and its
@@ -77,10 +76,17 @@ Initial reference-implementation release: an offline-first, grounded, evaluated,
 - **Docs:** ARCHITECTURE, THREAT-MODEL, ACCESSIBILITY (+ ACR via VPAT 2.5 Rev 508), ROADMAP,
   RESPONSIBLE-TECH-AUDITS, model and data cards, and the committed `docs/audits/` eval artifacts.
 
+### Changed
+- `create_app` accepts an optional `identifier` override (mirroring the existing `assistant`
+  override) so the grounded photo path is testable offline.
+- New `identification` and `reminders` config blocks (`config/sprout.yaml`); `identify` optional
+  dependency extra (`httpx`).
+
 ### Security
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the
   **OWASP ASVS L1** baseline; secrets via environment only; pip-audit, gitleaks, and Semgrep wired
-  into CI. No advisories in this release.
+  into CI. No advisories to date.
 
-[Unreleased]: https://github.com/ChelseaKR/sprout/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/ChelseaKR/sprout/releases/tag/v0.1.0
+<!-- No versioned sections below: no tag has ever been cut (`git tag` is empty). Add
+     `[X.Y.Z] - YYYY-MM-DD` here, with its own compare link, only once `git tag -s vX.Y.Z` has
+     actually been pushed and release.yml has run. -->
