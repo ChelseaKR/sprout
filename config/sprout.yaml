@@ -80,8 +80,8 @@ reminders:                        # local, offline watering/fertilizing reminder
     rotate: 14
 
 confidence:
-  abstain_threshold: 0.25         # below this, refuse rather than guess
-  low_confidence_threshold: 0.50  # below this, answer but flag for human review
+  abstain_threshold: 0.25         # below this, refuse rather than guess (per ADR-0012)
+  low_confidence_threshold: 0.50  # below this, answer but flag for human review (per ADR-0012)
   reliability_bins: 10
 
 languages:
@@ -91,7 +91,6 @@ server:
   host: 127.0.0.1
   port: 8000
   max_question_chars: 500
-  session_memory: 4
 
 observability:
   log_format: text                # text | json (Tier C offline CLI; Tier A for the API)

@@ -15,8 +15,12 @@ authors:
   - given-names: "Chelsea"
     family-names: "Kelly-Reif"
     email: "ckellyreif@gmail.com"
-version: "0.1.0"
-date-released: "2026-06-22"
+version: "0.1.0-dev"
+# `date-released` and a released `version` are intentionally omitted (both optional in CFF
+# 1.2.0): no git tag has ever been cut for this project (`git tag` is empty) and no release
+# workflow has run. A previous version of this file claimed `date-released: 2026-06-22`, which
+# was false — corrected 2026-07-05. Restore both fields with the real date once `git tag -s
+# v0.1.0` is actually pushed and `release.yml` completes.
 license: "Apache-2.0"
 repository-code: "https://github.com/ChelseaKR/sprout"
 url: "https://github.com/ChelseaKR/sprout"

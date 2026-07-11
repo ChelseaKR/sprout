@@ -1,0 +1,6 @@
+[allowlist]
+description = "Documented deterministic-token examples are not credentials."
+paths = [
+  '''docs/adr/0001-offline-deterministic-generator-as-default.md''',
+  '''src/sprout/providers/deterministic.py''',
+]

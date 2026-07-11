@@ -20,11 +20,21 @@ class _Model(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class FreshnessConfig(_Model):
+    """Thresholds for the offline citation-freshness check (research item E7)."""
+
+    max_age_days: int = Field(default=365, ge=1, le=3650)
+    # Toxicity citations get a stricter window: a stale "not listed as toxic" source is
+    # a safety hazard, not just a horticulture nicety.
+    toxicity_max_age_days: int = Field(default=180, ge=1, le=3650)
+
+
 class CorpusConfig(_Model):
     path: str = "corpus/processed"
     glob: str = "**/*.md"
     manifest: str = "corpus/manifest.yaml"
     default_language: str = "en"
+    freshness: FreshnessConfig = Field(default_factory=FreshnessConfig)
 
 
 class ChunkConfig(_Model):
@@ -62,7 +72,11 @@ class GenerationConfig(_Model):
 
 
 class ConfidenceConfig(_Model):
-    """Two thresholds over a computed [0,1] confidence drive abstention/handoff."""
+    """Two thresholds over a computed [0,1] confidence drive abstention/handoff.
+
+    Values per ADR-0012 (supersedes ADR-0005; reconciled 2026-07-05 — see that ADR for
+    the ECE evidence that these, not ADR-0005's 0.45/0.62, are the calibrated values).
+    """
 
     abstain_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
     low_confidence_threshold: float = Field(default=0.50, ge=0.0, le=1.0)
@@ -404,7 +418,6 @@ class ServerConfig(_Model):
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
     max_question_chars: int = Field(default=500, ge=1, le=4000)
-    session_memory: int = Field(default=4, ge=0, le=50)
 
 
 class ObservabilityConfig(_Model):

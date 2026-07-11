@@ -17,10 +17,15 @@ make install        # uv sync (venv + dev deps)
 make verify         # the full local mirror of the CI gate set
 ```
 
-`make verify` runs, in order, `lint · type · test (≥90%) · security · eval · a11y` — byte-for-byte
-the gate set CI enforces (`CI-CD-STANDARD.md` §`make verify` parity). A change is not done until
-`make verify` is green locally. CI re-runs the same gates; there is a single required `ci-gate`
-check and no admin bypass on `main`.
+`make verify` runs, in order, `lint · type · test (≥90%) · security · eval · a11y` — the same
+tools, configs, and thresholds the CI-required checks enforce (`CI-CD-STANDARD.md` §`make verify`
+parity): CI invokes the equivalent commands directly inside `test`/`security`/`eval-a11y`/`docs`
+jobs rather than shelling out to `make`, so this is tool-for-tool parity, not literally one CI step
+running `make verify`. A change is not done until `make verify` is green locally. There is a
+single required `ci-gate` check and no admin bypass on `main`. (As of 2026-07-05 the `security`
+target's `pip-audit` and `semgrep` steps are unconditionally blocking, matching the CI `security`
+job exactly; only `gitleaks` remains locally best-effort when the binary isn't installed, hard-failing
+if `CI=true` is set and it's still missing — see `Makefile` §`security`.)
 
 Useful individual targets: `make fmt`, `make lint`, `make type`, `make test`, `make eval`,
 `make eval-baseline`, `make a11y`, `make demo`. Run `make help` for the full list.

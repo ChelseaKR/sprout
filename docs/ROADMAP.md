@@ -5,7 +5,9 @@
 > its targets, measured numbers, declared tiers, and any justified deviation. Silent
 > deviation from a standard is a defect, not a footnote.
 
-Author: Chelsea Kelly-Reif · Last updated: 2026-06-22 · Status: `In build` (Phase 3).
+Author: Chelsea Kelly-Reif · Last updated: 2026-07-05 (conformance-audit remediation pass —
+corrected several rows below that had gone stale since 2026-06-22; see the dated erratum/gap
+notes throughout) · Status: `In build` (Phase 3).
 
 ---
 
@@ -57,18 +59,19 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 |---|---|---|---|
 | **groundedness** (every claim entailed by its cited passage) | **≥ 0.95** | `eval/suites/groundedness` + judge entailment | AUTO |
 | **safety** (cite a toxicity ref, never certify "safe," route to vet/poison-control) | **≥ 0.95** | `eval/suites/safety` + deny-list guard | AUTO |
-| **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | **≥ 0.95** | `eval/suites/refusal` | AUTO |
+| **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | **0.90 wired** (offline-embedder floor per the suite's own docstring: the hashing embedder cannot fully separate every unknown-species/jailbreak phrasing from in-scope; portfolio target is **≥ 0.95**, which the Bedrock/Titan semantic path is expected to clear — gap tracked, corrected 2026-07-05, was silently declared 0.95) | `eval/suites/refusal` | AUTO |
 | **multilingual** (ES preserves the facts + citations of its EN mirror) | **≥ 0.85** | `eval/suites/multilingual` + judge equivalence | AUTO |
 | **calibration** (stated confidence tracks correctness) | **ECE ≤ 0.15** | `eval/suites/calibration` (reliability diagram + ECE) | AUTO |
-| Abstention enforced below threshold | answered cases below 0.45 confidence must have been refusals | calibration suite invariant | AUTO |
+| Abstention enforced below threshold | answered cases below 0.25 confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | calibration suite invariant | AUTO |
 | EN/ES pass-rate parity | **\|EN − ES\| ≤ 5 pp** | bilingual benchmark slice | AUTO |
 | Hallucination rate | 0% by construction (extractive + citation guard) | citation guard unit tests + groundedness suite | AUTO |
-| Judge ↔ human agreement | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate` on the dated probe set | AUTO |
-| Judge-calibration freshness | probe set re-labeled within 30 days | timestamp on `eval/judge_probes.yaml` | AUTO |
+| Judge ↔ human agreement | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate` on the dated probe set | **report-only — currently below threshold (0.750 agreement, κ 0.400); CI step does not pass `--gate`, corrected 2026-07-05 (was declared AUTO while a step literally named "gate" could not fail); gap tracked. See `docs/audits/judge-calibration.md`.** |
+| Judge-calibration freshness | probe set re-labeled within 30 days | `labeled_date` on `eval/judge_probes.yaml`, checked by `sprout calibrate` | **warn-only (wired 2026-07-05, P1-19) — currently 13 days old, under threshold; `sprout calibrate` prints a warning past 30 days but does not yet fail the command (ties to P0-4: flips to a hard failure once the LLM judge is calibrated and `--gate` is enabled)** |
 | Fail-closed loader | hash mismatch / malformed case / empty suite / bad judge output → FAIL | `eval/dataset.py` + `runner.fail_closed` | AUTO |
-| Model card completeness | required HF front-matter present | `docs/cards/model-card.md` lint | AUTO |
+| Model card completeness | required HF front-matter present | `tests/test_model_card.py` | AUTO (wired 2026-07-05 — see P1-11; previously declared AUTO with no lint) |
 | Card honesty / limits framing | truthful, not box-ticking | owner review per release | REVIEW |
-| Red-team (OWASP LLM01–LLM10) | 0 open critical findings | Promptfoo `redteam` on prompt/model PRs | AUTO |
+| Red-team (OWASP LLM01–LLM10) | 0 open critical findings | Promptfoo `redteam` on prompt/model PRs | **planned — no Promptfoo config exists; the refusal/adversarial eval suite plus the manual dated red-team report (`docs/audits/red-team-2026-06-22.md`) are the standing substitute today; corrected 2026-07-05, was declared AUTO; gap tracked** |
+| Garak (LLM vulnerability scanner) | n/a | — | **N/A-with-reason** — the offline deterministic default has no LLM to scan (extractive generation, no model in the loop); revisit when the Bedrock/Anthropic generator seam is activated in a production configuration. Added 2026-07-05 (previously unrecorded — AIEV-14). |
 
 **Provider note (per standard §0):** Sprout standardizes on Anthropic Claude — Haiku to answer,
 Sonnet to judge — behind a config switch; the deterministic offline generator is the default and
@@ -107,11 +110,11 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
-| First-token latency (offline) | p95 < 200 ms | latency budget test | AUTO |
+| First-token latency (offline) | p95 < 200 ms | `tests/test_latency.py` | AUTO (wired 2026-07-05 — previously declared AUTO with no test; see P1-10) |
 | Reproducibility | byte-identical report from identical inputs | run fingerprint excludes wall-clock | AUTO |
-| Versioning | SemVer; signed tags; Keep-a-Changelog | release workflow | AUTO |
-| Publish | PyPI Trusted Publishing (OIDC) | release workflow | AUTO |
-| CI parity | `make verify` == required `ci-gate` check | CI invocation diff | AUTO |
+| Versioning | SemVer; Keep-a-Changelog; signed tags on first release | release workflow | AUTO (mechanism wired; **never yet exercised** — no tag has ever been cut, corrected 2026-07-05; see CHANGELOG.md) |
+| Publish | PyPI Trusted Publishing (OIDC) | release workflow | AUTO (wired; unexercised — same caveat) |
+| CI parity | `make verify` uses the same tools/thresholds as the required `ci-gate` checks | manual comparison (CONTRIBUTING.md); no mechanical invocation-diff exists yet, gap tracked | REVIEW |
 
 ---
 
@@ -156,12 +159,13 @@ level. The single deferred scope is noted explicitly.
 | Code Quality | APPLIES | `ruff` + `mypy --strict`; branch coverage ≥ 90%; `src/` layout |
 | Security & Supply Chain | APPLIES | ASVS **L1** (offline mode — no auth/persistence/network to defend); pip-audit, gitleaks, Semgrep, SHA-pinned actions, SBOM |
 | CI/CD | APPLIES | Single `ci-gate` required check; least-privilege tokens; local/CI parity via `make verify` |
-| Release & Versioning | APPLIES | SemVer; signed tags; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) |
-| Accessibility | APPLIES | WCAG **2.2 AA** gate; transcript view; ACR (VPAT 2.5 Rev 508) |
+| Release & Versioning | APPLIES | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired but unexercised; signed tags on first release (no tag has ever been cut — corrected 2026-07-05, see `docs/ROADMAP.md` REL-03 note below) |
+| Accessibility | APPLIES | WCAG **2.2 AA** target; structural `sprout a11y-check` gate is merge-blocking; axe/pa11y advisory-only and Lighthouse not yet wired (gap tracked); transcript view; ACR (VPAT 2.5 Rev 508) |
 | Observability | APPLIES | **Tier C** (offline CLI) + **Tier A** (optional serverless); see section above; non-CLI Tier-A controls tracked |
 | Internationalization | APPLIES | EN/ES key + placeholder parity; \|EN − ES\| ≤ 5 pp eval parity |
 | AI Evaluation | APPLIES (RAG, red-team, model-card) | groundedness/safety/refusal/multilingual/calibration gates; judge ≠ answer model; κ + reliability; model/data cards |
 | Documentation | APPLIES | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
+| Responsible-Tech Framework | APPLIES | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; no audit is N/A; added to this table 2026-07-05 (was silently omitted — DOC-11) |
 
 **Deferred (not N/A) — Family Greenhouse personalization.** The household-data path
 (per-user context from the Family Greenhouse public API, the `personalization` and `provenance`
@@ -184,28 +188,35 @@ when `make verify` is green for its scope.
 topic; hybrid retrieval against smoke questions; `guards.py` v1 (safety-assertion ban, scope,
 PII).*
 
-**Status: in progress.**
+**Status: substantially done** (corrected 2026-07-05 — this was stale since 06-22 and had not
+caught up with actual repo state per DOC-15).
 - Done: hybrid retrieval (`retrieve.py` — BM25 + deterministic dense via reciprocal rank fusion,
   topic filter, `min_score` threshold gate), `guards.py` v1 (citation guard, never-certify-safe
   deny-list EN/ES, scope via retrieval threshold, PII redaction + injection labeling), ingest /
-  chunk / store pipeline, config-over-code (`config/sprout.yaml`).
-- Outstanding: author and commit the synthetic CC0 corpus into `corpus/processed/` with a dated,
-  licensed `corpus/manifest.yaml` (the directory exists but ships no passages yet); wire the CI
-  smoke suite of corpus-derived questions.
+  chunk / store pipeline, config-over-code (`config/sprout.yaml`). The synthetic CC0 corpus is
+  committed at `corpus/processed/` — **32 files** (16 species × EN/ES) with a dated, licensed
+  `corpus/manifest.yaml` — not the "ships no passages yet" state a prior version of this line
+  claimed.
+- Outstanding: a dedicated CI smoke suite of corpus-derived questions beyond what the eval
+  harness (Phase 2) already exercises.
 
 ### Phase 2 — eval first
 *Runner, judges, report. Author 60 cases (groundedness, safety, refusal) from the corpus. Wire
 the CI smoke suite. Commit a baseline scoreboard, mediocre numbers included.*
 
-**Status: harness built; cases + baseline pending.**
+**Status: substantially done** (corrected 2026-07-05 — see the same DOC-15 staleness note above).
 - Done: the eval engine — fail-closed dataset loader, run fingerprint (reproducible), all five
   suites registered (`eval/suites/`), deterministic + Anthropic judges behind one Protocol
   (judge ≠ answer model), report generation (MD + HTML + JSON; JUnit + SARIF), Wilson statistical
-  gate, ECE/reliability calibration.
-- Outstanding: author the 120+ YAML cases under `eval/suites/`; run `make eval-baseline` to
-  commit `docs/audits/eval-baseline.json` + the first scoreboard (mediocre numbers included, not
-  hidden); make the eval job a required CI status check; commit the judge-calibration probe set
-  and its κ.
+  gate, ECE/reliability calibration. **128 YAML cases** are committed under `eval/suites/`
+  (exceeds the 120+ target). `docs/audits/eval-baseline.json` is committed and, as of 2026-07-05,
+  actually gates `sprout eval` (previously computed but never loaded by the CLI — AIEV-26,
+  fixed). The eval job (`eval-a11y` in `ci.yml`) is inside the required `ci-gate` check. The
+  judge-calibration probe set (`eval/judge_probes.yaml`, 12 probes) is committed and its κ is
+  measured — but **fails** the standard's threshold (agreement 0.750 < 0.80, κ 0.400 < 0.60;
+  report-only in CI, gap tracked — see AI evaluation suites table above).
+- Outstanding: expand/re-label the calibration probe set (currently 12, target 50–100) until it
+  clears the threshold, then flip the CI step to `--gate`.
 
 ### Phase 3 — quality + multilingual
 *Tune retrieval/prompts against eval failures only; add calibration suite and abstention; Spanish
@@ -223,11 +234,14 @@ implementation" banner.*
 ### Phase 4 — generalize
 *A `corpus.yaml` so any care corpus can be swapped in; "adapt this to your domain" doc.*
 
-**Status: not started.**
+**Status: guide done; personalization phases deferred.**
 - The seam exists (`config/sprout.yaml` already points the whole system at a corpus path,
-  manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). Remaining
-  work is the "adapt this to your domain" guide and, separately, the deferred Family Greenhouse
-  personalization phases (A → B → C) above.
+  manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). The
+  "adapt this to your domain" guide is written ([`docs/ADAPT.md`](ADAPT.md), linked in the site
+  nav) and walks an adopter through swapping the corpus, manifest, domain vocabulary,
+  retrieval/abstention tuning, languages, and generator/embedding provider using only that
+  config seam. Remaining Phase 4 scope is the deferred Family Greenhouse personalization phases
+  (A → B → C) above.
 
 ---
 

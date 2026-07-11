@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import io
+import json
+from collections.abc import Callable
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from sprout.a11y import check_html
 from sprout.answer import Assistant
 from sprout.config import Config, ObservabilityConfig
-from sprout.obs import Logger
+from sprout.models import Chunk
+from sprout.obs import _ALLOWED_FIELDS, Logger
 from sprout.providers import build_generator
 from sprout.providers.base import GenerationProvider
 from sprout.providers.deterministic import HashingEmbedding
@@ -160,3 +164,31 @@ def test_logger_text_and_json_and_pii_filter() -> None:
     )
     assert '"event":"answer"' in buf2.getvalue()
     assert '"ts":"T"' in buf2.getvalue()
+
+
+def test_json_logs_are_valid_json_and_pii_free_end_to_end(
+    assistant_factory: Callable[[Config, list[Chunk] | None], Assistant],
+    tiny_chunks: list[Chunk],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """OBS-22: every JSON log line emitted over a real request parses as JSON and carries
+    only whitelisted fields — sentinel PII embedded in the question never reaches a log
+    line. This is the jq-on-structured-logs integration test
+    `docs/RESPONSIBLE-TECH-AUDITS.md:261-263` claimed but that did not exist before
+    2026-07-05 (OBS-22)."""
+    cfg = Config(observability=ObservabilityConfig(log_format="json"))
+    engine = assistant_factory(cfg, tiny_chunks)
+    client = TestClient(create_app(cfg, assistant=engine))
+    sentinel = "SENTINEL-PII-555-0100 sentinel@example.invalid"
+    client.post("/api/chat", json={"question": f"why are my monstera leaves yellowing? {sentinel}"})
+    client.post("/api/chat", json={"question": ""})  # triggers the request_rejected event
+
+    lines = [line for line in capsys.readouterr().err.splitlines() if line.strip()]
+    assert lines, "expected at least one structured JSON log line"
+    allowed_keys = _ALLOWED_FIELDS | {"ts", "severity", "service.name", "event"}
+    for line in lines:
+        record = json.loads(line)  # raises (fails the test) if a line is not valid JSON
+        extra = set(record) - allowed_keys
+        assert not extra, f"log line carries non-whitelisted field(s) {extra}: {line}"
+        assert sentinel not in line
+        assert "monstera" not in line  # the raw question text never appears at all
