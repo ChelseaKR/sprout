@@ -65,7 +65,7 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 | Abstention enforced below threshold | answered cases below 0.25<!-- claim:roadmap-abstention-enforced --> confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | calibration suite invariant | AUTO |
 | EN/ES pass-rate parity | **\|EN − ES\| ≤ 5 pp** | bilingual benchmark slice | AUTO |
 | Hallucination rate | 0% by construction (extractive + citation guard) | citation guard unit tests + groundedness suite | AUTO |
-| Judge ↔ human agreement | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate` on the dated probe set | **report-only — currently below threshold (0.750 agreement, κ 0.400); CI step does not pass `--gate`, corrected 2026-07-05 (was declared AUTO while a step literally named "gate" could not fail); gap tracked. See `docs/audits/judge-calibration.md`.** |
+| Judge ↔ human agreement | ≥ 0.80 raw · Cohen's κ ≥ 0.60 | `sprout calibrate --gate` on the dated probe set | AUTO (fixed 2026-07-08, P0-4 — the deterministic judge's negation-only polarity guard missed antonym contradictions with no explicit negation marker, e.g. "safe" asserted against a source that says "toxic"; `has_antonym_conflict` closes that gap for `entails` and `equivalent`, raising the measured record to 0.917 agreement / κ 0.824 on the same 12-probe set, and the CI/`make verify` step now passes `--gate` and can fail the build. See `docs/audits/judge-calibration.md`.) |
 | Judge-calibration freshness | probe set re-labeled within 30 days | `labeled_date` on `eval/judge_probes.yaml`, checked by `sprout calibrate` | **warn-only (wired 2026-07-05, P1-19) — currently 13 days old, under threshold; `sprout calibrate` prints a warning past 30 days but does not yet fail the command (ties to P0-4: flips to a hard failure once the LLM judge is calibrated and `--gate` is enabled)** |
 | Fail-closed loader | hash mismatch / malformed case / empty suite / bad judge output → FAIL | `eval/dataset.py` + `runner.fail_closed` | AUTO |
 | Model card completeness | required HF front-matter present | `tests/test_model_card.py` | AUTO (wired 2026-07-05 — see P1-11; previously declared AUTO with no lint) |
@@ -213,10 +213,14 @@ the CI smoke suite. Commit a baseline scoreboard, mediocre numbers included.*
   actually gates `sprout eval` (previously computed but never loaded by the CLI — AIEV-26,
   fixed). The eval job (`eval-a11y` in `ci.yml`) is inside the required `ci-gate` check. The
   judge-calibration probe set (`eval/judge_probes.yaml`, 12 probes) is committed and its κ is
-  measured — but **fails** the standard's threshold (agreement 0.750 < 0.80, κ 0.400 < 0.60;
-  report-only in CI, gap tracked — see AI evaluation suites table above).
-- Outstanding: expand/re-label the calibration probe set (currently 12, target 50–100) until it
-  clears the threshold, then flip the CI step to `--gate`.
+  measured, and as of 2026-07-08 (P0-4) **meets** the standard's threshold (agreement
+  0.917 ≥ 0.80, κ 0.824 ≥ 0.60) after closing the judge's antonym-polarity gap; the CI step now
+  passes `--gate` and is merge-blocking — see AI evaluation suites table above.
+- Outstanding: the probe set is still small (12; target 50–100) and the one remaining
+  disagreement (a Spanish morphological synonym the lexical judge doesn't fold) is a real,
+  documented limit of a lexical judge — expand/re-label the probe set toward the 50–100 target
+  as new cases are authored, and back the gate with the calibrated LLM judge
+  (`--judge llm --gate`) once it has its own probe-set-backed calibration record.
 
 ### Phase 3 — quality + multilingual
 *Tune retrieval/prompts against eval failures only; add calibration suite and abstention; Spanish

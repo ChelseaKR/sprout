@@ -23,6 +23,7 @@ from sprout.text import (
     contains_phrase,
     content_tokens,
     coverage,
+    has_antonym_conflict,
     has_negation,
     jaccard,
     normalize,
@@ -92,6 +93,23 @@ def test_split_sentences_empty() -> None:
 )
 def test_has_negation(text: str, expected: bool) -> None:
     assert has_negation(text) is expected
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "expected"),
+    [
+        ("Aloe vera is safe for dogs.", "Aloe vera is toxic to dogs.", True),
+        ("El potos es toxico para los gatos.", "El potos es seguro para los gatos.", True),
+        ("La planta es toxica.", "La planta es segura.", True),
+        ("Es venenosa para los perros.", "Es segura para los perros.", True),
+        # Same side of the pair (or no pair vocabulary at all) is not a conflict.
+        ("Aloe vera is toxic for dogs.", "Aloe vera is toxic to dogs.", False),
+        ("Water weekly in summer.", "Water weekly in summer.", False),
+        ("Pothos is toxic to cats.", "Bright indirect light is best.", False),
+    ],
+)
+def test_has_antonym_conflict(a: str, b: str, expected: bool) -> None:
+    assert has_antonym_conflict(a, b) is expected
 
 
 def test_coverage_full_and_partial() -> None:

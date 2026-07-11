@@ -17,6 +17,7 @@ from .models import AnswerSentence, Citation, RetrievedChunk
 from .text import (
     contains_phrase,
     coverage,
+    has_antonym_conflict,
     has_negation,
     normalize,
     strip_accents,
@@ -183,7 +184,9 @@ def _supported_by(sentence: str, chunk_text: str, support_overlap: float) -> boo
     its negation polarity matches the source.
 
     The polarity gate is load-bearing for the cloud generators: token coverage strips
-    negations, so "X is not toxic" would otherwise score as covered by "X is toxic". A
+    negations, so "X is not toxic" would otherwise score as covered by "X is toxic".
+    ``has_antonym_conflict`` catches the same failure mode when no negation marker is
+    present at all ("X is safe" against a source that says "X is toxic"). A
     content-free fragment is never supported (it must carry at least one content token).
     """
     if contains_phrase(chunk_text, sentence):
@@ -191,6 +194,8 @@ def _supported_by(sentence: str, chunk_text: str, support_overlap: float) -> boo
     if not token_set(sentence):
         return False
     if has_negation(sentence) != has_negation(chunk_text):
+        return False
+    if has_antonym_conflict(sentence, chunk_text):
         return False
     return coverage(sentence, chunk_text) >= support_overlap
 
