@@ -120,7 +120,7 @@ targets, and evidence are recorded in this public repository. Per-repo *values* 
 |---|---|---|
 | Quality & Metrics (ISO 25010 / DORA) | ✅ | Metrics ledger in ROADMAP; `make verify` uses the same tools/thresholds as the CI-required checks |
 | Code Quality | ✅ | `ruff` + `mypy --strict`; branch coverage ≥90% (published-library floor); src layout |
-| Security & Supply Chain | ✅ | ASVS L1 (offline mode); pip-audit + Semgrep blocking (CI and `make verify`); gitleaks in CI; CodeQL + zizmor workflow-SAST; SHA-pinned actions; SBOM generated + uploaded on release |
+| Security & Supply Chain | ✅ | ASVS L1 offline mode; scoped ASVS L2 review for the authenticated Family Greenhouse boundary; pip-audit + Semgrep blocking; gitleaks; CodeQL + zizmor; SHA-pinned actions; release SBOM |
 | CI/CD | ✅ | Single `ci-gate` required check; least-privilege tokens; `make verify` mirrors CI's tools/thresholds |
 | Release & Versioning | ✅ | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
 | Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
@@ -130,8 +130,8 @@ targets, and evidence are recorded in this public repository. Per-repo *values* 
 | Documentation | ✅ | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
 | Responsible-Tech Framework | ✅ | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; no audit is N/A (added to this table 2026-07-05 — was silently omitted) |
 
-No standard is `N/A`. Family Greenhouse personalization (household-data path, ASVS L2) is
-**deferred to a later phase**; see [`docs/ROADMAP.md`](docs/ROADMAP.md). Every row above with a
+No standard is `N/A`. Family Greenhouse Phase A personalization is implemented behind a feature
+flag with an ASVS L2 review; notification and confirmed-write phases remain deferred. Every row above with a
 "gap tracked" note is tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md) and this repo's remediation
 history, not silently carried — see the 2026-07-05 audit remediation for the full list.
 

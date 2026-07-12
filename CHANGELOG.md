@@ -23,6 +23,9 @@ An offline-first, grounded, evaluated, multilingual (EN/ES) houseplant-care RAG 
 the public evaluation harness as the headline artifact.
 
 ### Added
+- **Family Greenhouse read-only integration:** HMAC-authenticated, replay-bounded API contract
+  accepting only minimized household selectors, with strict provenance, PII sentinel tests,
+  persisted citations, a scoped ASVS L2 review, and `sprout.chelseakr.com` custom-domain support.
 - **Mechanical enforcement of the "tune only against committed eval failures" rule**
   (`src/sprout/eval/tuning_scope.py`, `sprout check-tuning-scope` CLI command, `tuning-scope` CI
   job). Previously a sentence in `docs/ROADMAP.md` Phase 3; now a fail-closed gate — a change

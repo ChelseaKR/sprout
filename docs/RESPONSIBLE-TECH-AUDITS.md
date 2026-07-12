@@ -19,7 +19,7 @@ Each control below is marked **AUTO** (mechanically checkable, merge-blocking in
 | --- | --- | --- |
 | A Ethics | **applies** | this doc §A; non-goals below |
 | B Bias & fairness | **applies** | this doc §B; EN/ES parity is a first-class segment |
-| C Privacy (DPIA) | **applies** | this doc §C; future-household-data DPIA staged, not yet active |
+| C Privacy (DPIA) | **applies** | this doc §C; minimized household-data Phase A active behind a feature flag |
 | D Transparency | **applies** | this doc §D; model card `docs/cards/model-card.md` |
 | E Accessibility | **applies** | ACR `docs/accessibility/ACR.md` (VPAT 2.5 Rev 508) |
 | F Security | **applies** | threat model `docs/THREAT-MODEL.md` |
@@ -27,10 +27,9 @@ Each control below is marked **AUTO** (mechanically checkable, merge-blocking in
 | I18N | **applies** | EN/ES key + capability parity; see §B |
 
 No audit is `N/A`. This is an AI/RAG/eval repo; per the framework's applicability matrix
-every column is `yes`. Family Greenhouse household-data personalization (which would raise
-the privacy and bias surface materially) is **deferred to a later phase**; its audit deltas
-are pre-staged in §B and §C as "future-state" rows so the work sequences *before* the
-feature, not after.
+every column is `yes`. Family Greenhouse read-only personalization is implemented behind a
+feature flag with the privacy, provenance, and ASVS L2 deltas below. Proactive notification
+and confirmed-write phases remain deferred.
 
 ---
 
@@ -157,10 +156,9 @@ accessibility requirement, see §E). The synthetic CC0 corpus is authored to thi
 than scraped, which removes the source-bias surface of web-scraped care lore. Maps to NIST AI
 600-1 Risk 6 (Harmful Bias & Homogenization).
 
-**Future-state (Family Greenhouse, deferred).** When household data is added, the bias audit
-gains a personalization-fairness row: the assistant must not let household data override or
-fabricate a cited fact, and must not infer household composition. Pre-staged as a
-`personalization` eval suite requirement in CLAUDE.md; it sequences before the feature.
+**Family Greenhouse Phase A.** The personalization-fairness rule is active: household data
+may select corpus passages but may not override or fabricate a cited fact, and the assistant
+must not infer household composition. Strict schemas and provenance labels enforce the rule.
 
 **Enforcement.**
 - **AUTO** — EN/ES capability parity (multilingual suite, ≤ 5pp gate) and string/placeholder
@@ -236,18 +234,18 @@ the `plantnet` photo-ID provider — and both fail closed; the photo seam stream
 once and retains nothing (see the bullets above). Reminders add **local** state only and
 never leave the device.
 
-### Sentinel-PII plan (future household-data path — Family Greenhouse)
+### Sentinel-PII proof (Family Greenhouse Phase A)
 
-Personalization is **deferred and opt-in**; the privacy-preserving mode (corpus-only) is the
-default. When household data is introduced, the DPIA gains:
+Personalization is **feature-flagged and opt-in**; the privacy-preserving mode (corpus-only)
+remains the default. The DPIA includes:
 - **Minimize at the boundary.** Send the model **derived, minimized context only** — species
   plus relative timings ("watered 9 days ago"), *never* names, coordinates, or photo bytes;
   cache household context for the session only; request the narrowest scope; honor revocation
   by degrading to corpus-only without error.
-- **Sentinel-PII data-flow proof (planned AUTO-GATE).** The portfolio's signature pattern:
+- **Sentinel-PII data-flow proof (AUTO-GATE).** The portfolio's signature pattern:
   inject sentinel PII into *every* household field and assert in an isolated CI job that none
   of it reaches the model prompt or the logs. This mirrors `ledger`'s no-outing sentinel test
-  and is pre-staged so it lands *with* the feature, gating it, not after.
+  and landed with the feature in both repositories.
 - **Provenance rule.** Every personalized sentence is tagged `corpus` (must cite) or `from
   your Greenhouse` (must trace to a fetched record); anything untagged does not render. The
   guard already emits a `provenance` tag on every `AnswerSentence` (`guards.citation_guard`
@@ -381,8 +379,8 @@ is neither**: it holds no user PII (§C), persists no state, and makes no requir
 call, so **L1 is the justified target for the offline build**. The decision is written down,
 not assumed. The moment the externally-exposed surface grows — the serverless API or the
 Family Greenhouse household-data path — the target **steps up to L2** (README: "household-data
-path, ASVS L2, deferred"). This is the framework's "N/A-with-reason" discipline applied to a
-posture level rather than a whole audit.
+path, ASVS L2"). The scoped review is committed at
+[`docs/audits/asvs-l2-review-2026-07-12.md`](audits/asvs-l2-review-2026-07-12.md).
 
 **STRIDE highlights.**
 - **Tampering (corpus integrity).** The corpus is content-hashed and the manifest carries

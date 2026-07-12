@@ -167,13 +167,10 @@ level. The single deferred scope is noted explicitly.
 | Documentation | APPLIES | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
 | Responsible-Tech Framework | APPLIES | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; no audit is N/A; added to this table 2026-07-05 (was silently omitted — DOC-11) |
 
-**Deferred (not N/A) — Family Greenhouse personalization.** The household-data path
-(per-user context from the Family Greenhouse public API, the `personalization` and `provenance`
-eval suites, sentinel-PII privacy proofs, and the **ASVS L2** posture that an authenticated,
-key-bearing network surface requires) is **deferred to a later phase** and is intentionally
-absent from this commit. It does not lower any standard — it *raises* the security bar from L1
-to L2 when it lands, and adds two eval suites. Until then, corpus-only (the privacy-preserving
-default) is fully functional. See **Family Greenhouse integration** in
+**Family Greenhouse personalization.** Phase A is implemented behind a feature flag: strict
+minimized context, HMAC authentication, provenance labeling, sentinel-PII proofs, and a scoped
+**ASVS L2** review. Corpus-only remains the privacy-preserving default. Phases B (proactive
+notifications) and C (confirmed write-back) remain deferred. See **Family Greenhouse integration** in
 [`../CLAUDE.md`](../CLAUDE.md) for the full plan and phasing (A → B → C).
 
 ---
@@ -262,14 +259,14 @@ implementation" banner.*
 ### Phase 4 — generalize
 *A `corpus.yaml` so any care corpus can be swapped in; "adapt this to your domain" doc.*
 
-**Status: guide done; personalization phases deferred.**
+**Status: guide and read-only personalization Phase A done; Phases B–C deferred.**
 - The seam exists (`config/sprout.yaml` already points the whole system at a corpus path,
   manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). The
   "adapt this to your domain" guide is written ([`docs/ADAPT.md`](ADAPT.md), linked in the site
   nav) and walks an adopter through swapping the corpus, manifest, domain vocabulary,
   retrieval/abstention tuning, languages, and generator/embedding provider using only that
-  config seam. Remaining Phase 4 scope is the deferred Family Greenhouse personalization phases
-  (A → B → C) above.
+  config seam. Remaining Phase 4 scope is Family Greenhouse notification and confirmed-write
+  phases B–C.
 
 ---
 
