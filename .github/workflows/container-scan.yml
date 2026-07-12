@@ -1,0 +1,45 @@
+name: container-scan
+
+# Builds the chat UI + API image and scans it for known OS/library CVEs with
+# Trivy. Findings can come from the python:3.12-slim base image or from
+# anything uv installs into the image, so this stays on the merge gate and
+# also runs weekly to catch CVEs disclosed against an already-merged image.
+# Threshold is CRITICAL,HIGH per docs/standards/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md §6.3.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 3" # weekly, Wednesday 05:17 UTC (DB-freshness re-scan)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Trivy image scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build -t sprout:scan .
+      - name: Scan the image (Trivy — fail on HIGH,CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: sprout:scan
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          format: table
