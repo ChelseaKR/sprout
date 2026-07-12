@@ -251,9 +251,12 @@ implementation" banner.*
   structured *manual* exercise, not yet backed by an automated, per-PR mechanical check — see the
   "Red-team (OWASP LLM01–LLM10)" row in the AI evaluation ledger above, which honestly carries
   that gap (no Promptfoo run has completed against a provisioned key yet).
-- Outstanding: tune only against committed eval failures (no tuning to the test set); commit the
-  model card at `docs/cards/model-card.md` and the data card; deploy the UI behind a real URL
-  with the reference-implementation banner; get a clean Promptfoo `redteam` run wired and
+- Done: tuning only against committed eval failures is mechanically enforced by `sprout
+  check-tuning-scope`, a required CI job. Changes to retrieval, generation, guards,
+  calibration, lexical logic, or config must cite a case already recorded in the committed
+  eval baseline via a `Tunes-Against:` commit trailer.
+- Outstanding: deploy the UI behind a real URL with the reference-implementation banner; get a
+  clean Promptfoo `redteam` run wired and
   promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical
   check rather than only the manual, dated one (tracked in the ledger row above).
 
