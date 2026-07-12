@@ -29,11 +29,19 @@ class _Model(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class FreshnessConfig(_Model):
+    """Thresholds for the offline citation-freshness check."""
+
+    max_age_days: int = Field(default=365, ge=1, le=3650)
+    toxicity_max_age_days: int = Field(default=180, ge=1, le=3650)
+
+
 class CorpusConfig(_Model):
     path: str = "corpus/processed"
     glob: str = "**/*.md"
     manifest: str = "corpus/manifest.yaml"
     default_language: str = "en"
+    freshness: FreshnessConfig = Field(default_factory=FreshnessConfig)
 
 
 class ChunkConfig(_Model):
