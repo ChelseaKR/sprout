@@ -4,7 +4,8 @@ Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest ref
 ``serve`` (the chat UI + API), ``eval`` (record the live engine, run the suites, regenerate
 the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``freshness``
 (offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
-their code/config source of truth), ``calibrate`` (judge agreement + kappa),
+their code/config source of truth), ``smoke`` (the Phase 1 CI smoke suite of corpus-derived
+questions), ``calibrate`` (judge agreement + kappa),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
 (a scripted session). Everything runs offline by default.
 """
@@ -188,6 +189,42 @@ def evaluate(
             err=True,
         )
     raise typer.Exit(exit_code)
+
+
+@app.command()
+def smoke(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    out: Annotated[str, typer.Option("--out")] = "docs/audits",
+    language: Annotated[str, typer.Option("--language")] = "en",
+) -> None:
+    """Phase 1 CI smoke suite: corpus-derived questions, no hand-authored YAML.
+
+    One question per (species, topic) pair actually present in the ingested corpus,
+    mechanically templated from the corpus's own species slugs and topic taxonomy — a
+    fast, judge-free canary that fails loudly on a broken species/topic combination well
+    before the heavier, hand-authored Phase 2 eval harness runs. Requires ``sprout
+    ingest`` to have populated the store first.
+    """
+    from .smoke import run_smoke, to_markdown
+    from .store import VectorStore
+
+    cfg = _load(config)
+    try:
+        store = VectorStore.load(cfg.store.path)
+    except FileNotFoundError as exc:
+        typer.echo(f"{exc} (run `sprout ingest` first)", err=True)
+        raise typer.Exit(2) from exc
+    assistant = Assistant.from_store(cfg, store)
+    result = run_smoke(assistant, store, cfg, language=language)
+
+    report = to_markdown(result)
+    out_dir = Path(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "smoke-report.md").write_text(report, encoding="utf-8")
+
+    typer.echo(report)
+    if not result.passed:
+        raise typer.Exit(1)
 
 
 @app.command("a11y-check")

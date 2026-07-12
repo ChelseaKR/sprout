@@ -189,8 +189,9 @@ when `make verify` is green for its scope.
 topic; hybrid retrieval against smoke questions; `guards.py` v1 (safety-assertion ban, scope,
 PII).*
 
-**Status: substantially done** (corrected 2026-07-05 — this was stale since 06-22 and had not
-caught up with actual repo state per DOC-15).
+**Status: done** (corrected 2026-07-08 — the dedicated smoke suite below closed the last
+outstanding Phase 1 gap; corrected 2026-07-05 — this was stale since 06-22 and had not caught
+up with actual repo state per DOC-15).
 - Done: hybrid retrieval (`retrieve.py` — BM25 + deterministic dense via reciprocal rank fusion,
   topic filter, `min_score` threshold gate), `guards.py` v1 (citation guard, never-certify-safe
   deny-list EN/ES, scope via retrieval threshold, PII redaction + injection labeling), ingest /
@@ -198,8 +199,15 @@ caught up with actual repo state per DOC-15).
   committed at `corpus/processed/` — **32 files** (16 species × EN/ES) with a dated, licensed
   `corpus/manifest.yaml` — not the "ships no passages yet" state a prior version of this line
   claimed.
-- Outstanding: a dedicated CI smoke suite of corpus-derived questions beyond what the eval
-  harness (Phase 2) already exercises.
+- Done: a dedicated CI smoke suite of corpus-derived questions, beyond what the eval harness
+  (Phase 2) already exercises — `sprout smoke` (`src/sprout/smoke.py`), wired as its own
+  merge-blocking `smoke` job in `ci.yml`. Every case is templated mechanically from the
+  ingested corpus's own species slugs and `## <topic>` headings (one question per
+  (species, topic) pair actually present in the store), not hand-authored, so coverage tracks
+  the corpus automatically as species/topics are added. Runs the offline deterministic
+  generator only (no judge, no network) — a fast, judge-free canary distinct from the
+  hand-authored 128-case Phase 2 harness. 80 cases pass over the shipped corpus; report
+  committed at `docs/audits/smoke-report.md`.
 
 ### Phase 2 — eval first
 *Runner, judges, report. Author 60 cases (groundedness, safety, refusal) from the corpus. Wire
