@@ -139,7 +139,7 @@ def evaluate(
     longer matches this run's dataset/judge/target — fails the command even if every suite
     individually passed its own threshold.
     """
-    from .eval.dataset import load_suite_dir
+    from .eval.dataset import load_suite_dir, write_sidecar
     from .eval.judge import build_judge
     from .eval.record import record
     from .eval.report import diff_against_baseline, load_run_result, render_markdown, write_reports
@@ -150,6 +150,8 @@ def evaluate(
     cfg = _load(config)
     assistant = Assistant.from_config(cfg)
     dataset = load_suite_dir(suite_dir, verify_hash=not update_baseline)
+    if update_baseline:
+        write_sidecar(dataset, Path(suite_dir).parent / "suites.sha256")
     golden = record(assistant, dataset, cfg)
     resolved_suites = resolve_suites(suites)
     # The refusal suite's committed threshold is the offline hashing-embedder floor (0.90).
