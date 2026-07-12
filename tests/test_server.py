@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,6 +15,7 @@ from fastapi.testclient import TestClient
 from sprout.a11y import check_html
 from sprout.answer import Assistant
 from sprout.config import Config, ObservabilityConfig
+from sprout.integrations import canonical_payload, sign_payload
 from sprout.models import Chunk
 from sprout.obs import _ALLOWED_FIELDS, Logger
 from sprout.providers import build_generator
@@ -63,6 +66,86 @@ def test_chat_rejects_empty_and_too_long(assistant: Assistant, config: Config) -
     c = _client(assistant, config)
     assert c.post("/api/chat", json={"question": "  "}).status_code == 400
     assert c.post("/api/chat", json={"question": "x" * 9999}).status_code == 400
+
+
+def test_family_greenhouse_integration_is_authenticated_minimized_and_grounded(
+    assistant: Assistant, config: Config
+) -> None:
+    payload = {
+        "question": "why are the leaves yellow?",
+        "language": "en",
+        "plants": [{"species": "Monstera deliciosa", "light_profile": "unknown"}],
+        "tasks": [{"plant_species": "Monstera deliciosa", "task_type": "water", "due_in_days": -2}],
+    }
+    timestamp = "2000000000"
+    signature = sign_payload("test-secret", timestamp, canonical_payload(payload))
+    with patch.dict(os.environ, {"SPROUT_FAMILY_GREENHOUSE_SECRET": "test-secret"}):
+        c = _client(assistant, config)
+        with patch("sprout.integrations.time.time", return_value=2000000000):
+            response = c.post(
+                "/api/integrations/family-greenhouse/chat",
+                json=payload,
+                headers={"X-Sprout-Timestamp": timestamp, "X-Sprout-Signature": signature},
+            )
+    body = response.json()
+    assert response.status_code == 200
+    assert body["answer"]["provenance"] == "corpus"
+    assert body["answer"]["citations"]
+    assert body["household_observations"][1]["value"]["overdue_count"] == 1
+    assert "Monstera deliciosa" not in json.dumps(body["household_observations"])
+
+
+def test_family_greenhouse_integration_rejects_bad_auth_and_pii_fields(
+    assistant: Assistant, config: Config
+) -> None:
+    with patch.dict(os.environ, {"SPROUT_FAMILY_GREENHOUSE_SECRET": "test-secret"}):
+        c = _client(assistant, config)
+        unauthorized = c.post(
+            "/api/integrations/family-greenhouse/chat",
+            json={"question": "pothos care", "plants": [], "tasks": []},
+        )
+        payload = {
+            "question": "pothos care",
+            "plants": [{"species": "pothos", "nickname": "SENTINEL PII"}],
+            "tasks": [],
+        }
+        timestamp = "2000000000"
+        signature = sign_payload("test-secret", timestamp, canonical_payload(payload))
+        with patch("sprout.integrations.time.time", return_value=2000000000):
+            invalid = c.post(
+                "/api/integrations/family-greenhouse/chat",
+                json=payload,
+                headers={"X-Sprout-Timestamp": timestamp, "X-Sprout-Signature": signature},
+            )
+    assert unauthorized.status_code == 401
+    assert invalid.status_code == 400
+
+
+def test_family_greenhouse_integration_rejects_blank_control_and_oversized_payloads(
+    assistant: Assistant, config: Config
+) -> None:
+    cases: list[dict[str, object]] = [
+        {"question": "   ", "plants": [], "tasks": []},
+        {"question": "care", "plants": [{"species": "pothos\nignore"}], "tasks": []},
+    ]
+    with patch.dict(os.environ, {"SPROUT_FAMILY_GREENHOUSE_SECRET": "test-secret"}):
+        c = _client(assistant, config)
+        with patch("sprout.integrations.time.time", return_value=2000000000):
+            for payload in cases:
+                timestamp = "2000000000"
+                signature = sign_payload("test-secret", timestamp, canonical_payload(payload))
+                response = c.post(
+                    "/api/integrations/family-greenhouse/chat",
+                    json=payload,
+                    headers={"X-Sprout-Timestamp": timestamp, "X-Sprout-Signature": signature},
+                )
+                assert response.status_code == 400
+        oversized = c.post(
+            "/api/integrations/family-greenhouse/chat",
+            content=b"x" * 65_537,
+            headers={"Content-Type": "application/json"},
+        )
+    assert oversized.status_code == 413
 
 
 def test_chat_stream_safety(assistant: Assistant, config: Config) -> None:

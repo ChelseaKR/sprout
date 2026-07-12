@@ -13,17 +13,26 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 
 from .answer import Assistant
 from .config import Config
 from .identify import PhotoCareService, PlantIdentifier, build_identifier
+from .integrations import (
+    FamilyGreenhouseRequest,
+    canonical_payload,
+    household_observations,
+    selector_query,
+    verify_signature,
+)
 from .models import Answer
 from .obs import Logger
 from .reminders import Reminder, ReminderError, ReminderStore
@@ -88,6 +97,61 @@ def _register_health(app: FastAPI, engine: Assistant) -> None:
         return {"status": "ok", "index_size": len(engine._store)}
 
 
+def _register_family_greenhouse(app: FastAPI, engine: Assistant, log: Logger) -> None:
+    @app.post("/api/integrations/family-greenhouse/chat")
+    async def family_greenhouse_chat(request: Request) -> JSONResponse:
+        """First-party, read-only integration with minimized household context."""
+        secret = os.environ.get("SPROUT_FAMILY_GREENHOUSE_SECRET", "")
+        if not secret:
+            return JSONResponse({"error": "integration is not configured"}, status_code=503)
+        try:
+            raw_body = await request.body()
+            if len(raw_body) > 65_536:
+                return JSONResponse({"error": "integration payload is too large"}, status_code=413)
+            raw_payload = json.loads(raw_body)
+            if not isinstance(raw_payload, dict):
+                raise ValueError("payload must be an object")
+            body = canonical_payload(raw_payload)
+            timestamp = request.headers.get("x-sprout-timestamp", "")
+            signature = request.headers.get("x-sprout-signature", "")
+            if not verify_signature(secret, timestamp, body, signature):
+                log.event("request_rejected")
+                return JSONResponse({"error": "invalid integration signature"}, status_code=401)
+            payload = FamilyGreenhouseRequest.model_validate(raw_payload)
+        except (ValidationError, ValueError, json.JSONDecodeError) as exc:
+            return JSONResponse(
+                {"error": "invalid integration payload", "detail": str(exc)}, status_code=400
+            )
+
+        answer = engine.answer(selector_query(payload), payload.language)
+        log.event(
+            "answer",
+            language=answer.language,
+            refused=answer.refused,
+            refusal_reason=answer.refusal_reason,
+            is_safety_query=answer.is_safety_query,
+            confidence=answer.confidence,
+        )
+        return JSONResponse(
+            {
+                "answer": {
+                    "display_text": answer.display_text,
+                    "citations": [citation.model_dump() for citation in answer.citations],
+                    "safety_notice": answer.safety_notice,
+                    "confidence": answer.confidence,
+                    "low_confidence": answer.low_confidence,
+                    "refused": answer.refused,
+                    "as_of": answer.as_of,
+                    "disclosure": answer.disclosure,
+                    "language": answer.language,
+                    "provenance": "corpus",
+                },
+                "household_observations": household_observations(payload),
+                "context_policy": "household-data-selects-corpus-facts",
+            }
+        )
+
+
 def _mount_ui(app: FastAPI) -> None:
     dist = Path("web/dist")
     if dist.is_dir() and (dist / "index.html").exists():
@@ -121,6 +185,7 @@ def create_app(
         return answer
 
     _register_health(app, engine)
+    _register_family_greenhouse(app, engine, log)
 
     @app.get("/api/disclosure")
     def disclosure(language: str = "en") -> dict[str, str]:
