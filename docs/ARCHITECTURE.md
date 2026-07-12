@@ -3,8 +3,7 @@
 > **Audience:** contributors and reviewers who need to know *where* a property lives in
 > the code before they change it. This document describes the runtime pipeline, the
 > provider seam, the in-repo eval harness, the data flow, and the invariants that the
-> CI gates exist to protect. It references the portfolio
-> [`STANDARDS/`](../../STANDARDS/README.md) rather than restating them; per-repo *values*
+> CI gates exist to protect. It references named engineering standards; per-repo *values*
 > (coverage, thresholds, ASVS level) live in [`docs/ROADMAP.md`](ROADMAP.md).
 >
 > **Last verified:** 2026-06-22 · **Author:** Chelsea Kelly-Reif
@@ -164,7 +163,7 @@ narrow contract:
 - The **answer model is Claude Haiku**; the **judge model is Claude Sonnet** — judge ≠
   answer model is structural (see §4). Production uses Claude via Bedrock behind
   `generation.provider: bedrock`; see the [model card](cards/model-card.md) and
-  [`STANDARDS/AI-EVALUATION-STANDARD.md`](../../STANDARDS/AI-EVALUATION-STANDARD.md).
+  `STANDARDS/AI-EVALUATION-STANDARD.md`.
 
 Offline is the **default and the privacy-preserving mode**: it costs nothing, needs no
 account, and makes every component unit-testable. The cloud path is a config switch
@@ -330,4 +329,4 @@ an ADR requirement; see the [README "Hard guardrails"](../README.md) note.
 - [`docs/THREAT-MODEL.md`](THREAT-MODEL.md) — STRIDE analysis with mitigations mapped to code.
 - [`docs/cards/model-card.md`](cards/model-card.md) — limits stated plainly.
 - [`docs/ACCESSIBILITY.md`](ACCESSIBILITY.md) + the ACR — WCAG 2.2 AA posture.
-- [`STANDARDS/`](../../STANDARDS/README.md) — the cross-cutting rigor this repo conforms to.
+- `STANDARDS/` — the cross-cutting rigor this repo conforms to.

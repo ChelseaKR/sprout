@@ -3,7 +3,7 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        a11y claims calibrate audits docs workflow-lint ci-parity-check demo verify clean
+        smoke a11y claims calibrate audits docs workflow-lint ci-parity-check demo verify clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -30,7 +30,7 @@ test: ## Run the test suite with the coverage gate (>=90%)
 
 security: ## Dependency + secret + SAST scanning — the same tools/thresholds CI enforces
 	$(PY) pip-audit
-	uvx semgrep scan --config p/python --error src
+	uvx --with 'setuptools<81' semgrep scan --config p/python --error src
 	@command -v gitleaks >/dev/null 2>&1 && gitleaks detect --no-banner --redact || \
 	  ( [ -n "$$CI" ] && echo "gitleaks not installed — failing (CI=true; CI runs it via gitleaks-action instead of this target)" && exit 1 || \
 	    echo "gitleaks not installed locally — install it (https://github.com/gitleaks/gitleaks) to run this check; CI enforces it regardless" )
@@ -46,6 +46,9 @@ eval-baseline: ingest ## Regenerate the eval report AND refresh the committed ba
 
 calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa; gated, mirrors CI)
 	$(PY) sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
+
+smoke: ingest ## Phase 1 CI smoke suite: corpus-derived questions, no hand-authored YAML
+	$(PY) sprout smoke --config $(CONFIG) --out docs/audits
 
 a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gate)
 	$(PY) sprout a11y-check web/dist/index.html
@@ -69,7 +72,7 @@ ci-parity-check: ## Mechanically diff make verify's commands against the require
 demo: ingest ## Reproduce a short scripted session
 	$(PY) sprout demo --config $(CONFIG)
 
-verify: lint type test security eval a11y claims calibrate docs workflow-lint ci-parity-check ## Full local mirror of the CI gate set
+verify: lint type test security eval smoke a11y claims calibrate docs workflow-lint ci-parity-check ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts

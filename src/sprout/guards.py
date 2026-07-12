@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 
+from . import locales
 from .config import GuardsConfig
 from .models import AnswerSentence, Citation, RetrievedChunk
 from .text import (
@@ -138,44 +139,16 @@ def asserts_safety(text: str, language: str, cfg: GuardsConfig) -> bool:
     return False
 
 
-# Toxicity/harm terms whose negation amounts to a safety certification (EN + ES, folded).
+# Toxicity/harm terms whose negation amounts to a safety certification (EN + ES,
+# folded). Authored per-language in src/sprout/locales/<lang>/bundle.yaml (FIX-09) and
+# unioned here — the folding across languages stays, only the authoring surface moved.
 _HARM_TOKENS = frozenset(
-    {
-        "toxic",
-        "toxico",
-        "toxica",
-        "poison",
-        "poisonous",
-        "venenosa",
-        "veneno",
-        "harm",
-        "harmful",
-        "danger",
-        "dangerous",
-        "risk",
-        "riesgo",
-        "hurt",
-    }
+    locales.merged_list("guards", "harm_tokens", locales.available_languages())
 )
 # Source-attribution markers: their presence means the sentence reports what the cited
-# source says (or does not say), not a bare certification.
+# source says (or does not say), not a bare certification. Same per-language authoring.
 _SOURCE_MARKERS = frozenset(
-    {
-        "cited",
-        "reference",
-        "source",
-        "list",
-        "listed",
-        "according",
-        "states",
-        "fuente",
-        "citada",
-        "indica",
-        "lista",
-        "listada",
-        "menciona",
-        "segun",
-    }
+    locales.merged_list("guards", "source_markers", locales.available_languages())
 )
 
 

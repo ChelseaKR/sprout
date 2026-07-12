@@ -4,7 +4,9 @@ Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest ref
 ``serve`` (the chat UI + API), ``eval`` (record the live engine, run the suites, regenerate
 the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``freshness``
 (offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
-their code/config source of truth), ``calibrate`` (judge agreement + kappa),
+their code/config source of truth), ``smoke`` (the Phase 1 CI smoke suite of corpus-derived
+questions), ``check-tuning-scope`` (fail-closed gate for tunable-surface changes),
+``calibrate`` (judge agreement + kappa),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
 (a scripted session). Everything runs offline by default.
 """
@@ -137,7 +139,7 @@ def evaluate(
     longer matches this run's dataset/judge/target — fails the command even if every suite
     individually passed its own threshold.
     """
-    from .eval.dataset import load_suite_dir
+    from .eval.dataset import load_suite_dir, write_sidecar
     from .eval.judge import build_judge
     from .eval.record import record
     from .eval.report import diff_against_baseline, load_run_result, render_markdown, write_reports
@@ -148,6 +150,8 @@ def evaluate(
     cfg = _load(config)
     assistant = Assistant.from_config(cfg)
     dataset = load_suite_dir(suite_dir, verify_hash=not update_baseline)
+    if update_baseline:
+        write_sidecar(dataset, Path(suite_dir).parent / "suites.sha256")
     golden = record(assistant, dataset, cfg)
     resolved_suites = resolve_suites(suites)
     # The refusal suite's committed threshold is the offline hashing-embedder floor (0.90).
@@ -188,6 +192,77 @@ def evaluate(
             err=True,
         )
     raise typer.Exit(exit_code)
+
+
+@app.command()
+def smoke(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    out: Annotated[str, typer.Option("--out")] = "docs/audits",
+    language: Annotated[str, typer.Option("--language")] = "en",
+) -> None:
+    """Phase 1 CI smoke suite: corpus-derived questions, no hand-authored YAML.
+
+    One question per (species, topic) pair actually present in the ingested corpus,
+    mechanically templated from the corpus's own species slugs and topic taxonomy — a
+    fast, judge-free canary that fails loudly on a broken species/topic combination well
+    before the heavier, hand-authored Phase 2 eval harness runs. Requires ``sprout
+    ingest`` to have populated the store first.
+    """
+    from .smoke import run_smoke, to_markdown
+    from .store import VectorStore
+
+    cfg = _load(config)
+    try:
+        store = VectorStore.load(cfg.store.path)
+    except FileNotFoundError as exc:
+        typer.echo(f"{exc} (run `sprout ingest` first)", err=True)
+        raise typer.Exit(2) from exc
+    assistant = Assistant.from_store(cfg, store)
+    result = run_smoke(assistant, store, cfg, language=language)
+
+    report = to_markdown(result)
+    out_dir = Path(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "smoke-report.md").write_text(report, encoding="utf-8")
+
+    typer.echo(report)
+    if not result.passed:
+        raise typer.Exit(1)
+
+
+@app.command("check-tuning-scope")
+def check_tuning_scope_cmd(
+    base: Annotated[
+        str, typer.Option("--base", help="Git ref this branch is diffed against.")
+    ] = "origin/main",
+    head: Annotated[str, typer.Option("--head")] = "HEAD",
+    baseline: Annotated[
+        str, typer.Option("--baseline", help="Committed eval baseline to verify ids against.")
+    ] = "docs/audits/eval-baseline.json",
+) -> None:
+    """Fail if this change tunes retrieval/prompts/guards without citing an already-committed
+    eval failure (ROADMAP Phase 3: tune only against committed failures, never the held-out set).
+
+    No-op when the diff does not touch the tunable surface. Otherwise every commit range must
+    carry a ``Tunes-Against: <case-id>[, <case-id>...]`` trailer whose ids already appear in
+    ``<baseline>``'s committed ``failing_examples``.
+    """
+    from .eval.tuning_scope import TuningScopeError, check_tuning_scope
+
+    try:
+        issues = check_tuning_scope(base_ref=base, head_ref=head, baseline_path=baseline)
+    except TuningScopeError as exc:
+        typer.echo(f"Tuning-scope check could not run: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    if issues:
+        typer.echo("Tuning-scope check FAILED:", err=True)
+        for issue in issues:
+            typer.echo(f"  - {issue}", err=True)
+        raise typer.Exit(1)
+    typer.echo(
+        "Tuning-scope check: no tunable-surface change, or all changes cite committed eval "
+        "failures."
+    )
 
 
 @app.command("a11y-check")

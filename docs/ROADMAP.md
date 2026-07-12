@@ -1,8 +1,7 @@
 # Sprout — roadmap, metrics ledger, and conformance declarations
 
-> This file carries Sprout's *values*. The cross-cutting rigor lives once in
-> [`../../STANDARDS/`](../../STANDARDS/README.md); this repo references it and records only
-> its targets, measured numbers, declared tiers, and any justified deviation. Silent
+> This file records Sprout's public targets, measured numbers, declared tiers, and any
+> justified deviation from the named engineering standards. Silent
 > deviation from a standard is a defect, not a footnote.
 
 Author: Chelsea Kelly-Reif · Last updated: 2026-07-05 (conformance-audit remediation pass —
@@ -14,7 +13,7 @@ notes throughout) · Status: `In build` (Phase 3).
 ## AI-Evaluation-Standard: APPLIES  (tiers: RAG, red-team, model-card)
 
 Sprout retrieves-then-generates over a cited corpus and consults an LLM-as-judge, so the
-[AI Evaluation Standard](../../STANDARDS/AI-EVALUATION-STANDARD.md) binds in full. The three
+AI Evaluation Standard binds in full. The three
 eval layers (retrieval, generation, calibration) are all gated; the judge model
 (`claude-sonnet-4-6`) is structurally different from the default answer model
 (`claude-haiku-4-5-20251001`), and the offline deterministic generator is the default so the
@@ -38,7 +37,7 @@ row is an **AUTO-GATE** (mechanically checked, merge-blocking) unless marked REV
 command that reproduces the whole set locally is `make verify`
 (`lint · type · test · security · eval · a11y`).
 
-### Code quality and coverage — [`CODE-QUALITY-STANDARD`](../../STANDARDS/CODE-QUALITY-STANDARD.md)
+### Code quality and coverage — `CODE-QUALITY-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
@@ -47,7 +46,7 @@ command that reproduces the whole set locally is `make verify`
 | Branch coverage | **≥ 90%** (published-library floor) | `pytest --cov=sprout --cov-fail-under=90` | AUTO |
 | Layout | `src/` layout, importable as `sprout` | packaging test + import | AUTO |
 
-### AI evaluation suites — [`AI-EVALUATION-STANDARD`](../../STANDARDS/AI-EVALUATION-STANDARD.md)
+### AI evaluation suites — `AI-EVALUATION-STANDARD`
 
 Five suites, 120+ committed YAML cases, scored by deterministic checks blended with an
 LLM-as-judge (judge ≠ answer model). Runs are content-hashed and **byte-identical for
@@ -78,7 +77,7 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 Sonnet to judge — behind a config switch; the deterministic offline generator is the default and
 is what CI exercises (no network, no key). No "rejected because" deviation is recorded.
 
-### Accessibility — [`ACCESSIBILITY-STANDARD`](../../STANDARDS/ACCESSIBILITY-STANDARD.md)
+### Accessibility — `ACCESSIBILITY-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
@@ -88,7 +87,7 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 | Color independence | severity + provenance never color-only | manual SR review (NVDA, VoiceOver) | REVIEW |
 | ACR (VPAT 2.5 Rev 508) | committed, regenerated on release | `docs/accessibility/ACR.md` | REVIEW |
 
-### Security and supply chain — [`SECURITY-AND-SUPPLY-CHAIN-STANDARD`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md)
+### Security and supply chain — `SECURITY-AND-SUPPLY-CHAIN-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
@@ -100,14 +99,14 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 | SBOM | emitted on release | release workflow | AUTO |
 | PII in logs | **zero** — logger whitelists low-cardinality fields only, never question text | `obs.py` `_ALLOWED_FIELDS` + Semgrep/bandit | AUTO (never N/A) |
 
-### Internationalization — [`INTERNATIONALIZATION-STANDARD`](../../STANDARDS/INTERNATIONALIZATION-STANDARD.md)
+### Internationalization — `INTERNATIONALIZATION-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
 | EN/ES key + placeholder parity | complete, no orphan keys | per-language bundle diff | AUTO |
 | EN/ES eval pass-rate parity | **\|EN − ES\| ≤ 5 pp** | multilingual suite (also in the AI ledger above) | AUTO |
 
-### Quality, release, CI/CD — [`QUALITY-AND-METRICS`](../../STANDARDS/QUALITY-AND-METRICS-STANDARD.md) · [`RELEASE-AND-VERSIONING`](../../STANDARDS/RELEASE-AND-VERSIONING-STANDARD.md) · [`CI-CD-STANDARD`](../../STANDARDS/CI-CD-STANDARD.md)
+### Quality, release, CI/CD — `QUALITY-AND-METRICS` · `RELEASE-AND-VERSIONING` · `CI-CD-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
@@ -121,7 +120,7 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 
 ## Observability tier
 
-Per the [Observability Standard §0](../../STANDARDS/OBSERVABILITY-STANDARD.md), the tier is
+Per the Observability Standard §0, the tier is
 declared here and any skipped control is recorded as **N/A-with-reason**; silent omission is a
 defect caught by the tier-declaration gate. Sprout has two surfaces and states both.
 
@@ -168,13 +167,10 @@ level. The single deferred scope is noted explicitly.
 | Documentation | APPLIES | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
 | Responsible-Tech Framework | APPLIES | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; no audit is N/A; added to this table 2026-07-05 (was silently omitted — DOC-11) |
 
-**Deferred (not N/A) — Family Greenhouse personalization.** The household-data path
-(per-user context from the Family Greenhouse public API, the `personalization` and `provenance`
-eval suites, sentinel-PII privacy proofs, and the **ASVS L2** posture that an authenticated,
-key-bearing network surface requires) is **deferred to a later phase** and is intentionally
-absent from this commit. It does not lower any standard — it *raises* the security bar from L1
-to L2 when it lands, and adds two eval suites. Until then, corpus-only (the privacy-preserving
-default) is fully functional. See **Family Greenhouse integration** in
+**Family Greenhouse personalization.** Phase A is implemented behind a feature flag: strict
+minimized context, HMAC authentication, provenance labeling, sentinel-PII proofs, and a scoped
+**ASVS L2** review. Corpus-only remains the privacy-preserving default. Phases B (proactive
+notifications) and C (confirmed write-back) remain deferred. See **Family Greenhouse integration** in
 [`../CLAUDE.md`](../CLAUDE.md) for the full plan and phasing (A → B → C).
 
 ---
@@ -189,8 +185,9 @@ when `make verify` is green for its scope.
 topic; hybrid retrieval against smoke questions; `guards.py` v1 (safety-assertion ban, scope,
 PII).*
 
-**Status: substantially done** (corrected 2026-07-05 — this was stale since 06-22 and had not
-caught up with actual repo state per DOC-15).
+**Status: done** (corrected 2026-07-08 — the dedicated smoke suite below closed the last
+outstanding Phase 1 gap; corrected 2026-07-05 — this was stale since 06-22 and had not caught
+up with actual repo state per DOC-15).
 - Done: hybrid retrieval (`retrieve.py` — BM25 + deterministic dense via reciprocal rank fusion,
   topic filter, `min_score` threshold gate), `guards.py` v1 (citation guard, never-certify-safe
   deny-list EN/ES, scope via retrieval threshold, PII redaction + injection labeling), ingest /
@@ -198,8 +195,15 @@ caught up with actual repo state per DOC-15).
   committed at `corpus/processed/` — **32 files** (16 species × EN/ES) with a dated, licensed
   `corpus/manifest.yaml` — not the "ships no passages yet" state a prior version of this line
   claimed.
-- Outstanding: a dedicated CI smoke suite of corpus-derived questions beyond what the eval
-  harness (Phase 2) already exercises.
+- Done: a dedicated CI smoke suite of corpus-derived questions, beyond what the eval harness
+  (Phase 2) already exercises — `sprout smoke` (`src/sprout/smoke.py`), wired as its own
+  merge-blocking `smoke` job in `ci.yml`. Every case is templated mechanically from the
+  ingested corpus's own species slugs and `## <topic>` headings (one question per
+  (species, topic) pair actually present in the store), not hand-authored, so coverage tracks
+  the corpus automatically as species/topics are added. Runs the offline deterministic
+  generator only (no judge, no network) — a fast, judge-free canary distinct from the
+  hand-authored 128-case Phase 2 harness. 80 cases pass over the shipped corpus; report
+  committed at `docs/audits/smoke-report.md`.
 
 ### Phase 2 — eval first
 *Runner, judges, report. Author 60 cases (groundedness, safety, refusal) from the corpus. Wire
@@ -243,29 +247,33 @@ implementation" banner.*
   structured *manual* exercise, not yet backed by an automated, per-PR mechanical check — see the
   "Red-team (OWASP LLM01–LLM10)" row in the AI evaluation ledger above, which honestly carries
   that gap (no Promptfoo run has completed against a provisioned key yet).
-- Outstanding: tune only against committed eval failures (no tuning to the test set); commit the
-  model card at `docs/cards/model-card.md` and the data card; deploy the UI behind a real URL
-  with the reference-implementation banner; get a clean Promptfoo `redteam` run wired and
+- Done: tuning only against committed eval failures is mechanically enforced by `sprout
+  check-tuning-scope`, a required CI job. Changes to retrieval, generation, guards,
+  calibration, lexical logic, or config must cite a case already recorded in the committed
+  eval baseline via a `Tunes-Against:` commit trailer.
+- Outstanding: deploy the UI behind a real URL with the reference-implementation banner; get a
+  clean Promptfoo `redteam` run wired and
   promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical
   check rather than only the manual, dated one (tracked in the ledger row above).
 
 ### Phase 4 — generalize
 *A `corpus.yaml` so any care corpus can be swapped in; "adapt this to your domain" doc.*
 
-**Status: guide done; personalization phases deferred.**
+**Status: guide and read-only personalization Phase A done; Phases B–C deferred.**
 - The seam exists (`config/sprout.yaml` already points the whole system at a corpus path,
   manifest, languages, models, and thresholds; the eval runner is corpus-agnostic). The
   "adapt this to your domain" guide is written ([`docs/ADAPT.md`](ADAPT.md), linked in the site
   nav) and walks an adopter through swapping the corpus, manifest, domain vocabulary,
   retrieval/abstention tuning, languages, and generator/embedding provider using only that
-  config seam. Remaining Phase 4 scope is the deferred Family Greenhouse personalization phases
-  (A → B → C) above.
+  config seam. Remaining Phase 4 scope is Family Greenhouse notification and confirmed-write
+  phases B–C.
 
 ---
 
 ## Definition of done (the bar each phase is held to)
 
-A fresh user can `pipx install sprout`, ask a plant question **offline**, get a cited answer (or
+A fresh user can install Sprout from source (and, after the first release, via `pipx`), ask a
+plant question **offline**, get a cited answer (or
 an honest refusal), run `make eval` to regenerate the committed report with no cloud account, and
 read a model card that states the limits plainly — with every CI gate green. `make verify`
 reproduces the full gate set locally; if it is not green, the phase is not done.

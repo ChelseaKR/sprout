@@ -162,6 +162,7 @@ def test_real_repo_make_verify_matches_ci_gate() -> None:
     assert reports, "expected at least one comparison group"
     failures = [r for r in reports if not r.ok]
     assert not failures, format_reports(reports)
+    assert "smoke" in {r.group for r in reports}
 
 
 def test_cli_ci_parity_check_passes_on_real_repo() -> None:
