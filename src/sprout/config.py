@@ -13,7 +13,16 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from . import locales
+
+# The languages the built-in ``*_by_lang`` defaults are drawn from. Independent of
+# whatever a loaded config sets ``languages.supported`` to (same as the previous
+# hard-coded en/es dict literals this module used to carry) — a custom config that
+# widens ``languages.supported`` is expected to also supply its own prompts/guards, and
+# the completeness gate on :class:`Config` enforces that.
+_DEFAULT_LANGUAGES = ("en", "es")
 
 
 class _Model(BaseModel):
@@ -21,11 +30,9 @@ class _Model(BaseModel):
 
 
 class FreshnessConfig(_Model):
-    """Thresholds for the offline citation-freshness check (research item E7)."""
+    """Thresholds for the offline citation-freshness check."""
 
     max_age_days: int = Field(default=365, ge=1, le=3650)
-    # Toxicity citations get a stricter window: a stale "not listed as toxic" source is
-    # a safety hazard, not just a horticulture nicety.
     toxicity_max_age_days: int = Field(default=180, ge=1, le=3650)
 
 
@@ -84,121 +91,24 @@ class ConfidenceConfig(_Model):
 
 
 class GuardsConfig(_Model):
-    """Output/scope guards. The never-certify-'safe' deny-list is per-language."""
+    """Output/scope guards. The never-certify-'safe' deny-list is per-language.
+
+    Defaults are read from the per-language bundles under ``src/sprout/locales/``
+    (FIX-09) rather than carried as inline dict literals here — see that package's
+    docstring for the completeness gate that keeps every supported language's bundle
+    in the same shape as the reference language's.
+    """
 
     forbidden_safe_phrases: dict[str, list[str]] = Field(
-        default_factory=lambda: {
-            "en": [
-                "is safe",
-                "are safe",
-                "safe for",
-                "safe to",
-                "pet safe",
-                "pet friendly",
-                "considered safe",
-                "completely safe",
-                "perfectly safe",
-                "non-toxic",
-                "nontoxic",
-                "perfectly fine",
-                "totally fine",
-                "harmless",
-                "no danger",
-                "won't hurt",
-            ],
-            "es": [
-                "es seguro",
-                "es segura",
-                "son seguras",
-                "seguro para",
-                "segura para",
-                "apto para",
-                "apta para",
-                "no es tóxica",
-                "no es toxica",
-                "no es tóxico",
-                "no es toxico",
-                "no tóxica",
-                "inofensiva",
-                "inofensivo",
-                "sin peligro",
-            ],
-        }
+        default_factory=lambda: locales.by_lang(
+            "guards", "forbidden_safe_phrases", _DEFAULT_LANGUAGES
+        )
     )
     toxicity_keywords: dict[str, list[str]] = Field(
-        default_factory=lambda: {
-            "en": [
-                "toxic",
-                "poison",
-                "poisonous",
-                "safe",
-                "ingest",
-                "eat",
-                "eaten",
-                "swallow",
-                "cat",
-                "cats",
-                "dog",
-                "dogs",
-                "pet",
-                "pets",
-                "kitten",
-                "puppy",
-                "child",
-                "children",
-                "baby",
-                "toddler",
-                "chew",
-                "rabbit",
-                "rabbits",
-                "bird",
-                "birds",
-                "hamster",
-                "hamsters",
-                "guinea pig",
-                "reptile",
-                "turtle",
-                "tortoise",
-            ],
-            "es": [
-                "tóxica",
-                "toxica",
-                "tóxico",
-                "toxico",
-                "veneno",
-                "venenosa",
-                "seguro",
-                "segura",
-                "comer",
-                "comió",
-                "ingerir",
-                "gato",
-                "gatos",
-                "perro",
-                "perros",
-                "mascota",
-                "mascotas",
-                "niño",
-                "niña",
-                "bebé",
-                "conejo",
-                "conejos",
-                "pajaro",
-                "pajaros",
-                "ave",
-                "aves",
-                "hamster",
-                "reptil",
-                "tortuga",
-                "cobaya",
-            ],
-        }
+        default_factory=lambda: locales.by_lang("guards", "toxicity_keywords", _DEFAULT_LANGUAGES)
     )
     route_terms: dict[str, list[str]] = Field(
-        default_factory=lambda: {
-            "en": ["poison control", "veterinarian", "vet"],
-            "es": ["control de envenenamiento", "veterinario"],
-        }
+        default_factory=lambda: locales.by_lang("guards", "route_terms", _DEFAULT_LANGUAGES)
     )
 
 
@@ -278,43 +188,19 @@ class PromptConfig(_Model):
         "You are a houseplant-care assistant. Answer ONLY using the numbered sources "
         "provided. Quote them faithfully and never certify any plant 'safe'."
     )
+    # Every *_by_lang default below is read from src/sprout/locales/<lang>/bundle.yaml
+    # (FIX-09) rather than carried as an inline dict literal — see that package's
+    # docstring for the load-time completeness gate.
     refusal_by_lang: dict[str, str] = Field(
-        default_factory=lambda: {
-            "en": (
-                "I don't have a cited reference that covers this, so I can't answer "
-                "from the corpus. For plant-specific guidance, check a reputable source "
-                "such as your local extension service or the ASPCA toxic-plant list."
-            ),
-            "es": (
-                "No tengo una referencia citada que cubra esto, así que no puedo "
-                "responder desde el corpus. Para orientación específica, consulta una "
-                "fuente confiable como tu servicio de extensión local o la lista de "
-                "plantas tóxicas de la ASPCA."
-            ),
-        }
+        default_factory=lambda: locales.by_lang("prompts", "refusal", _DEFAULT_LANGUAGES)
     )
     disclosure_by_lang: dict[str, str] = Field(
-        default_factory=lambda: {
-            "en": "Answers are drawn only from a dated, cited plant-care corpus. This is not veterinary advice.",  # noqa: E501
-            "es": "Las respuestas provienen solo de un corpus de cuidado de plantas fechado y citado. Esto no es asesoramiento veterinario.",  # noqa: E501
-        }
+        default_factory=lambda: locales.by_lang("prompts", "disclosure", _DEFAULT_LANGUAGES)
     )
     # Urgency-forward routing (research item E2): lead with the time-critical action,
     # never with reassurance, and still never certify a plant safe.
     safety_route_by_lang: dict[str, str] = Field(
-        default_factory=lambda: {
-            "en": (
-                "If a pet or child may have eaten part of this plant, treat it as urgent: "
-                "contact your veterinarian or a poison-control line now — don't wait for "
-                "symptoms to appear. I can't certify any plant safe."
-            ),
-            "es": (
-                "Si una mascota o un niño pudo haber comido parte de esta planta, trátalo "
-                "como urgente: comunícate ahora con tu veterinario o una línea de control "
-                "de envenenamiento; no esperes a que aparezcan síntomas. No puedo "
-                "certificar ninguna planta como segura."
-            ),
-        }
+        default_factory=lambda: locales.by_lang("prompts", "safety_route", _DEFAULT_LANGUAGES)
     )
     # "Not listed as toxic" is not a clean bill of health (research item R7 / evidence
     # EV3): any plant material can cause GI upset, and individual animals vary. This is a
@@ -322,70 +208,26 @@ class PromptConfig(_Model):
     # specific plant — it is attributed to "a source", so it reads as reporting, not a
     # certification, and the never-certify-safe guard leaves it intact.
     nontoxic_caveat_by_lang: dict[str, str] = Field(
-        default_factory=lambda: {
-            "en": (
-                "Even a plant a source does not list as toxic can still cause vomiting or "
-                "mouth and stomach irritation if eaten, and reactions vary by pet and "
-                "person — a source's silence is not a guarantee against harm."
-            ),
-            "es": (
-                "Incluso una planta que una fuente no incluye como tóxica puede causar "
-                "vómitos o irritación de la boca y el estómago si se ingiere, y cada "
-                "mascota o niño reacciona distinto: el silencio de una fuente no garantiza "
-                "que no haya daño."
-            ),
-        }
+        default_factory=lambda: locales.by_lang("prompts", "nontoxic_caveat", _DEFAULT_LANGUAGES)
     )
     # Standardized escalation card (research item E9): named public poison-control
     # authorities plus the three facts the clinician needs. Numbers and pages are the
     # well-established public contacts (ASPCA APCC, Pet Poison Helpline); the official
     # pages are linked so they remain the source of truth if a number ever changes.
     escalation_card_by_lang: dict[str, str] = Field(
-        default_factory=lambda: {
-            "en": (
-                "Who to call now: ASPCA Animal Poison Control Center, 888-426-4435 "
-                "(https://www.aspca.org/pet-care/animal-poison-control), or Pet Poison "
-                "Helpline, 855-764-7661 (https://www.petpoisonhelpline.com/). What to "
-                "tell them: the plant (species if known), how much was eaten, and when."
-            ),
-            "es": (
-                "A quién llamar ahora: ASPCA Animal Poison Control Center, 888-426-4435 "
-                "(https://www.aspca.org/pet-care/animal-poison-control), o Pet Poison "
-                "Helpline, 855-764-7661 (https://www.petpoisonhelpline.com/). Qué "
-                "informar: la planta (especie si la conoces), cuánto comió y cuándo."
-            ),
-        }
+        default_factory=lambda: locales.by_lang("prompts", "escalation_card", _DEFAULT_LANGUAGES)
     )
 
     photo_fallback_by_lang: dict[str, str] = Field(
-        default_factory=lambda: {
-            "en": (
-                "I couldn't confidently identify a plant in that photo. Please type the "
-                "plant's name and I'll answer from the cited corpus."
-            ),
-            "es": (
-                "No pude identificar con confianza una planta en esa foto. Escribe el "
-                "nombre de la planta y responderé desde el corpus citado."
-            ),
-        }
+        default_factory=lambda: locales.by_lang("prompts", "photo_fallback", _DEFAULT_LANGUAGES)
     )
     photo_care_question_by_lang: dict[str, str] = Field(
-        default_factory=lambda: {
-            "en": "How do I care for my {name}?",
-            "es": "¿Cómo cuido mi {name}?",
-        }
+        default_factory=lambda: locales.by_lang(
+            "prompts", "photo_care_question", _DEFAULT_LANGUAGES
+        )
     )
     photo_identified_by_lang: dict[str, str] = Field(
-        default_factory=lambda: {
-            "en": (
-                "Identified from your photo as {name} — a visual match, not a cited fact. "
-                "The guidance below is grounded in the cited corpus."
-            ),
-            "es": (
-                "Identificado en tu foto como {name}: una coincidencia visual, no un hecho "
-                "citado. La siguiente orientación proviene del corpus citado."
-            ),
-        }
+        default_factory=lambda: locales.by_lang("prompts", "photo_identified", _DEFAULT_LANGUAGES)
     )
 
     def refusal_for(self, language: str) -> str:
@@ -438,6 +280,7 @@ class ServerConfig(_Model):
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
     max_question_chars: int = Field(default=500, ge=1, le=4000)
+    session_memory: int = Field(default=4, ge=0, le=50)
 
 
 class ObservabilityConfig(_Model):
@@ -464,6 +307,17 @@ class Config(_Model):
     server: ServerConfig = Field(default_factory=ServerConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     store: StoreConfig = Field(default_factory=StoreConfig)
+
+    @model_validator(mode="after")
+    def _check_locale_bundle_completeness(self) -> Config:
+        """FIX-09's load-time completeness gate: every language in
+        ``languages.supported`` must have a locale bundle carrying every key the
+        reference language's bundle (``locales.REFERENCE_LANGUAGE``, conventionally
+        the first-listed language) defines. Fails config load, not render — see
+        ``src/sprout/locales/__init__.py``.
+        """
+        locales.validate_completeness(self.languages.supported)
+        return self
 
 
 def load_config(path: str | Path) -> Config:
