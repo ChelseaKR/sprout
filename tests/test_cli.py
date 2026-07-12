@@ -345,6 +345,9 @@ def test_eval_baseline_regression_gate(tmp_path: Path) -> None:
         str(out),
     ]
     assert runner.invoke(app, [*base_args, "--update-baseline"]).exit_code == 0
+    assert (suite_dir.parent / "suites.sha256").read_text(encoding="utf-8").strip() == (
+        dataset.content_hash
+    )
 
     # A clean re-run against the freshly-written baseline has no regression.
     clean = runner.invoke(app, base_args)
