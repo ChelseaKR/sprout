@@ -188,22 +188,16 @@ Notes apply to all three surfaces unless a surface is named.
    single-page artifacts.
 3. **302.9 / readability of answer prose** — grounded answers are extracted verbatim from the
    corpus and are not readability-graded; review-gated, not auto-gated.
-4. **Automated-tooling enforcement gap (corrected 2026-07-05).** axe-core and pa11y-ci run today
-   only inside the advisory `pa11y` CI job (`continue-on-error: true`, not in the required
-   `ci-gate`); Lighthouse CI is not wired at all; and no screen-reader walkthrough has yet been
-   performed. Everywhere in this report that says a criterion is "Gated by axe `<rule>`," read
-   that as "checked by axe today, advisory, not yet merge-blocking" until this gap closes. Only
-   `sprout a11y-check` (the structural self-check) is genuinely merge-blocking right now.
+4. **Manual assistive-technology review remains outstanding.** The automated structural,
+   axe/pa11y, and Lighthouse checks are merge-blocking; no dated screen-reader walkthrough has
+   yet been performed.
 
 ## What backs the "Supports" claims
 
-- **Auto-gated (merge-blocking) today:** the deterministic structural self-check
-  (`sprout a11y-check`) on both the chat UI and `docs/audits/eval-report.html`, wired through
-  `make verify` and the required `ci-gate` check.
-- **Automated, advisory only (not yet merge-blocking):** axe-core and pa11y-ci
-  (`WCAG2AA`) — both run in the `pa11y` CI job, which is `continue-on-error: true` and excluded
-  from `ci-gate`. Gap tracked to flip to blocking.
-- **Not yet wired:** Lighthouse CI accessibility scoring.
+- **Auto-gated (merge-blocking) today:** the deterministic structural self-check on the chat UI
+  and HTML report, axe-core plus pa11y-ci (`WCAG2AA`) on the served UI, and Lighthouse
+  accessibility scoring (minimum 0.95) on both browser surfaces. All feed the required
+  `ci-gate` check.
 - **Review-gated, planned but not yet performed:** the screen-reader walkthrough
   (NVDA + Firefox, VoiceOver + Safari) and the keyboard-only walkthrough — no dated artifact
   exists yet; a prior version of this report cited

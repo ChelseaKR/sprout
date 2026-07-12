@@ -357,12 +357,9 @@ Authentication). A committed **ACR (VPAT 2.5 Rev 508)** at
 `ACCESSIBILITY-STANDARD.md`):
 - **AUTO, merge-blocking today** — the deterministic structural self-check (`sprout a11y-check`)
   on both the chat UI and the HTML report, wired into `make verify` and the required `ci-gate`.
-- **Corrected 2026-07-05 — not yet AUTO, despite prior wording here:** axe-core
-  (`wcag2a,wcag2aa,wcag22aa`) and `pa11y-ci` both run only inside the `pa11y` CI job, which is
-  `continue-on-error: true` and excluded from `ci-gate` (advisory, not blocking); Lighthouse a11y
-  scoring is not wired at all. This paragraph previously claimed `pa11y-ci` was "blocking (no
-  `continue-on-error`/`\|\| true`)," which was false — see `docs/ROADMAP.md` for the tracked gap
-  to wire these for real (P1-3).
+- **AUTO, merge-blocking in CI:** axe-core plus `pa11y-ci` scan the served UI, and Lighthouse
+  enforces an accessibility score of at least 0.95 on the UI and HTML eval report. Both jobs are
+  dependencies of the required `ci-gate` check.
 - **REVIEW, planned but not yet performed** — the screen-reader walkthrough (NVDA+Firefox/Chrome,
   VoiceOver+Safari) and the ARIA APG pattern audit for the chat widget have not yet been carried
   out; no dated artifact exists for either yet. ACR re-committed (this is a genuine review-gated
