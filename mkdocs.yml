@@ -1,6 +1,7 @@
 site_name: Sprout
 site_description: A grounded, evaluated, multilingual plant-care assistant and eval harness.
 site_author: Chelsea Kelly-Reif
+site_url: https://chelseakr.github.io/sprout/
 repo_url: https://github.com/ChelseaKR/sprout
 copyright: Copyright 2026 Chelsea Kelly-Reif — Apache-2.0
 
@@ -20,7 +21,7 @@ markdown_extensions:
   - pymdownx.superfences
 
 # The docs are GitHub-first and intentionally link to source files (../src/...),
-# the README, and the vendored ../STANDARDS/ — none of which are site pages. Tolerate
+# the README — which is not a site page. Tolerate
 # those cross-tree links and the not-in-nav reference docs (ADRs, audits) while still
 # catching broken in-site anchors under --strict.
 validation:

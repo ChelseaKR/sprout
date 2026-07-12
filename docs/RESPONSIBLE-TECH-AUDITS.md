@@ -1,6 +1,6 @@
 # Responsible-Tech Audits — Sprout
 
-Instantiates [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md).
+Instantiates `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`.
 Last regenerated: **2026-06-22** (photo-ID + reminders DPIA/non-goal reconciliation
 **2026-06-30**, per ADR-0010/ADR-0011). Author: Chelsea Kelly-Reif.
 
@@ -133,7 +133,7 @@ people (see the inferred-attributes stance below).
 - *String/catalog parity*: every user-facing string exists in both `en` and `es` bundles —
   refusal, disclosure, safety-route, forbidden-safe phrases, toxicity keywords, route terms
   (`PromptConfig`, `GuardsConfig`). The catalog key + placeholder parity gate is owned by
-  [`INTERNATIONALIZATION-STANDARD.md`](../../STANDARDS/INTERNATIONALIZATION-STANDARD.md).
+  `INTERNATIONALIZATION-STANDARD.md`.
 - *Capability parity*: the **multilingual eval suite** checks that a Spanish answer preserves
   the facts and citations of its English mirror, and the harness enforces
   **|EN − ES| ≤ 5pp pass-rate parity** as a gate (README standards table; threshold owned by
@@ -263,9 +263,9 @@ lands, because it would process personal data and be exposed to external users.
   test (`tests/test_server.py::test_json_logs_are_valid_json_and_pii_free_end_to_end`, added
   2026-07-05 — parses every emitted log line as JSON over a real request carrying sentinel PII
   and asserts only `_ALLOWED_FIELDS` appear; the raw question text never reaches a line) (rule
-  owned by [`OBSERVABILITY-STANDARD.md`](../../STANDARDS/OBSERVABILITY-STANDARD.md));
+  owned by `OBSERVABILITY-STANDARD.md`);
   secret scanning (gitleaks pre-commit **and** CI, no `|| true`) and the no-secrets-in-config
-  invariant per [`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md).
+  invariant per `SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`.
   Sentinel-PII job is AUTO once household data ships.
 - **REVIEW** — DPIA sign-off (this section), committed dated; AI System Impact Assessment
   sign-off before the household-data phase.
@@ -322,7 +322,7 @@ The classification decision is committed (see Governance §).
 
 **Enforcement.**
 - **AUTO** — the citation/grounding guard (no ungrounded code path; codified portfolio-wide in
-  [`AI-EVALUATION-STANDARD.md`](../../STANDARDS/AI-EVALUATION-STANDARD.md)); disclosure-string
+  `AI-EVALUATION-STANDARD.md`); disclosure-string
   presence tests (the not-vet-advice and safety-route strings must render); calibration ECE +
   reliability checked in the eval gate; model-card YAML front-matter completeness
   (`tests/test_model_card.py`, added 2026-07-05 — a prior version of this line claimed this
@@ -354,7 +354,7 @@ Authentication). A committed **ACR (VPAT 2.5 Rev 508)** at
 508 Chapters 5–6, and the Functional Performance Criteria; it is regenerated each release.
 
 **Enforcement** (thresholds owned by
-[`ACCESSIBILITY-STANDARD.md`](../../STANDARDS/ACCESSIBILITY-STANDARD.md)):
+`ACCESSIBILITY-STANDARD.md`):
 - **AUTO, merge-blocking today** — the deterministic structural self-check (`sprout a11y-check`)
   on both the chat UI and the HTML report, wired into `make verify` and the required `ci-gate`.
 - **Corrected 2026-07-05 — not yet AUTO, despite prior wording here:** axe-core
@@ -374,8 +374,8 @@ Authentication). A committed **ACR (VPAT 2.5 Rev 508)** at
 
 **Frame: this audit adds the narrative threat model and residual-risk register on top of the
 mechanical scanners.** Gates live in
-[`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md)
-and [`CI-CD-STANDARD.md`](../../STANDARDS/CI-CD-STANDARD.md). The full STRIDE threat model and
+`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`
+and `CI-CD-STANDARD.md`. The full STRIDE threat model and
 residual-risk register live in [`docs/THREAT-MODEL.md`](THREAT-MODEL.md); summary here.
 
 **ASVS target = Level 1 (declared, with reason).** The portfolio default target is **ASVS 5.0

@@ -73,7 +73,7 @@ model-index:
 - **License:** Apache-2.0 (code); bundled corpus and eval datasets are **synthetic and CC0-1.0**
 
 This card follows the Hugging Face model-card format and the portfolio
-[`AI-EVALUATION-STANDARD`](../../../STANDARDS/AI-EVALUATION-STANDARD.md) §4 (model/data cards as
+`AI-EVALUATION-STANDARD` §4 (model/data cards as
 committed, release-regenerated artifacts). It references the cross-cutting standards rather than
 restating them.
 
@@ -326,7 +326,7 @@ facts, the same citations, and the same safety behavior as an English-speaking u
 - **Parity is a gate, not an aspiration.** The multilingual suite checks that each Spanish answer
   preserves the facts and citations of its English mirror, and the AI-evaluation gate enforces a
   pass-rate parity of **|EN − ES| ≤ 5 pp** (per
-  [`AI-EVALUATION-STANDARD`](../../../STANDARDS/AI-EVALUATION-STANDARD.md)); a wider gap fails CI.
+  `AI-EVALUATION-STANDARD`); a wider gap fails CI.
   Per-segment results are **disaggregated by language** in the report — no language is allowed to
   hide inside a macro average.
 - **Same guards in both languages.** The never-certify-"safe" deny-list, the safety-query detector,
@@ -350,9 +350,10 @@ standard, the environmental-footprint metric is **N/A-with-reason for this API-o
 ## How to cite / reproduce
 
 ```bash
-pipx install sprout
-sprout ingest                      # build the index from the bundled CC0 corpus
-sprout ask "Why are my Monstera's leaves yellowing?"
+git clone https://github.com/ChelseaKR/sprout.git && cd sprout
+uv sync
+uv run sprout ingest               # build the index from the bundled CC0 corpus
+uv run sprout ask "Why are my Monstera's leaves yellowing?"
 make eval                          # regenerate docs/audits/eval-report.* fully offline
 make verify                        # the full CI gate set: lint · type · test >=90% · security · a11y · eval
 ```
@@ -367,5 +368,5 @@ the same audit-as-artifact discipline applied across the portfolio.
   [`docs/THREAT-MODEL.md`](../THREAT-MODEL.md)
 - Eval report (authoritative scores): [`docs/audits/eval-report.md`](../audits/eval-report.md)
 - Data card (corpus datasheet): [`docs/cards/data-card-corpus.md`](data-card-corpus.md)
-- Cross-cutting standards: [`STANDARDS/AI-EVALUATION-STANDARD.md`](../../../STANDARDS/AI-EVALUATION-STANDARD.md),
-  [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md)
+- Cross-cutting standards: `STANDARDS/AI-EVALUATION-STANDARD.md`,
+  `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`

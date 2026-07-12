@@ -2,7 +2,7 @@
 
 **Regulation:** (EU) 2024/1689 (the AI Act). Full high-risk application Aug 2, 2026; GPAI obligations
 live since Aug 2025; Annex III conformity deadline Dec 2, 2027. Per
-[`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md) §Governance,
+`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md` §Governance,
 the obligation here is the **decision artifact**, not certification: silence is non-conformant, a
 written classification is conformant.
 
@@ -99,4 +99,4 @@ buyer audits to, even where the law does not compel it.
 - AI risk register (NIST AI RMF MAP): [`ai-risk-register.md`](./ai-risk-register.md)
 - ISO 42001 SoA: [`iso42001-soa.md`](./iso42001-soa.md)
 - Model card: `docs/cards/model-card.md`
-- Methodology + current framework versions: [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md)
+- Methodology + current framework versions: `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`
