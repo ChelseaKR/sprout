@@ -2,13 +2,13 @@
 
 > **Scope:** Sprout the offline-first, grounded plant-care RAG assistant and its in-repo
 > eval harness — the assistant, the corpus/index, the provider seam, the optional
-> serverless API, and the CI/release supply chain. **Out of scope** (deferred phase): the
-> Family Greenhouse household-data integration (its own ASVS L2 boundary). This document
+> serverless API, the Family Greenhouse read-only integration, and the CI/release supply chain. This document
 > instantiates the methodology in
 > `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`
 > and the controls in
 > `STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`;
-> it does not restate them. Per-repo posture: **ASVS L1** (offline mode).
+> it does not restate them. Per-repo posture: **ASVS L1** offline mode and a scoped
+> **ASVS L2** authenticated integration boundary.
 >
 > **Last verified:** 2026-06-22 · **Author:** Chelsea Kelly-Reif
 
@@ -53,11 +53,18 @@
                                   │  (B2) opt-in cloud provider (Bedrock/Anthropic)  ── network egress
                                   │  (B3) optional serverless API (untrusted internet input)
                                   │  (B4) CI / release supply chain        ← builds the artifact users install
+                                  │  (B5) Family Greenhouse HMAC API       ← minimized household selectors
 ```
 
 The untrusted input — the user's free-text question — never reaches a privileged action.
 The most important boundary is **B1 (corpus authoring)**, because the corpus is what the
 assistant is *allowed* to say.
+
+At B5, requests are HMAC-SHA256 signed over a canonical body and timestamp, expire after five
+minutes, and are capped at 64 KiB. Strict schemas reject unknown fields. Accepted household
+context contains species, coarse light category, task type, and relative day counts only;
+care answers retain corpus provenance and citations. The caller redacts known plant nicknames,
+email addresses, and phone numbers from free-text questions before transmission.
 
 ---
 
