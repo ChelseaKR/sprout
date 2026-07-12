@@ -412,3 +412,34 @@ def test_calibrate_warns_when_labeled_date_missing(tmp_path: Path) -> None:
     result = runner.invoke(app, ["calibrate", str(probes_path), "--out", str(out)])
     assert result.exit_code == 0
     assert "no labeled_date field" in result.output
+
+
+def test_check_tuning_scope_cli_smoke(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLI wrapper: no tunable-surface change in range is a clean pass, run from any cwd."""
+    import subprocess
+
+    root = tmp_path / "repo"
+    (root / "src" / "sprout").mkdir(parents=True)
+    (root / "docs" / "audits").mkdir(parents=True)
+    (root / "src" / "sprout" / "server.py").write_text("# server\n", encoding="utf-8")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
+
+    git("init", "-q")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "user.name", "Test")
+    git("add", "-A")
+    git("commit", "-q", "-m", "chore: initial commit")
+    git("branch", "-q", "-m", "main")
+    git("checkout", "-q", "-b", "work")
+    (root / "src" / "sprout" / "server.py").write_text("# v2\n", encoding="utf-8")
+    git("commit", "-q", "-am", "feat(server): tweak logging")
+
+    monkeypatch.chdir(root)
+    result = runner.invoke(app, ["check-tuning-scope", "--base", "main"])
+    assert result.exit_code == 0, result.output
+    assert "no tunable-surface change" in result.output.lower()
+
+    missing_ref = runner.invoke(app, ["check-tuning-scope", "--base", "does-not-exist"])
+    assert missing_ref.exit_code == 2
