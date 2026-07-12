@@ -19,4 +19,4 @@ Sprout is an independent, personal open-source project (Apache-2.0). The bundled
 is synthetic and CC0. **This is not veterinary or medical advice.**
 
 Standards conformance and per-repo metric values live in the [Roadmap](ROADMAP.md); the
-cross-cutting rigor is referenced from the portfolio `STANDARDS/`, not restated here.
+cross-cutting rigor is recorded through the public controls, targets, and evidence in this site.

@@ -14,7 +14,7 @@ type: software
 authors:
   - given-names: "Chelsea"
     family-names: "Kelly-Reif"
-    email: "ckellyreif@gmail.com"
+    email: "3114598+ChelseaKR@users.noreply.github.com"
 version: "0.1.0-dev"
 # `date-released` and a released `version` are intentionally omitted (both optional in CFF
 # 1.2.0): no git tag has ever been cut for this project (`git tag` is empty) and no release

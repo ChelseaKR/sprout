@@ -227,7 +227,7 @@ now re-mirrors both into `src/sprout/data/` after every regeneration. Branch
 `roadmap/fix-06-fix-11-single-source-data-packagi`.
 
 **Pitch.** Make the packaged corpus/config provably identical to the repo corpus/config
-— or generated from it — so `pipx install sprout` can never serve different facts than
+— or generated from it — so an installed Sprout distribution can never serve different facts than
 the repo shows.
 
 **Why it matters.** `corpus/` and `config/sprout.yaml` are duplicated under

@@ -18,7 +18,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: Linguistic",
 ]
-authors = [{ name = "Chelsea Kelly-Reif", email = "ckellyreif@gmail.com" }]
+authors = [{ name = "Chelsea Kelly-Reif", email = "3114598+ChelseaKR@users.noreply.github.com" }]
 keywords = [
     "rag",
     "retrieval-augmented-generation",
@@ -52,9 +52,9 @@ lang = ["langdetect>=1.0.9"]
 sprout = "sprout.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/ChelseaKR/sprout"
+Homepage = "https://chelseakr.github.io/sprout/"
 Repository = "https://github.com/ChelseaKR/sprout"
-Documentation = "https://github.com/ChelseaKR/sprout/tree/main/docs"
+Documentation = "https://chelseakr.github.io/sprout/"
 Changelog = "https://github.com/ChelseaKR/sprout/blob/main/CHANGELOG.md"
 
 # The eval harness ships in-repo as the `sprout.eval` subpackage (the headline

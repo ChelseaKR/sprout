@@ -1,8 +1,7 @@
 # Sprout — roadmap, metrics ledger, and conformance declarations
 
-> This file carries Sprout's *values*. The cross-cutting rigor lives once in
-> [`../../STANDARDS/`](../../STANDARDS/README.md); this repo references it and records only
-> its targets, measured numbers, declared tiers, and any justified deviation. Silent
+> This file records Sprout's public targets, measured numbers, declared tiers, and any
+> justified deviation from the named engineering standards. Silent
 > deviation from a standard is a defect, not a footnote.
 
 Author: Chelsea Kelly-Reif · Last updated: 2026-07-05 (conformance-audit remediation pass —
@@ -14,7 +13,7 @@ notes throughout) · Status: `In build` (Phase 3).
 ## AI-Evaluation-Standard: APPLIES  (tiers: RAG, red-team, model-card)
 
 Sprout retrieves-then-generates over a cited corpus and consults an LLM-as-judge, so the
-[AI Evaluation Standard](../../STANDARDS/AI-EVALUATION-STANDARD.md) binds in full. The three
+AI Evaluation Standard binds in full. The three
 eval layers (retrieval, generation, calibration) are all gated; the judge model
 (`claude-sonnet-4-6`) is structurally different from the default answer model
 (`claude-haiku-4-5-20251001`), and the offline deterministic generator is the default so the
@@ -38,7 +37,7 @@ row is an **AUTO-GATE** (mechanically checked, merge-blocking) unless marked REV
 command that reproduces the whole set locally is `make verify`
 (`lint · type · test · security · eval · a11y`).
 
-### Code quality and coverage — [`CODE-QUALITY-STANDARD`](../../STANDARDS/CODE-QUALITY-STANDARD.md)
+### Code quality and coverage — `CODE-QUALITY-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
@@ -47,7 +46,7 @@ command that reproduces the whole set locally is `make verify`
 | Branch coverage | **≥ 90%** (published-library floor) | `pytest --cov=sprout --cov-fail-under=90` | AUTO |
 | Layout | `src/` layout, importable as `sprout` | packaging test + import | AUTO |
 
-### AI evaluation suites — [`AI-EVALUATION-STANDARD`](../../STANDARDS/AI-EVALUATION-STANDARD.md)
+### AI evaluation suites — `AI-EVALUATION-STANDARD`
 
 Five suites, 120+ committed YAML cases, scored by deterministic checks blended with an
 LLM-as-judge (judge ≠ answer model). Runs are content-hashed and **byte-identical for
@@ -78,7 +77,7 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 Sonnet to judge — behind a config switch; the deterministic offline generator is the default and
 is what CI exercises (no network, no key). No "rejected because" deviation is recorded.
 
-### Accessibility — [`ACCESSIBILITY-STANDARD`](../../STANDARDS/ACCESSIBILITY-STANDARD.md)
+### Accessibility — `ACCESSIBILITY-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
@@ -88,7 +87,7 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 | Color independence | severity + provenance never color-only | manual SR review (NVDA, VoiceOver) | REVIEW |
 | ACR (VPAT 2.5 Rev 508) | committed, regenerated on release | `docs/accessibility/ACR.md` | REVIEW |
 
-### Security and supply chain — [`SECURITY-AND-SUPPLY-CHAIN-STANDARD`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md)
+### Security and supply chain — `SECURITY-AND-SUPPLY-CHAIN-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
@@ -100,14 +99,14 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 | SBOM | emitted on release | release workflow | AUTO |
 | PII in logs | **zero** — logger whitelists low-cardinality fields only, never question text | `obs.py` `_ALLOWED_FIELDS` + Semgrep/bandit | AUTO (never N/A) |
 
-### Internationalization — [`INTERNATIONALIZATION-STANDARD`](../../STANDARDS/INTERNATIONALIZATION-STANDARD.md)
+### Internationalization — `INTERNATIONALIZATION-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
 | EN/ES key + placeholder parity | complete, no orphan keys | per-language bundle diff | AUTO |
 | EN/ES eval pass-rate parity | **\|EN − ES\| ≤ 5 pp** | multilingual suite (also in the AI ledger above) | AUTO |
 
-### Quality, release, CI/CD — [`QUALITY-AND-METRICS`](../../STANDARDS/QUALITY-AND-METRICS-STANDARD.md) · [`RELEASE-AND-VERSIONING`](../../STANDARDS/RELEASE-AND-VERSIONING-STANDARD.md) · [`CI-CD-STANDARD`](../../STANDARDS/CI-CD-STANDARD.md)
+### Quality, release, CI/CD — `QUALITY-AND-METRICS` · `RELEASE-AND-VERSIONING` · `CI-CD-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
@@ -121,7 +120,7 @@ is what CI exercises (no network, no key). No "rejected because" deviation is re
 
 ## Observability tier
 
-Per the [Observability Standard §0](../../STANDARDS/OBSERVABILITY-STANDARD.md), the tier is
+Per the Observability Standard §0, the tier is
 declared here and any skipped control is recorded as **N/A-with-reason**; silent omission is a
 defect caught by the tier-declaration gate. Sprout has two surfaces and states both.
 
@@ -276,7 +275,8 @@ implementation" banner.*
 
 ## Definition of done (the bar each phase is held to)
 
-A fresh user can `pipx install sprout`, ask a plant question **offline**, get a cited answer (or
+A fresh user can install Sprout from source (and, after the first release, via `pipx`), ask a
+plant question **offline**, get a cited answer (or
 an honest refusal), run `make eval` to regenerate the committed report with no cloud account, and
 read a model card that states the limits plainly — with every CI gate green. `make verify`
 reproduces the full gate set locally; if it is not green, the phase is not done.
