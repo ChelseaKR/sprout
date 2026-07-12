@@ -49,7 +49,7 @@ jobs:
         run: uv sync --frozen
       - name: Semgrep (SAST)
         run: uvx --with 'setuptools<81' semgrep scan --config p/python --error src
-      - name: pip-audit (blocking — no || true)
+      - name: pip-audit (blocking — not muted)
         run: uv run pip-audit
       - name: gitleaks (secret scan)
         if: github.event_name != 'pull_request'

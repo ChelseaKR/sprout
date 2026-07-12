@@ -128,6 +128,15 @@ the public evaluation harness as the headline artifact.
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the
   **OWASP ASVS L1** baseline; secrets via environment only; pip-audit, gitleaks, and Semgrep wired
   into CI. No advisories to date.
+- **Standards conformance remediation (2026-07-10, SEC-11/SEC-28):** removed a stray `|| true`
+  documentation artifact from the `pip-audit` step name that a mechanical conformance checker was
+  misreading as a silenced gate (the gate itself was never muted); removed the redundant `|| true`
+  on the `pa11y-ci` step now that its one real finding (an empty `<table>` with header cells and no
+  data cells, WCAG `th-has-data-cells`) is fixed — the reminders table and the "No reminders yet"
+  message are now mutually exclusive in the DOM instead of both always being present
+  (`web/dist/index.html`, `web/dist/app.js`); added a Trivy CVE scan (`container-scan.yml`,
+  CRITICAL,HIGH, matching `habitable`'s pattern) for the Dockerfile image, which currently scans
+  clean.
 
 <!-- No versioned sections below: no tag has ever been cut (`git tag` is empty). Add
      `[X.Y.Z] - YYYY-MM-DD` here, with its own compare link, only once `git tag -s vX.Y.Z` has
