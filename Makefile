@@ -3,7 +3,7 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        a11y claims calibrate audits docs workflow-lint ci-parity-check demo verify clean
+        smoke a11y claims calibrate audits docs workflow-lint ci-parity-check demo verify clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -47,6 +47,9 @@ eval-baseline: ingest ## Regenerate the eval report AND refresh the committed ba
 calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa; gated, mirrors CI)
 	$(PY) sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
 
+smoke: ingest ## Phase 1 CI smoke suite: corpus-derived questions, no hand-authored YAML
+	$(PY) sprout smoke --config $(CONFIG) --out docs/audits
+
 a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gate)
 	$(PY) sprout a11y-check web/dist/index.html
 	$(PY) sprout a11y-check docs/audits/eval-report.html
@@ -69,7 +72,7 @@ ci-parity-check: ## Mechanically diff make verify's commands against the require
 demo: ingest ## Reproduce a short scripted session
 	$(PY) sprout demo --config $(CONFIG)
 
-verify: lint type test security eval a11y claims calibrate docs workflow-lint ci-parity-check ## Full local mirror of the CI gate set
+verify: lint type test security eval smoke a11y claims calibrate docs workflow-lint ci-parity-check ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts

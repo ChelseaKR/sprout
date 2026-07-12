@@ -131,6 +131,26 @@ def test_ask_without_index_fails_gracefully(tmp_path: Path) -> None:
     assert result.exit_code == 2
 
 
+def test_smoke_end_to_end(tmp_path: Path) -> None:
+    """Phase 1 CI smoke suite: corpus-derived cases pass over the small test corpus."""
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    out = tmp_path / "audits"
+    result = runner.invoke(app, ["smoke", "--config", str(cfg), "--out", str(out)])
+    assert result.exit_code == 0, result.stdout
+    assert "Sprout smoke suite" in result.stdout
+    assert "monstera:watering:en" in result.stdout
+    assert "pothos:toxicity:en" in result.stdout
+    assert (out / "smoke-report.md").exists()
+
+
+def test_smoke_without_index_fails_gracefully(tmp_path: Path) -> None:
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text(yaml.safe_dump({"store": {"path": str(tmp_path / "missing.json")}}), "utf-8")
+    result = runner.invoke(app, ["smoke", "--config", str(cfg)])
+    assert result.exit_code == 2
+
+
 def test_a11y_check(tmp_path: Path) -> None:
     ok = runner.invoke(app, ["a11y-check", "web/dist/index.html"])
     assert ok.exit_code == 0
