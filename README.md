@@ -54,13 +54,23 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 ## Quickstart (offline, no cloud account)
 
 ```bash
-pipx install sprout              # or: uv sync && uv run sprout ...
-sprout ingest                    # build the index from the bundled corpus
-sprout ask "Why are my Monstera's leaves yellowing?"
-sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
-sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer (offline → fallback)
-sprout remind add pothos --kind water --every 7    # local, offline reminder
-sprout serve                     # accessible chat UI + JSON/SSE API at :8000
+git clone https://github.com/ChelseaKR/sprout.git
+cd sprout
+uv sync --extra serve
+uv run sprout ingest
+uv run sprout ask "Why are my Monstera's leaves yellowing?"
+```
+
+The project has not published its first package release yet. After the initial release,
+`pipx install sprout` will be the supported packaged installation path. From a source checkout:
+
+```bash
+uv run sprout ingest                    # build the index from the bundled corpus
+uv run sprout ask "Why are my Monstera's leaves yellowing?"
+uv run sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
+uv run sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer
+uv run sprout remind add pothos --kind water --every 7    # local, offline reminder
+uv run sprout serve                     # accessible chat UI + JSON/SSE API at :8000
 make eval                        # regenerate the committed eval report, fully offline
 ```
 
@@ -87,22 +97,23 @@ or a malformed judge response fails the run rather than passing quietly.
 
 ## For Claude Code
 
-- **Build from:** `CLAUDE.md` (the spec) + `~/portfolio/STANDARDS/` (the cross-cutting rigor)
-  + `docs/ROADMAP.md` (phased plan + per-repo metric values).
+- **Build from:** `CLAUDE.md` (the spec), `docs/ROADMAP.md` (phased plan and metric
+  values), and the standards-conformance table below.
 - **Entry points:** the `sprout` CLI (`src/sprout/cli.py`) and the eval harness (`src/sprout/eval/`).
 - **Hard guardrails — change only behind an ADR + CODEOWNERS review:** the citation guard
   and never-certify-safe guard (`src/sprout/guards.py`), the abstention thresholds
   (`src/sprout/confidence.py`), and the fail-closed eval loader (`src/sprout/eval/dataset.py`).
 - **The one command that proves it:** `make verify` reproduces the full CI gate set locally
   (lint · type · test ≥90% · security · a11y · eval). A phase is not "done" until it is green.
-- **Definition of done:** `pipx install sprout`, ask a question offline, get a cited answer
+- **Definition of done:** install Sprout, ask a question offline, get a cited answer
   or an honest refusal, run `make eval` to regenerate the committed report with no cloud
   account, and read a model card that states the limits plainly — with every gate green.
 
 ## Standards conformance
 
-This repo references the portfolio [`STANDARDS/`](../STANDARDS/README.md) rather than
-restating them. Per-repo *values* live in [`docs/ROADMAP.md`](docs/ROADMAP.md) and
+The table below names the engineering standards applied to Sprout; their concrete controls,
+targets, and evidence are recorded in this public repository. Per-repo *values* live in
+[`docs/ROADMAP.md`](docs/ROADMAP.md) and
 [`docs/RESPONSIBLE-TECH-AUDITS.md`](docs/RESPONSIBLE-TECH-AUDITS.md).
 
 | Standard | Applies | This repo's posture |

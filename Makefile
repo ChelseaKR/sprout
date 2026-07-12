@@ -30,7 +30,7 @@ test: ## Run the test suite with the coverage gate (>=90%)
 
 security: ## Dependency + secret + SAST scanning — the same tools/thresholds CI enforces
 	$(PY) pip-audit
-	uvx semgrep scan --config p/python --error src
+	uvx --with 'setuptools<81' semgrep scan --config p/python --error src
 	@command -v gitleaks >/dev/null 2>&1 && gitleaks detect --no-banner --redact || \
 	  ( [ -n "$$CI" ] && echo "gitleaks not installed — failing (CI=true; CI runs it via gitleaks-action instead of this target)" && exit 1 || \
 	    echo "gitleaks not installed locally — install it (https://github.com/gitleaks/gitleaks) to run this check; CI enforces it regardless" )

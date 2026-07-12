@@ -48,7 +48,7 @@ jobs:
       - name: Install (dev)
         run: uv sync --frozen
       - name: Semgrep (SAST)
-        run: uvx semgrep scan --config p/python --error src
+        run: uvx --with 'setuptools<81' semgrep scan --config p/python --error src
       - name: pip-audit (blocking — no || true)
         run: uv run pip-audit
       - name: gitleaks (secret scan)
@@ -111,7 +111,9 @@ jobs:
       - name: Install (dev)
         run: uv sync --frozen
       - name: Tuning-scope gate
-        run: uv run sprout check-tuning-scope --base "origin/${{ github.event.pull_request.base.ref || 'main' }}"
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
+        run: uv run sprout check-tuning-scope --base "origin/${BASE_REF}"
 
   pa11y:
     # Browser cross-check (axe + htmlcs runners, see web/.pa11yci.json) against the live-rendered

@@ -234,8 +234,8 @@ biases, not this one's.
 ## 6. Distribution
 
 **How is it distributed?**
-Bundled inside the open-source Sprout repository and the published package (committed under
-`corpus/`), so it ships with every `pipx install sprout` and is available fully offline. There is no
+Bundled inside the open-source Sprout repository and included in built distributions (committed
+under `corpus/`), so it is available fully offline. There is no
 separate dataset download, API, or hosted endpoint.
 
 **Under what license / IP terms?**
