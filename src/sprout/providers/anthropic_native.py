@@ -10,15 +10,23 @@ from coverage (requires a live key and network).
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
+from ..genai_telemetry import (
+    GenAiCall,
+    TelemetrySink,
+    Usage,
+    cost_usd,
+    emit_call,
+    record_safely,
+    usage_from_mapping,
+)
 from ..models import RetrievedChunk
 from ..text import coverage, split_sentences
 
 _ENDPOINT = "https://api.anthropic.com/v1/messages"
 _API_VERSION = "2023-06-01"
-# Pricing per 1K output-equivalent tokens, conservative.
-_PRICING_PER_1K = {"haiku": 0.004, "sonnet": 0.015, "opus": 0.075}
 
 
 class AnthropicGenerator:
@@ -29,16 +37,12 @@ class AnthropicGenerator:
         model: str = "claude-haiku-4-5-20251001",
         client: Any = None,
         api_key: str | None = None,
+        telemetry: TelemetrySink = emit_call,
     ) -> None:
         self._model = model
         self._client = client
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-
-    def _tier(self) -> str:
-        for tier in _PRICING_PER_1K:
-            if tier in self._model:
-                return tier
-        return "opus"
+        self._telemetry = telemetry
 
     def generate(
         self, query: str, context: list[RetrievedChunk], max_sentences: int
@@ -56,42 +60,86 @@ class AnthropicGenerator:
         return out
 
     def _invoke(self, query: str, context: list[RetrievedChunk], max_sentences: int) -> str:
-        if self._client is None:
-            import httpx
+        started = time.monotonic()
+        try:
+            if self._client is None:
+                import httpx
 
-            # Cache the lazily-built client: constructing a new (never-closed) Client on
-            # every call leaks connections/file descriptors in a long-running server.
-            self._client = httpx.Client(timeout=60.0)
-        client = self._client
-        sources = "\n".join(
-            f"[{i}] (chunk {rc.chunk.chunk_id}) {rc.chunk.text}" for i, rc in enumerate(context)
-        )
-        resp = client.post(
-            _ENDPOINT,
-            headers={
-                "x-api-key": self._api_key,
-                "anthropic-version": _API_VERSION,
-                "content-type": "application/json",
-            },
-            json={
-                "model": self._model,
-                "max_tokens": 400,
-                "temperature": 0.0,
-                "system": (
-                    "Answer using ONLY the numbered sources. Quote faithfully, never "
-                    f"certify a plant 'safe', use at most {max_sentences} sentences."
+                # Cache the lazily-built client: constructing a new (never-closed) Client on
+                # every call leaks connections/file descriptors in a long-running server.
+                self._client = httpx.Client(timeout=60.0)
+            client = self._client
+            sources = "\n".join(
+                f"[{i}] (chunk {rc.chunk.chunk_id}) {rc.chunk.text}" for i, rc in enumerate(context)
+            )
+            resp = client.post(
+                _ENDPOINT,
+                headers={
+                    "x-api-key": self._api_key,
+                    "anthropic-version": _API_VERSION,
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": self._model,
+                    "max_tokens": 400,
+                    "temperature": 0.0,
+                    "system": (
+                        "Answer using ONLY the numbered sources. Quote faithfully, never "
+                        f"certify a plant 'safe', use at most {max_sentences} sentences."
+                    ),
+                    "messages": [
+                        {"role": "user", "content": f"SOURCES:\n{sources}\n\nQUESTION: {query}"}
+                    ],
+                },
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            if not isinstance(payload, dict):
+                raise TypeError("Anthropic response must be a JSON object")
+            blocks = payload.get("content", [])
+            if not isinstance(blocks, list):
+                raise TypeError("Anthropic response content must be a list")
+            text = "".join(
+                block.get("text", "")
+                for block in blocks
+                if isinstance(block, dict) and isinstance(block.get("text"), str)
+            )
+        except Exception as exc:
+            record_safely(
+                self._telemetry,
+                GenAiCall(
+                    system="anthropic",
+                    model=self._model,
+                    operation="chat",
+                    duration_seconds=time.monotonic() - started,
+                    error_type=type(exc).__name__,
                 ),
-                "messages": [
-                    {"role": "user", "content": f"SOURCES:\n{sources}\n\nQUESTION: {query}"}
-                ],
-            },
+            )
+            raise
+        usage = usage_from_mapping(payload.get("usage"))
+        record_safely(
+            self._telemetry,
+            GenAiCall(
+                system="anthropic",
+                model=self._model,
+                response_model=(
+                    str(payload["model"]) if isinstance(payload.get("model"), str) else None
+                ),
+                operation="chat",
+                duration_seconds=time.monotonic() - started,
+                usage=usage,
+                finish_reason=(
+                    str(payload["stop_reason"])
+                    if isinstance(payload.get("stop_reason"), str)
+                    else None
+                ),
+            ),
         )
-        resp.raise_for_status()
-        payload = resp.json()
-        blocks = payload.get("content", [])
-        return "".join(b.get("text", "") for b in blocks)
+        return text
 
-    def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float:
+    def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float | None:
         chars = len(query) + sum(len(rc.chunk.text) for rc in context)
-        approx_tokens = chars / 4 + 400
-        return (approx_tokens / 1000.0) * _PRICING_PER_1K[self._tier()]
+        return cost_usd(
+            self._model,
+            Usage(input_tokens=int(chars / 4), output_tokens=400),
+        )

@@ -157,9 +157,12 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
   fails the integrity check.
 
 ### R5 — Environmental + value-chain (cloud-seam dependency) · Risks 5, 12
-- **Controls:** default mode = 0 training + 0 inference (offline, no GPU). Cloud seam is per-token
-  foundation-model inference only — environmental footprint recorded in the model-card CO2 row; cost
-  capped (`max_cost_usd` 0.05/answer) with a budget alarm. Provider failure is fail-closed: any error
+- **Controls:** default mode = 0 training + 0 inference (offline, no GPU). Claude generation is
+  per-token foundation-model inference only — environmental footprint recorded in the model-card
+  CO2 row; cost is preflight-capped (`max_cost_usd` 0.05/answer) and unpriced models refuse before
+  invocation. Titan uses the shared AWS catalog rate for the configured Bedrock region and rejects
+  a missing or unsupported region.
+  Provider failure is fail-closed: any error
   or malformed response returns an empty candidate list, so the pipeline **refuses rather than
   inventing** (`AnthropicGenerator.generate`), behind a circuit breaker; the system degrades to the
   offline extractive path.

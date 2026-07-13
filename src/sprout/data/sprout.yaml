@@ -54,9 +54,10 @@ generation:
   max_sentences: 3
   relevance_floor: 0.30
   support_overlap: 0.66           # citation guard: a sentence must be this covered by its chunk
-  # model: anthropic.claude-3-5-haiku-20241022-v1:0   # set when provider != deterministic
+  # model: anthropic.claude-haiku-4-5-20251001-v1:0   # provider: bedrock
+  # model: claude-haiku-4-5-20251001                  # provider: anthropic (native)
   region: us-west-2
-  max_cost_usd: 0.05
+  max_cost_usd: 0.05             # per-answer preflight ceiling; unpriced models refuse
   redact_query_pii: false         # redact PII before sending to a network provider
 
 identification:                   # photo plant-ID -> grounded care lookup

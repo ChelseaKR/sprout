@@ -26,8 +26,20 @@ def build_embedding(config: Config) -> EmbeddingProvider:
     if provider == "deterministic":
         return HashingEmbedding(dim=config.retrieval.embedding_dim)
     if provider == "bedrock":
-        from .bedrock import TitanEmbedding
+        from ..genai_telemetry import Usage, cost_usd
+        from .bedrock import TITAN_MODEL_ID, TitanEmbedding
 
+        if (
+            cost_usd(
+                TITAN_MODEL_ID,
+                Usage(input_tokens=1_000_000, region=config.generation.region),
+            )
+            is None
+        ):
+            raise ValueError(
+                f"embedding model {TITAN_MODEL_ID!r} has no pinned shared price for "
+                f"region {config.generation.region!r}; refusing an unpriced activation"
+            )
         return TitanEmbedding(dim=config.retrieval.embedding_dim, region=config.generation.region)
     raise ValueError(f"unknown embedding provider: {provider}")  # pragma: no cover
 
@@ -39,7 +51,7 @@ def build_generator(config: Config) -> GenerationProvider:
     if provider == "bedrock":
         from .bedrock import BedrockGenerator
 
-        model = config.generation.model or "anthropic.claude-3-5-haiku-20241022-v1:0"
+        model = config.generation.model or "anthropic.claude-haiku-4-5-20251001-v1:0"
         return BedrockGenerator(model=model, region=config.generation.region)
     if provider == "anthropic":
         from .anthropic_native import AnthropicGenerator

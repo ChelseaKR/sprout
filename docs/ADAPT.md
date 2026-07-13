@@ -193,15 +193,26 @@ retrieval:
 
 generation:
   provider: deterministic             # deterministic (extractive) | bedrock | anthropic
-  # model: anthropic.claude-3-5-haiku-20241022-v1:0   # set when provider != deterministic
+  # model: anthropic.claude-haiku-4-5-20251001-v1:0   # provider: bedrock
+  # model: claude-haiku-4-5-20251001                  # provider: anthropic (native)
   region: us-west-2                   # cloud region, not a secret
-  max_cost_usd: 0.05                  # per-run cost ceiling for the network path
+  max_cost_usd: 0.05                  # per-answer preflight ceiling; unpriced models refuse
   redact_query_pii: false             # redact PII before sending a query to a network provider
 ```
 
-`generation.model` is the model identifier — commented out in the bundled config because it
-only applies once `provider` is `bedrock` or `anthropic`. `generation.region` is deployment
-context, not a credential, and is safe to commit. **API keys are never config values.** Follow
+`generation.model` is provider-specific: Bedrock uses an `anthropic.*` model id, inference
+profile, or Bedrock ARN; the native API uses a `claude-*` id. Config validation rejects crossing
+those namespaces. The answer pipeline estimates cost before every generation call and refuses
+when the model is absent from the shared price table or the estimate exceeds `max_cost_usd`.
+
+Titan embedding pricing is exact and region-aware: `amazon.titan-embed-text-v2:0` uses the AWS
+catalog row for `generation.region`, which Sprout carries into the shared `Usage` record. A missing
+or unsupported region fails activation rather than borrowing another region's rate; unsupported
+output/cache usage for this input-only model is likewise unpriceable. Sprout does not fork or
+override the portfolio-owned price table locally.
+
+`generation.region` is deployment context, not a credential, and is safe to commit. **API keys
+are never config values.** Follow
 the `PLANTNET_API_KEY` pattern used by the photo-identification provider
 (`src/sprout/providers/plantnet.py`): the key is read from an environment variable of the same
 shape (`os.environ.get("...")`) at call time, with no key material ever written to

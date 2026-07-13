@@ -23,16 +23,50 @@ def test_factory_deterministic_default() -> None:
 
 
 def test_factory_bedrock() -> None:
-    cfg = Config.model_validate(
-        {"retrieval": {"embedding_provider": "bedrock"}, "generation": {"provider": "bedrock"}}
+    generator_cfg = Config.model_validate({"generation": {"provider": "bedrock"}})
+    assert isinstance(build_generator(generator_cfg), BedrockGenerator)
+
+    embedding_cfg = Config.model_validate({"retrieval": {"embedding_provider": "bedrock"}})
+    assert isinstance(build_embedding(embedding_cfg), TitanEmbedding)
+
+    unknown_region_cfg = Config.model_validate(
+        {
+            "retrieval": {"embedding_provider": "bedrock"},
+            "generation": {"region": "moon-1"},
+        }
     )
-    assert isinstance(build_embedding(cfg), TitanEmbedding)
-    assert isinstance(build_generator(cfg), BedrockGenerator)
+    with pytest.raises(ValueError, match=r"no pinned shared price.*moon-1"):
+        build_embedding(unknown_region_cfg)
 
 
 def test_factory_anthropic() -> None:
     cfg = Config.model_validate({"generation": {"provider": "anthropic"}})
     assert isinstance(build_generator(cfg), AnthropicGenerator)
+
+
+@pytest.mark.parametrize(
+    "generation",
+    [
+        {"provider": "anthropic", "model": "anthropic.claude-haiku-4-5-20251001-v1:0"},
+        {"provider": "bedrock", "model": "claude-haiku-4-5-20251001"},
+    ],
+)
+def test_generation_config_rejects_provider_model_namespace_mismatch(
+    generation: dict[str, str],
+) -> None:
+    with pytest.raises(ValueError, match=r"generation\.model"):
+        Config.model_validate({"generation": generation})
+
+
+def test_generation_config_accepts_native_bedrock_profile_and_arn_ids() -> None:
+    for provider, model in [
+        ("anthropic", "claude-haiku-4-5-20251001"),
+        ("bedrock", "anthropic.claude-haiku-4-5-20251001-v1:0"),
+        ("bedrock", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+        ("bedrock", "arn:aws:bedrock:us-west-2:123456789012:provisioned-model/example"),
+    ]:
+        cfg = Config.model_validate({"generation": {"provider": provider, "model": model}})
+        assert cfg.generation.model == model
 
 
 def test_chunk_windows_split_and_overlap() -> None:
@@ -68,3 +102,8 @@ def test_langdetect_fallback_with_fake_module(monkeypatch: pytest.MonkeyPatch) -
 def test_detect_language_tie_uses_fallback() -> None:
     # Equal marker scores route through the fallback (which returns the default).
     assert detect_language("plant water the and", default="en") in {"en", "es"}
+
+
+def test_accent_authored_language_marker_matches_folded_query() -> None:
+    # The bundle authors "tóxica"; tokenization folds a user-entered "toxica".
+    assert detect_language("toxica", default="en") == "es"
