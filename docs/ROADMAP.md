@@ -85,8 +85,9 @@ byte-for-byte under `src/sprout/_vendor/genai_telemetry/` from immutable STANDAR
 `e8150c82fc35267f022af46ac71fe5a851e2d042`; `.standards-version` pins the boundary and
 `src/sprout/genai_telemetry.py` is only the Sprout record/sink wrapper. Native
 Anthropic answers, Bedrock Claude answers, Titan embeddings, and the native Anthropic judge all
-record success/error duration and the usage/response fields their providers supply, without
-content capture. Claude answer/judge calls and Titan embeddings receive shared-table estimates;
+record success/error duration, the locally selected request model, allowlisted protocol finish
+reasons, and normalized usage fields, without reflecting provider strings or capturing content.
+Claude answer/judge calls and Titan embeddings receive shared-table estimates;
 Titan's AWS catalog price is selected by the configured Bedrock region carried on `Usage`.
 The operational provider wrapper rejects answer calls before transport when the model is unpriced
 or the estimate exceeds `generation.max_cost_usd`; Titan activation likewise rejects a missing or
@@ -278,8 +279,10 @@ implementation" banner.*
   check-tuning-scope`, a required CI job. Changes to retrieval, generation, guards,
   calibration, lexical logic, or config must cite a case already recorded in the committed
   eval baseline via a `Tunes-Against:` commit trailer. Comment-only YAML and the exact named
-  operational lifecycle wrapper are excluded by semantic/AST comparison; adversarial tests keep
-  model, prompt, decoding, real-config, retrieval/guard, and unknown provider edits fail-closed.
+  operational lifecycle wrapper are excluded by semantic/AST comparison. The initial lifecycle
+  module is pinned to one reviewed bootstrap digest; all later lifecycle hunks are gated.
+  Authorization comes from the merge-base baseline, and adversarial tests keep model, prompt,
+  decoding, real-config, retrieval/guard, lifecycle-output, and unknown provider edits fail-closed.
 - Outstanding: deploy the UI behind a real URL with the reference-implementation banner; get a
   clean Promptfoo `redteam` run wired and
   promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical

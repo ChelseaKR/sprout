@@ -35,7 +35,7 @@ from sprout.eval.tuning_scope import (
         ("config/sprout.yaml", True),
         ("src/sprout/providers/deterministic.py", True),
         ("src/sprout/providers/bedrock.py", True),
-        ("src/sprout/provider_lifecycle.py", False),
+        ("src/sprout/provider_lifecycle.py", True),
         ("src/sprout/server.py", False),
         ("docs/ROADMAP.md", False),
         ("tests/test_rag.py", False),
@@ -144,6 +144,12 @@ def repo(tmp_path: Path) -> Path:
     )
     (root / "src" / "sprout" / "providers" / "bedrock.py").write_text(
         "REQUEST = {'model': 'model-a', 'temperature': 0.0, 'system': 'grounded'}\n",
+        encoding="utf-8",
+    )
+    (root / "src" / "sprout" / "provider_lifecycle.py").write_text(
+        "class _BudgetedGenerator:\n"
+        "    def generate(self, query, context, max_sentences):\n"
+        "        return self._provider.generate(query, context, max_sentences)\n",
         encoding="utf-8",
     )
 
@@ -301,6 +307,22 @@ def test_operational_comparison_uses_merge_base_when_base_advances(repo: Path) -
     assert check_tuning_scope(base_ref="main", repo_root=repo) == []
 
 
+def test_later_lifecycle_generate_output_edit_fails_closed(repo: Path) -> None:
+    path = repo / "src" / "sprout" / "provider_lifecycle.py"
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            "return self._provider.generate(query, context, max_sentences)",
+            "return [('invented output', 'invented-source')]",
+        ),
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(lifecycle): rewrite generated output"], repo)
+
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/provider_lifecycle.py" in issues[0]
+
+
 def test_unknown_provider_hunk_fails_closed(repo: Path) -> None:
     path = repo / "src" / "sprout" / "providers" / "bedrock.py"
     path.write_text(path.read_text(encoding="utf-8") + "\nEXTRA = 'unknown behavior'\n")
@@ -390,6 +412,31 @@ def test_head_branch_cannot_self_authorize_by_editing_baseline(repo: Path) -> No
     )
     assert len(issues) == 1
     assert "fabricated-head-only-failure" in issues[0]
+
+
+def test_advancing_base_cannot_authorize_a_branch_with_a_new_failure(repo: Path) -> None:
+    (repo / "src" / "sprout" / "retrieve.py").write_text("# retrieval v2\n", encoding="utf-8")
+    _git(
+        [
+            "commit",
+            "-q",
+            "-am",
+            "fix(retrieve): tune against future main\n\nTunes-Against: main-only-999",
+        ],
+        repo,
+    )
+
+    _git(["checkout", "-q", "main"], repo)
+    baseline = _baseline_result({"safety": ["safety-025", "main-only-999"]})
+    (repo / "docs" / "audits" / "eval-baseline.json").write_text(
+        baseline.model_dump_json(), encoding="utf-8"
+    )
+    _git(["commit", "-q", "-am", "eval: record a failure after branch start"], repo)
+    _git(["checkout", "-q", "work"], repo)
+
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "main-only-999" in issues[0]
 
 
 def test_commit_messages_reads_full_body(repo: Path) -> None:

@@ -36,8 +36,10 @@ the public evaluation harness as the headline artifact.
   [`CONTRIBUTING.md`](CONTRIBUTING.md#tuning-discipline--eval-failures-only-never-the-held-out-set).
 - **False-positive-safe tuning classification:** comment-only YAML is compared semantically, and
   only the exact named operational lifecycle wrapper around an otherwise-identical provider
-  constructor is normalized. Model, prompt, decoding, real-config, retrieval/guard, and unknown
-  provider edits remain fail-closed, with adversarial regression tests for each category.
+  constructor is normalized. The lifecycle module's initial addition is admitted once by exact
+  digest; every future hunk is gated. Model, prompt, decoding, real-config, retrieval/guard,
+  lifecycle-output, and unknown provider edits remain fail-closed, with adversarial regression
+  tests for each category. Case authorization is read from the branch merge-base baseline.
 - **Photo-based plant identification → grounded care lookup** (`identify.py`,
   `providers/plantnet.py`). A photo is identified into candidate species, the best confident
   match is resolved to a species **already in the cited corpus**, and that species is routed

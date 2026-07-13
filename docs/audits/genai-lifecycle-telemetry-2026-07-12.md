@@ -18,8 +18,10 @@ semantic-convention spellings nor prices.
 | Titan embedding adapter through Bedrock | `aws.bedrock` / `embeddings` | yes |
 | Native Anthropic LLM judge | `anthropic` / `chat` | yes |
 
-Each success record includes request and response model (when supplied), finish reason,
-operation duration, and the input/output/cache token fields supplied by that provider. Claude
+Each success record includes the locally selected request model, an allowlisted protocol finish
+reason, operation duration, and normalized input/output/cache token counts. Provider-returned
+model identifiers and unknown finish-reason strings are deliberately ignored: both fields are
+model-controlled response data and must not become a content-reflection side channel. Claude
 answer/judge records also carry an estimated USD cost from the shared pinned model-family price
 table. Provider-separated fresh, cache-creation, and cache-read counts are summed into
 canonical total input, then split into their three price buckets, so neither cache-hit rate nor
@@ -52,11 +54,15 @@ literals outside the vendor package, validates all three input buckets plus Clau
 Titan pricing, and proves the no-content invariant. It exercises success,
 invocation failure, and lazy-client-construction failure telemetry plus exporter-failure
 isolation. Wrapper tests prove unpriced/over-budget estimates prevent transport invocation and
-allowed calls forward into the provider. Provider-factory tests lock Titan's blocked activation
-and the Anthropic-vs-Bedrock model-id validation. The tuning-scope gate compares YAML semantics
-and a narrowly normalized provider-factory AST: only the named lifecycle wrapper is erased, while
-model, prompt, decoding, retrieval, guard, and unknown provider edits remain fail-closed. Ruff and
-strict mypy cover Sprout's wrapper and provider wiring; vendored runtime
+allowed calls forward into the provider. Identifier-shaped `SECRET_PROMPT` probes prove neither
+the answer nor judge telemetry seam reflects provider response strings. Provider-factory tests
+lock Titan's blocked activation and the Anthropic-vs-Bedrock model-id validation. The tuning-scope
+gate compares YAML semantics and a narrowly normalized provider-factory AST: only the named
+lifecycle wrapper is erased. The initial lifecycle module is admitted once by an exact reviewed
+digest; future lifecycle-output edits, model, prompt, decoding, retrieval, guard, and unknown
+provider edits remain fail-closed. Authorization is read from the merge-base baseline so later
+base-branch failures cannot self-authorize older work. Ruff and strict mypy cover Sprout's wrapper
+and provider wiring; vendored runtime
 source is lint/type/coverage-excluded and verified at its immutable upstream boundary.
 
 ## Lifecycle loop

@@ -57,6 +57,19 @@ class _Client:
         return _Response()
 
 
+class _ReflectiveResponse(_Response):
+    def json(self) -> dict[str, object]:
+        payload = super().json()
+        payload["model"] = "SECRET_PROMPT"
+        payload["stop_reason"] = "SECRET_PROMPT"
+        return payload
+
+
+class _ReflectiveClient:
+    def post(self, *_args: object, **_kwargs: object) -> _ReflectiveResponse:
+        return _ReflectiveResponse()
+
+
 class _CountingClient(_Client):
     def __init__(self) -> None:
         self.calls = 0
@@ -233,6 +246,21 @@ def test_anthropic_provider_emits_actual_usage_without_query_content() -> None:
     assert query not in json.dumps(calls[0].as_record())
 
 
+def test_answer_telemetry_never_reflects_identifier_shaped_response_content() -> None:
+    calls: list[GenAiCall] = []
+    generator = observe_generation(
+        AnthropicGenerator(client=_ReflectiveClient(), api_key="test-key"),
+        max_cost_usd=1.0,
+        telemetry=calls.append,
+    )
+
+    assert generator.generate("private question", _context(), 2)
+    assert len(calls) == 1
+    assert calls[0].response_model is None
+    assert calls[0].finish_reason is None
+    assert "SECRET_PROMPT" not in json.dumps(calls[0].as_record())
+
+
 def test_cost_ceiling_blocks_transport_and_allowed_calls_forward_unchanged() -> None:
     blocked_client = _CountingClient()
     blocked = observe_generation(
@@ -313,6 +341,31 @@ def test_default_judge_call_emits_telemetry(
         cache_creation_input_tokens=3,
         cache_read_input_tokens=4,
     )
+
+
+def test_judge_telemetry_never_reflects_identifier_shaped_response_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _JudgeResponse:
+        def raise_for_status(self) -> None:
+            return
+
+        def json(self) -> dict[str, Any]:
+            return {
+                "model": "SECRET_PROMPT",
+                "stop_reason": "SECRET_PROMPT",
+                "usage": {"input_tokens": 1, "output_tokens": 1},
+                "content": [{"text": '{"score": 0.9, "reason": "grounded"}'}],
+            }
+
+    monkeypatch.setattr("httpx.post", lambda *_args, **_kwargs: _JudgeResponse())
+    calls: list[GenAiCall] = []
+
+    assert AnthropicJudge(telemetry=calls.append).entails("claim", ["source"]).passed
+    assert len(calls) == 1
+    assert calls[0].response_model is None
+    assert calls[0].finish_reason is None
+    assert "SECRET_PROMPT" not in json.dumps(calls[0].as_record())
 
 
 class _FailingClient:
