@@ -3,8 +3,8 @@
     Tune retrieval/prompts against eval failures only; never the held-out test set.
 
 That rule was previously only a sentence in the roadmap. This module turns it into a gate:
-when a change touches the "tunable surface" (retrieval, generation, guards, calibration,
-lexical scoring, or their config), at least one commit in the range must carry a
+when a change semantically changes the "tunable surface" (retrieval, generation, guards,
+calibration, lexical scoring, or their config), at least one commit in the range must carry a
 ``Tunes-Against: <case-id>[, <case-id>...]`` trailer, and every cited case id must already
 be a *committed* failure — i.e. it appears in ``failing_examples`` of the committed
 ``docs/audits/eval-baseline.json`` produced by ``sprout eval --update-baseline`` before this
@@ -18,13 +18,18 @@ Deliberately narrow: this cannot stop someone from *looking* at extra cases befo
 the trailer, the same way a coverage gate cannot stop someone from writing a vacuous test.
 What it can and does enforce is that every tuning change carries a checkable, falsifiable
 citation to a pre-existing committed failure — an auditable trail instead of an assertion.
+Comment-only YAML and the exact named operational lifecycle wrapper around an otherwise-identical
+provider constructor are mechanically normalized; every unknown provider hunk fails closed.
 """
 
 from __future__ import annotations
 
+import ast
 import re
 import subprocess
 from pathlib import Path
+
+import yaml
 
 from .runner import RunResult
 
@@ -43,6 +48,11 @@ TUNABLE_SURFACE: tuple[str, ...] = (
 )
 
 _TRAILER_RE = re.compile(r"(?im)^Tunes-Against:\s*(.+)\s*$")
+_SEMANTIC_YAML_PATHS = frozenset({"config/sprout.yaml"})
+_PROVIDER_FACTORY_PATH = "src/sprout/providers/__init__.py"
+_MAX_COST_EXPR = ast.parse("config.generation.max_cost_usd", mode="eval").body
+_GENERATION_CONSTRUCTORS = frozenset({"AnthropicGenerator", "BedrockGenerator"})
+_EMBEDDING_CONSTRUCTORS = frozenset({"TitanEmbedding"})
 
 
 def is_tunable_path(path: str) -> bool:
@@ -52,6 +62,111 @@ def is_tunable_path(path: str) -> bool:
 
 def tunable_paths(changed: list[str]) -> list[str]:
     return sorted(p for p in changed if is_tunable_path(p))
+
+
+class _LifecycleWrapperNormalizer(ast.NodeTransformer):
+    """Erase only the mechanically constrained operational wrapper seam.
+
+    The provider constructor, model literal, region, provider branch, and every
+    behavior-bearing expression remain in the tree. Unknown calls/imports are retained,
+    so their diff fails closed as tuning surface.
+    """
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.AST | None:
+        if (
+            node.level == 2
+            and node.module == "provider_lifecycle"
+            and len(node.names) == 1
+            and node.names[0].name in {"observe_embedding", "observe_generation"}
+            and node.names[0].asname is None
+        ):
+            return None
+        return self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> ast.AST:
+        visited = self.generic_visit(node)
+        if not isinstance(visited, ast.Call) or not isinstance(visited.func, ast.Name):
+            return visited
+        if len(visited.args) != 1 or not isinstance(visited.args[0], ast.Call):
+            return visited
+        constructor = visited.args[0]
+        if not isinstance(constructor.func, ast.Name):
+            return visited
+        if (
+            visited.func.id == "observe_embedding"
+            and constructor.func.id in _EMBEDDING_CONSTRUCTORS
+            and not visited.keywords
+        ):
+            return constructor
+        if (
+            visited.func.id == "observe_generation"
+            and constructor.func.id in _GENERATION_CONSTRUCTORS
+            and len(visited.keywords) == 1
+            and visited.keywords[0].arg == "max_cost_usd"
+            and ast.dump(visited.keywords[0].value, include_attributes=False)
+            == ast.dump(_MAX_COST_EXPR, include_attributes=False)
+        ):
+            return constructor
+        return visited
+
+
+def _provider_factory_fingerprint(source: str) -> str:
+    tree = ast.parse(source)
+    normalized = _LifecycleWrapperNormalizer().visit(tree)
+    ast.fix_missing_locations(normalized)
+    return ast.dump(normalized, include_attributes=False)
+
+
+def _source_at(ref: str, path: str, *, cwd: str | Path) -> str | None:
+    try:
+        return _run_git(["show", f"{ref}:{path}"], cwd=cwd)
+    except TuningScopeError:
+        return None
+
+
+def _operational_only_change(
+    path: str,
+    *,
+    base_ref: str,
+    head_ref: str,
+    repo_root: str | Path,
+) -> bool:
+    base_source = _source_at(base_ref, path, cwd=repo_root)
+    head_source = _source_at(head_ref, path, cwd=repo_root)
+    if base_source is None or head_source is None:
+        return False
+    if path in _SEMANTIC_YAML_PATHS:
+        try:
+            return bool(yaml.safe_load(base_source) == yaml.safe_load(head_source))
+        except yaml.YAMLError:
+            return False
+    if path == _PROVIDER_FACTORY_PATH:
+        try:
+            return _provider_factory_fingerprint(base_source) == _provider_factory_fingerprint(
+                head_source
+            )
+        except SyntaxError:
+            return False
+    return False
+
+
+def effective_tunable_paths(
+    changed: list[str],
+    *,
+    base_ref: str,
+    head_ref: str = "HEAD",
+    repo_root: str | Path = ".",
+) -> list[str]:
+    """Tunable paths after narrow, mechanically proven operational equivalence."""
+
+    merge_base = _run_git(["merge-base", base_ref, head_ref], cwd=repo_root).strip()
+    return [
+        path
+        for path in tunable_paths(changed)
+        if not _operational_only_change(
+            path, base_ref=merge_base, head_ref=head_ref, repo_root=repo_root
+        )
+    ]
 
 
 def _run_git(args: list[str], *, cwd: str | Path) -> str:
@@ -117,7 +232,9 @@ def check_tuning_scope(
     the gate only fires on the changes it is meant to constrain.
     """
     changed = changed_files(base_ref, head_ref, cwd=repo_root)
-    tunable = tunable_paths(changed)
+    tunable = effective_tunable_paths(
+        changed, base_ref=base_ref, head_ref=head_ref, repo_root=repo_root
+    )
     if not tunable:
         return []
 

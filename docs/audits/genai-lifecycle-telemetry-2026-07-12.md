@@ -6,8 +6,10 @@ The optional cloud paths now emit privacy-safe lifecycle records for every real 
 operation. The shared portfolio runtime is vendored byte-for-byte at
 `src/sprout/_vendor/genai_telemetry/` from immutable STANDARDS commit
 `e8150c82fc35267f022af46ac71fe5a851e2d042`; `.standards-version` records that boundary.
-`src/sprout/genai_telemetry.py` is only Sprout's record/sink wrapper. Provider modules own
-neither semantic-convention spellings nor prices.
+`src/sprout/genai_telemetry.py` is only Sprout's record/sink wrapper, while
+`src/sprout/provider_lifecycle.py` is the operational client/cache/preflight boundary. Provider
+modules retain prompts, model selection, and decoding behavior but own neither
+semantic-convention spellings nor prices.
 
 | Model boundary | System / operation | Recorded on success and failure |
 |---|---|---|
@@ -31,10 +33,12 @@ than borrowing another region's rate. Titan is input-only, so non-zero output/ca
 unpriceable. Tests lock the configured `us-west-2` estimate at $0.02 per million input tokens and
 the missing/unknown-region failure behavior.
 
-For answer generation, `Assistant` invokes `estimated_cost_usd` after retrieval and before
-`generate`; unknown/unpriced, invalid, or unavailable estimates fail closed, and estimates over
-`generation.max_cost_usd` refuse without contacting the provider. Estimates are never presented
-as billing data. Non-streaming adapters correctly omit `time_to_first_chunk`.
+For answer generation, the operational wrapper computes the estimate before forwarding to the
+provider; unknown/unpriced models fail at activation, and estimates over
+`generation.max_cost_usd` return no candidates without contacting the transport, so the normal
+pipeline refusal posture applies. The wrapper forwards query, context, and sentence limit
+unchanged and does not contain prompt/model/decoding choices. Estimates are never presented as
+billing data. Non-streaming adapters correctly omit `time_to_first_chunk`.
 
 Prompts, completions, retrieved passages, legal or personal data, and user identifiers are
 not fields on the telemetry record. Content capture is fixed to `false`. The default sink
@@ -47,10 +51,12 @@ changing a provider call site. Export failures are isolated from the model opera
 literals outside the vendor package, validates all three input buckets plus Claude and region-aware
 Titan pricing, and proves the no-content invariant. It exercises success,
 invocation failure, and lazy-client-construction failure telemetry plus exporter-failure
-isolation. End-to-end `Assistant` tests prove unpriced/unavailable/over-budget estimates prevent
-the generator from being invoked, while the trace path invokes an allowed generator only once.
-Provider-factory tests lock Titan's blocked activation and the Anthropic-vs-Bedrock model-id
-validation. Ruff and strict mypy cover Sprout's wrapper and provider wiring; vendored runtime
+isolation. Wrapper tests prove unpriced/over-budget estimates prevent transport invocation and
+allowed calls forward into the provider. Provider-factory tests lock Titan's blocked activation
+and the Anthropic-vs-Bedrock model-id validation. The tuning-scope gate compares YAML semantics
+and a narrowly normalized provider-factory AST: only the named lifecycle wrapper is erased, while
+model, prompt, decoding, retrieval, guard, and unknown provider edits remain fail-closed. Ruff and
+strict mypy cover Sprout's wrapper and provider wiring; vendored runtime
 source is lint/type/coverage-excluded and verified at its immutable upstream boundary.
 
 ## Lifecycle loop

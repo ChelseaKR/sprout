@@ -228,9 +228,10 @@ def test_plantnet_identifier_parses_via_injected_client() -> None:
     assert client.calls  # the endpoint was actually called
 
 
-def test_plantnet_lazy_client_is_cached(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_plantnet_operational_client_wrapper_is_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     import httpx
 
+    from sprout.provider_lifecycle import CachedHttpClient
     from sprout.providers.plantnet import PlantNetIdentifier
 
     payload: dict[str, object] = {
@@ -250,7 +251,7 @@ def test_plantnet_lazy_client_is_cached(monkeypatch: pytest.MonkeyPatch) -> None
         return client
 
     monkeypatch.setattr(httpx, "Client", build)
-    identifier = PlantNetIdentifier(api_key="test-key")
+    identifier = PlantNetIdentifier(api_key="test-key", client=CachedHttpClient(timeout=30.0))
     assert identifier.identify(b"jpeg").best is not None
     assert identifier.identify(b"jpeg").best is not None
     assert constructions == 1
