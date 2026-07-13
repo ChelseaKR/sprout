@@ -86,6 +86,7 @@ include = ["src/sprout", "corpus", "eval", "config", "web/dist", "README.md", "L
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+extend-exclude = ["src/sprout/_vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "C90", "RUF"]
@@ -95,6 +96,7 @@ max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
+"src/sprout/_vendor/**/*.py" = ["RUF022", "RUF100"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -106,6 +108,10 @@ files = ["src", "tests"]
 [[tool.mypy.overrides]]
 module = ["boto3.*", "botocore.*", "sse_starlette.*", "langdetect.*", "uvicorn.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["sprout._vendor.genai_telemetry.*"]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
@@ -124,6 +130,7 @@ filterwarnings = [
 branch = true
 source = ["sprout"]
 omit = [
+    "src/sprout/_vendor/*",
     "src/sprout/providers/bedrock.py",
     "src/sprout/providers/anthropic_native.py",
     "src/sprout/providers/plantnet.py",

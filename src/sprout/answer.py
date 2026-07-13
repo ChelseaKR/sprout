@@ -17,6 +17,7 @@ a vet / poison-control line, and the assistant never certifies a plant safe.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 from .answer_trace import AnswerTrace
@@ -69,6 +70,13 @@ class Assistant:
         return detected if detected in supported else self._config.corpus.default_language
 
     def answer(self, query: str, language: str | None = None) -> Answer:
+        answer, _, _ = self._answer_with_details(query, language)
+        return answer
+
+    def _answer_with_details(
+        self, query: str, language: str | None = None
+    ) -> tuple[Answer, list[RetrievedChunk], list[tuple[str, str]]]:
+        """Run the pipeline once and retain the retrieval/generation debug details."""
         lang = self._resolve_language(query, language)
         safety = is_safety_query(query, lang, self._config.guards)
         retrieved = self._retriever.retrieve(query)
@@ -77,21 +85,48 @@ class Assistant:
         # in the corpus (via the off-corpus gazetteer) is refused before the grounding
         # check runs, so a spurious low-score match can never masquerade as coverage.
         if safety and self._retriever.names_uncovered_species(query):
-            return self._refuse(
-                query,
-                lang,
-                safety,
-                reason="species_not_covered",
-                abstained=False,
-                retrieved=retrieved,
+            return (
+                self._refuse(
+                    query,
+                    lang,
+                    safety,
+                    reason="species_not_covered",
+                    abstained=False,
+                    retrieved=retrieved,
+                ),
+                retrieved,
+                [],
             )
 
         if not self._retriever.has_grounding(query, retrieved):
-            return self._refuse(
-                query, lang, safety, reason="out_of_scope", abstained=False, retrieved=retrieved
+            return (
+                self._refuse(
+                    query,
+                    lang,
+                    safety,
+                    reason="out_of_scope",
+                    abstained=False,
+                    retrieved=retrieved,
+                ),
+                retrieved,
+                [],
             )
 
         model_query = redact_pii(query) if self._config.generation.redact_query_pii else query
+        cost_reason = self._generation_cost_refusal(model_query, retrieved)
+        if cost_reason is not None:
+            return (
+                self._refuse(
+                    query,
+                    lang,
+                    safety,
+                    reason=cost_reason,
+                    abstained=False,
+                    retrieved=retrieved,
+                ),
+                retrieved,
+                [],
+            )
         candidates = self._generator.generate(
             model_query, retrieved, self._config.generation.max_sentences
         )
@@ -99,28 +134,52 @@ class Assistant:
         sentences = safety_filter(sentences, lang, self._config.guards)
 
         if not sentences:
-            return self._refuse(
-                query,
-                lang,
-                safety,
-                reason="no_supported_sentences",
-                abstained=False,
-                retrieved=retrieved,
+            return (
+                self._refuse(
+                    query,
+                    lang,
+                    safety,
+                    reason="no_supported_sentences",
+                    abstained=False,
+                    retrieved=retrieved,
+                ),
+                retrieved,
+                candidates,
             )
 
         confidence = score_confidence(retrieved, len(sentences))
         if should_abstain(confidence, self._config.confidence):
-            return self._refuse(
-                query,
-                lang,
-                safety,
-                reason="low_confidence",
-                abstained=True,
-                confidence=confidence,
-                retrieved=retrieved,
+            return (
+                self._refuse(
+                    query,
+                    lang,
+                    safety,
+                    reason="low_confidence",
+                    abstained=True,
+                    confidence=confidence,
+                    retrieved=retrieved,
+                ),
+                retrieved,
+                candidates,
             )
 
-        return self._render(query, lang, safety, sentences, retrieved, confidence)
+        return (
+            self._render(query, lang, safety, sentences, retrieved, confidence),
+            retrieved,
+            candidates,
+        )
+
+    def _generation_cost_refusal(self, query: str, retrieved: list[RetrievedChunk]) -> str | None:
+        """Fail closed before generation when cost cannot be bounded."""
+        try:
+            estimate = self._generator.estimated_cost_usd(query, retrieved)
+        except Exception:
+            return "generation_cost_unavailable"
+        if estimate is None or not math.isfinite(estimate) or estimate < 0:
+            return "generation_model_unpriced"
+        if estimate > self._config.generation.max_cost_usd:
+            return "generation_cost_limit_exceeded"
+        return None
 
     def _render(
         self,
@@ -196,16 +255,11 @@ class Assistant:
 
     def trace(self, query: str, language: str | None = None) -> AnswerTrace:
         """Return the full retrieval+generation trace for debugging (``--debug``)."""
-        lang = self._resolve_language(query, language)
-        retrieved = self._retriever.retrieve(query)
-        candidates = self._generator.generate(
-            query, retrieved, self._config.generation.max_sentences
-        )
-        answer = self.answer(query, language)
+        answer, retrieved, candidates = self._answer_with_details(query, language)
         return AnswerTrace(
             query=query,
-            language=lang,
-            is_safety_query=is_safety_query(query, lang, self._config.guards),
+            language=answer.language,
+            is_safety_query=is_safety_query(query, answer.language, self._config.guards),
             injection_categories=tuple(detect_injection(query)),
             retrieved=tuple(retrieved),
             raw_candidates=tuple(candidates),

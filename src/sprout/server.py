@@ -295,7 +295,12 @@ def _register_reminders(app: FastAPI, config: Config, log: Logger) -> None:
         kind = str(payload.get("kind", "water"))
         if not plant:
             return JSONResponse({"error": "plant is required"}, status_code=400)
-        interval = payload.get("interval_days") or config.reminders.default_intervals.get(kind, 7)
+        supplied_interval = payload.get("interval_days")
+        interval = (
+            config.reminders.default_intervals.get(kind, 7)
+            if supplied_interval is None
+            else supplied_interval
+        )
         try:
             reminder = _store().add(
                 plant=plant,

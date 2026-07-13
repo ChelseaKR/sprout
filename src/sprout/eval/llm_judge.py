@@ -12,12 +12,20 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from collections.abc import Callable
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
 from ..determinism import sha256_of_obj
+from ..genai_telemetry import (
+    GenAiCall,
+    TelemetrySink,
+    emit_call,
+    record_safely,
+    usage_from_mapping,
+)
 from .judge import JudgeDecision
 
 CompletionFn = Callable[[str, str], str]
@@ -65,6 +73,7 @@ class AnthropicJudge:
         completion: CompletionFn | None = None,
         model: str = DEFAULT_JUDGE_MODEL,
         threshold: float = 0.7,
+        telemetry: TelemetrySink = emit_call,
     ) -> None:
         self._cfg = _Cfg(
             method=self.method,
@@ -78,6 +87,7 @@ class AnthropicJudge:
         )
         self.config: dict[str, Any] = self._cfg.model_dump()
         self._completion = completion or self._default_completion
+        self._telemetry = telemetry
 
     @property
     def config_hash(self) -> str:
@@ -86,25 +96,67 @@ class AnthropicJudge:
     def _default_completion(self, system: str, user: str) -> str:
         import httpx
 
-        resp = httpx.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": os.environ.get("ANTHROPIC_API_KEY", ""),
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": self._cfg.model,
-                "max_tokens": self._cfg.max_tokens,
-                "temperature": self._cfg.temperature,
-                "system": system,
-                "messages": [{"role": "user", "content": user}],
-            },
-            timeout=60.0,
+        started = time.monotonic()
+        try:
+            resp = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": os.environ.get("ANTHROPIC_API_KEY", ""),
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": self._cfg.model,
+                    "max_tokens": self._cfg.max_tokens,
+                    "temperature": self._cfg.temperature,
+                    "system": system,
+                    "messages": [{"role": "user", "content": user}],
+                },
+                timeout=60.0,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            if not isinstance(payload, dict):
+                raise TypeError("Anthropic judge response must be a JSON object")
+            blocks = payload.get("content", [])
+            if not isinstance(blocks, list):
+                raise TypeError("Anthropic judge response content must be a list")
+            text = "".join(
+                block.get("text", "")
+                for block in blocks
+                if isinstance(block, dict) and isinstance(block.get("text"), str)
+            )
+        except Exception as exc:
+            record_safely(
+                self._telemetry,
+                GenAiCall(
+                    system="anthropic",
+                    model=self._cfg.model,
+                    operation="chat",
+                    duration_seconds=time.monotonic() - started,
+                    error_type=type(exc).__name__,
+                ),
+            )
+            raise
+        record_safely(
+            self._telemetry,
+            GenAiCall(
+                system="anthropic",
+                model=self._cfg.model,
+                response_model=(
+                    str(payload["model"]) if isinstance(payload.get("model"), str) else None
+                ),
+                operation="chat",
+                duration_seconds=time.monotonic() - started,
+                usage=usage_from_mapping(payload.get("usage")),
+                finish_reason=(
+                    str(payload["stop_reason"])
+                    if isinstance(payload.get("stop_reason"), str)
+                    else None
+                ),
+            ),
         )
-        resp.raise_for_status()
-        blocks = resp.json().get("content", [])
-        return "".join(b.get("text", "") for b in blocks)
+        return text
 
     def _judge(self, kind: str, a: str, b: str, threshold: float) -> JudgeDecision:
         user = _TASKS[kind].format(a=a, b=b)

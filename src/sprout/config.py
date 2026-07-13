@@ -77,6 +77,29 @@ class GenerationConfig(_Model):
     max_cost_usd: float = Field(default=0.05, ge=0.0)
     redact_query_pii: bool = False
 
+    @model_validator(mode="after")
+    def _check_provider_model_namespace(self) -> GenerationConfig:
+        """Reject the two providers' mutually incompatible model-id namespaces.
+
+        Native Anthropic ids are ``claude-*``. Bedrock accepts direct Anthropic ids,
+        inference-profile prefixes, and provisioned-model ARNs. Catching a copied id at
+        config load avoids a confusing provider request (and an avoidable paid failure).
+        """
+        if self.model is None or self.provider == "deterministic":
+            return self
+        if self.provider == "anthropic" and not self.model.startswith("claude-"):
+            raise ValueError("native Anthropic generation.model must start with 'claude-'")
+        if self.provider == "bedrock" and not (
+            self.model.startswith("anthropic.")
+            or ".anthropic." in self.model
+            or self.model.startswith("arn:aws:bedrock:")
+        ):
+            raise ValueError(
+                "Bedrock generation.model must be an Anthropic Bedrock model id, "
+                "inference profile, or Bedrock ARN"
+            )
+        return self
+
 
 class ConfidenceConfig(_Model):
     """Two thresholds over a computed [0,1] confidence drive abstention/handoff.
