@@ -51,11 +51,13 @@ class PlantNetIdentifier:
         return parse_plantnet(payload, top_k=self._top_k, provider=self.provider)
 
     def _invoke(self, image: bytes) -> dict[str, Any]:
-        client = self._client
-        if client is None:
+        if self._client is None:
             import httpx
 
-            client = httpx.Client(timeout=self._timeout_s)
+            # Cache the lazily-built client: constructing a new (never-closed) Client on
+            # every call leaks connections/file descriptors in a long-running server.
+            self._client = httpx.Client(timeout=self._timeout_s)
+        client = self._client
         resp = client.post(
             self._endpoint,
             params={"api-key": self._api_key},
