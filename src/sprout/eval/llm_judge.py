@@ -47,6 +47,15 @@ _TASKS: dict[str, str] = {
     "contains": "Does the ANSWER state the FACT?\nANSWER: {a}\nFACT: {b}",
     "equivalent": "Do these two answers convey the same facts?\nA: {a}\nB: {b}",
 }
+_FINISH_REASONS = frozenset(
+    {"end_turn", "max_tokens", "pause_turn", "refusal", "stop_sequence", "tool_use"}
+)
+
+
+def _finish_reason(value: object) -> str | None:
+    """Allow only protocol-defined metadata; never reflect model-controlled text."""
+
+    return value if type(value) is str and value in _FINISH_REASONS else None
 
 
 class _Cfg(BaseModel):
@@ -143,17 +152,10 @@ class AnthropicJudge:
             GenAiCall(
                 system="anthropic",
                 model=self._cfg.model,
-                response_model=(
-                    str(payload["model"]) if isinstance(payload.get("model"), str) else None
-                ),
                 operation="chat",
                 duration_seconds=time.monotonic() - started,
                 usage=usage_from_mapping(payload.get("usage")),
-                finish_reason=(
-                    str(payload["stop_reason"])
-                    if isinstance(payload.get("stop_reason"), str)
-                    else None
-                ),
+                finish_reason=_finish_reason(payload.get("stop_reason")),
             ),
         )
         return text

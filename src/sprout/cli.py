@@ -245,9 +245,10 @@ def check_tuning_scope_cmd(
 
     No-op when the diff does not semantically change the tunable surface. Comment-only YAML and
     the exact named lifecycle wrapper around an otherwise-identical provider constructor are
-    compared mechanically and excluded; unknown provider hunks fail closed. Otherwise the commit
+    compared mechanically and excluded. The initial lifecycle module is admitted once by its
+    reviewed digest; later lifecycle and unknown provider hunks fail closed. Otherwise the commit
     range must carry a ``Tunes-Against: <case-id>[, <case-id>...]`` trailer whose ids already
-    appear in ``<baseline>``'s committed ``failing_examples``.
+    appear in the merge-base commit's ``<baseline>`` ``failing_examples``.
     """
     from .eval.tuning_scope import TuningScopeError, check_tuning_scope
 

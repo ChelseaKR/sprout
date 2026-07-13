@@ -1,10 +1,11 @@
 """Operational wrappers for cloud-client lifecycle, cost bounds, and telemetry.
 
 This module deliberately does not assemble prompts, choose models, alter decoding
-parameters, rank retrieval results, or modify generated text.  Those behavior-bearing
-choices remain in ``sprout.providers`` and therefore remain inside the tuning-scope
-gate.  The wrappers here cache lazy clients, forward provider arguments unchanged,
-validate response envelopes, and emit content-free lifecycle metadata.
+parameters, rank retrieval results, or rewrite generated text. The wrappers here cache
+lazy clients, forward provider arguments unchanged, validate response envelopes, emit
+content-free lifecycle metadata, and suppress calls above the configured cost ceiling.
+Because that last decision can affect whether output exists, this file itself remains
+inside the tuning-scope gate; only its exact reviewed bootstrap digest is admitted once.
 """
 
 from __future__ import annotations
@@ -32,16 +33,6 @@ _TITAN_MODEL_ID = "amazon.titan-embed-text-v2:0"
 _FINISH_REASONS = frozenset(
     {"end_turn", "max_tokens", "pause_turn", "refusal", "stop_sequence", "tool_use"}
 )
-
-
-def _safe_identifier(value: object) -> str | None:
-    """Keep bounded, printable provider identifiers; drop content-like strings."""
-
-    if type(value) is not str or not value or len(value) > 256:
-        return None
-    if any(ord(char) < 33 or ord(char) == 127 for char in value):
-        return None
-    return value
 
 
 def _finish_reason(value: object) -> str | None:
@@ -95,7 +86,6 @@ class _PendingCall:
             GenAiCall(
                 system=self.system,
                 model=self.model,
-                response_model=_safe_identifier(payload.get("model")),
                 operation=self.operation,
                 duration_seconds=time.monotonic() - self.started,
                 usage=usage_from_mapping(usage_value, region=self.region),

@@ -19,12 +19,15 @@ the trailer, the same way a coverage gate cannot stop someone from writing a vac
 What it can and does enforce is that every tuning change carries a checkable, falsifiable
 citation to a pre-existing committed failure — an auditable trail instead of an assertion.
 Comment-only YAML and the exact named operational lifecycle wrapper around an otherwise-identical
-provider constructor are mechanically normalized; every unknown provider hunk fails closed.
+provider constructor are mechanically normalized. The initial lifecycle module is admitted once
+by an exact reviewed digest because it does not exist at the branch's merge base; every later
+lifecycle or unknown provider hunk fails closed.
 """
 
 from __future__ import annotations
 
 import ast
+import hashlib
 import re
 import subprocess
 from pathlib import Path
@@ -43,6 +46,7 @@ TUNABLE_SURFACE: tuple[str, ...] = (
     "src/sprout/confidence.py",
     "src/sprout/lexical.py",
     "src/sprout/config.py",
+    "src/sprout/provider_lifecycle.py",
     "src/sprout/providers/",
     "config/sprout.yaml",
 )
@@ -50,6 +54,13 @@ TUNABLE_SURFACE: tuple[str, ...] = (
 _TRAILER_RE = re.compile(r"(?im)^Tunes-Against:\s*(.+)\s*$")
 _SEMANTIC_YAML_PATHS = frozenset({"config/sprout.yaml"})
 _PROVIDER_FACTORY_PATH = "src/sprout/providers/__init__.py"
+_PROVIDER_LIFECYCLE_PATH = "src/sprout/provider_lifecycle.py"
+# One-time bootstrap: origin/main predates the operational lifecycle seam, so the exact
+# reviewed initial file is admitted by digest. Once the file exists at the merge base,
+# every later hunk is tunable by default; the digest can never exempt an update.
+_PROVIDER_LIFECYCLE_BOOTSTRAP_SHA256 = (
+    "02e881e5cfd0fa3c2039686281e0049e08e87b2fddc31c70b94c30fe39271ca7"
+)
 _MAX_COST_EXPR = ast.parse("config.generation.max_cost_usd", mode="eval").body
 _GENERATION_CONSTRUCTORS = frozenset({"AnthropicGenerator", "BedrockGenerator"})
 _EMBEDDING_CONSTRUCTORS = frozenset({"TitanEmbedding"})
@@ -131,9 +142,16 @@ def _operational_only_change(
     head_ref: str,
     repo_root: str | Path,
 ) -> bool:
-    base_source = _source_at(base_ref, path, cwd=repo_root)
     head_source = _source_at(head_ref, path, cwd=repo_root)
-    if base_source is None or head_source is None:
+    if head_source is None:
+        return False
+    base_source = _source_at(base_ref, path, cwd=repo_root)
+    if path == _PROVIDER_LIFECYCLE_PATH:
+        return base_source is None and (
+            hashlib.sha256(head_source.encode("utf-8")).hexdigest()
+            == _PROVIDER_LIFECYCLE_BOOTSTRAP_SHA256
+        )
+    if base_source is None:
         return False
     if path in _SEMANTIC_YAML_PATHS:
         try:
@@ -159,12 +177,12 @@ def effective_tunable_paths(
 ) -> list[str]:
     """Tunable paths after narrow, mechanically proven operational equivalence."""
 
-    merge_base = _run_git(["merge-base", base_ref, head_ref], cwd=repo_root).strip()
+    comparison_base = merge_base(base_ref, head_ref, cwd=repo_root)
     return [
         path
         for path in tunable_paths(changed)
         if not _operational_only_change(
-            path, base_ref=merge_base, head_ref=head_ref, repo_root=repo_root
+            path, base_ref=comparison_base, head_ref=head_ref, repo_root=repo_root
         )
     ]
 
@@ -184,6 +202,15 @@ def _run_git(args: list[str], *, cwd: str | Path) -> str:
 
 class TuningScopeError(RuntimeError):
     """Raised when the check cannot even be evaluated (bad refs, missing git, etc.)."""
+
+
+def merge_base(base_ref: str, head_ref: str = "HEAD", *, cwd: str | Path = ".") -> str:
+    """Commit where this branch diverged, used for both diff and authorization evidence."""
+
+    value = _run_git(["merge-base", base_ref, head_ref], cwd=cwd).strip()
+    if not value:
+        raise TuningScopeError(f"git merge-base {base_ref} {head_ref} returned no commit")
+    return value
 
 
 def changed_files(base_ref: str, head_ref: str = "HEAD", *, cwd: str | Path = ".") -> list[str]:
@@ -231,14 +258,15 @@ def check_tuning_scope(
     No violations are possible when the diff does not touch ``TUNABLE_SURFACE`` at all —
     the gate only fires on the changes it is meant to constrain.
     """
-    changed = changed_files(base_ref, head_ref, cwd=repo_root)
+    branch_base = merge_base(base_ref, head_ref, cwd=repo_root)
+    changed = changed_files(branch_base, head_ref, cwd=repo_root)
     tunable = effective_tunable_paths(
-        changed, base_ref=base_ref, head_ref=head_ref, repo_root=repo_root
+        changed, base_ref=branch_base, head_ref=head_ref, repo_root=repo_root
     )
     if not tunable:
         return []
 
-    messages = commit_messages(base_ref, head_ref, cwd=repo_root)
+    messages = commit_messages(branch_base, head_ref, cwd=repo_root)
     cited = referenced_case_ids(messages)
     if not cited:
         return [
@@ -249,7 +277,7 @@ def check_tuning_scope(
             "already-committed eval failure, never the held-out set."
         ]
 
-    baseline_ref = f"{base_ref}:{Path(baseline_path).as_posix()}"
+    baseline_ref = f"{branch_base}:{Path(baseline_path).as_posix()}"
     try:
         baseline_json = _run_git(["show", baseline_ref], cwd=repo_root)
     except TuningScopeError:
