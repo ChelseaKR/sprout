@@ -3,7 +3,7 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        smoke a11y claims calibrate audits docs workflow-lint ci-parity-check demo verify clean
+        smoke a11y claims calibrate freshness audits docs workflow-lint ci-parity-check demo verify clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -46,6 +46,9 @@ eval-baseline: ingest ## Regenerate the eval report AND refresh the committed ba
 
 calibrate: ## Calibrate the judge against human-labeled probes (agreement + kappa; gated, mirrors CI)
 	$(PY) sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
+
+freshness: ## Fail on citations past their configured freshness SLA (offline, deterministic)
+	$(PY) sprout freshness --config $(CONFIG)
 
 smoke: ingest ## Phase 1 CI smoke suite: corpus-derived questions, no hand-authored YAML
 	$(PY) sprout smoke --config $(CONFIG) --out docs/audits

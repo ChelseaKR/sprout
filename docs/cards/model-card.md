@@ -145,9 +145,11 @@ guard → confidence/abstention → answer-or-refuse`.
 
 ### Claude-on-Bedrock production seam (`provider: bedrock`) and native Anthropic (`provider: anthropic`)
 
-- **Answer model:** Claude **Haiku** — `anthropic.claude-3-5-haiku-20241022-v1:0` on Bedrock, or
+- **Answer model:** Claude **Haiku** — `anthropic.claude-haiku-4-5-20251001-v1:0` on Bedrock, or
   `claude-haiku-4-5-20251001` via the native Anthropic Messages API. Temperature 0.0; the prompt
-  constrains the model to quote the numbered sources and never certify a plant "safe."
+  constrains the model to quote the numbered sources and never certify a plant "safe." Bedrock
+  activation requires this priced model to be set explicitly; the older constructor fallback is
+  intentionally rejected as unpriced rather than silently substituted.
 - **Embedding (Bedrock):** Amazon Titan `amazon.titan-embed-text-v2:0`.
 - **Same failure posture as offline.** Any exception, timeout, or malformed/empty model response
   logs and returns an *empty* candidate list, so a provider outage degrades to a refusal — never an
@@ -156,10 +158,13 @@ guard → confidence/abstention → answer-or-refuse`.
   and then **independently re-verified by the same citation guard**, so a hallucinated or
   mis-attributed sentence is *dropped*, not shown. Groundedness does not depend on the model's good
   behavior; it depends on the guard.
-- **Cost & dependencies:** the cloud path is single-digit dollars/month with a budget alarm; `boto3`
-  and `httpx` are lazily imported only when their provider is selected, so a plain install runs
-  offline end to end. These paths require live credentials and are exercised via an injectable client
-  in integration tests only (excluded from the coverage floor).
+- **Cost & dependencies:** A separate operational lifecycle wrapper shared-table prices Claude
+  answer calls and fails closed before transport when unpriced or above the configured per-answer
+  ceiling; it forwards provider inputs unchanged. Titan uses the exact
+  shared AWS catalog rate for the configured Bedrock region and rejects missing/unsupported
+  regions rather than borrowing a rate. `boto3` and `httpx` are lazily imported and their clients
+  cached only when selected, so a plain install runs offline end to end. These paths require live
+  credentials and are tested via injected clients.
 
 > **The generator is interchangeable; the guards are not.** Swapping in Claude raises fluency and
 > recall but cannot weaken groundedness, the never-certify-safe rule, or abstention — those are
@@ -343,8 +348,8 @@ facts, the same citations, and the same safety behavior as an English-speaking u
 
 **No training or fine-tuning is performed**, so there is no training-time compute or emissions to
 report. The default stack runs offline on CPU at negligible energy cost. The optional Claude seam
-incurs only ordinary third-party inference cost (single-digit dollars/month with a budget alarm);
-per-token inference emissions are governed by the provider, not this project. Per the AI-evaluation
+incurs ordinary third-party inference cost bounded by the per-answer preflight ceiling; per-token
+inference emissions are governed by the provider, not this project. Per the AI-evaluation
 standard, the environmental-footprint metric is **N/A-with-reason for this API-only / no-train repo**.
 
 ## How to cite / reproduce
