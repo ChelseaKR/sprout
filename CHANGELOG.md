@@ -34,6 +34,10 @@ the public evaluation harness as the headline artifact.
   `docs/audits/eval-baseline.json` `failing_examples`, so tuning can only be justified against a
   failure that was public before the change, never the held-out set or a local-only run. See
   [`CONTRIBUTING.md`](CONTRIBUTING.md#tuning-discipline--eval-failures-only-never-the-held-out-set).
+- **False-positive-safe tuning classification:** comment-only YAML is compared semantically, and
+  only the exact named operational lifecycle wrapper around an otherwise-identical provider
+  constructor is normalized. Model, prompt, decoding, real-config, retrieval/guard, and unknown
+  provider edits remain fail-closed, with adversarial regression tests for each category.
 - **Photo-based plant identification → grounded care lookup** (`identify.py`,
   `providers/plantnet.py`). A photo is identified into candidate species, the best confident
   match is resolved to a species **already in the cited corpus**, and that species is routed

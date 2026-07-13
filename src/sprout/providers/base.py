@@ -38,9 +38,4 @@ class GenerationProvider(Protocol):
         self, query: str, context: list[RetrievedChunk], max_sentences: int
     ) -> list[tuple[str, str]]: ...
 
-    def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float | None:
-        """Conservative preflight estimate, or ``None`` when the model is unpriced.
-
-        Callers must fail closed on ``None``; an unknown model is never treated as free.
-        """
-        ...
+    def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float: ...

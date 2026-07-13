@@ -35,6 +35,7 @@ from sprout.eval.tuning_scope import (
         ("config/sprout.yaml", True),
         ("src/sprout/providers/deterministic.py", True),
         ("src/sprout/providers/bedrock.py", True),
+        ("src/sprout/provider_lifecycle.py", False),
         ("src/sprout/server.py", False),
         ("docs/ROADMAP.md", False),
         ("tests/test_rag.py", False),
@@ -125,9 +126,26 @@ def repo(tmp_path: Path) -> Path:
     _git(["config", "user.name", "Test"], root)
 
     (root / "src" / "sprout").mkdir(parents=True)
+    (root / "src" / "sprout" / "providers").mkdir()
     (root / "docs" / "audits").mkdir(parents=True)
+    (root / "config").mkdir()
     (root / "src" / "sprout" / "retrieve.py").write_text("# retrieval v1\n", encoding="utf-8")
+    (root / "src" / "sprout" / "guards.py").write_text("# guards v1\n", encoding="utf-8")
     (root / "src" / "sprout" / "server.py").write_text("# server\n", encoding="utf-8")
+    (root / "config" / "sprout.yaml").write_text(
+        "generation:\n  relevance_floor: 0.30  # baseline comment\n", encoding="utf-8"
+    )
+    (root / "src" / "sprout" / "providers" / "__init__.py").write_text(
+        "def build(config):\n"
+        "    from .bedrock import BedrockGenerator\n"
+        "    model = config.generation.model or 'model-a'\n"
+        "    return BedrockGenerator(model=model, region=config.generation.region)\n",
+        encoding="utf-8",
+    )
+    (root / "src" / "sprout" / "providers" / "bedrock.py").write_text(
+        "REQUEST = {'model': 'model-a', 'temperature': 0.0, 'system': 'grounded'}\n",
+        encoding="utf-8",
+    )
 
     baseline = _baseline_result({"safety": ["safety-025"], "refusal": ["refusal-003"]})
     (root / "docs" / "audits" / "eval-baseline.json").write_text(
@@ -148,6 +166,156 @@ def test_non_tunable_change_passes_without_trailer(repo: Path) -> None:
         base_ref="main", baseline_path="docs/audits/eval-baseline.json", repo_root=repo
     )
     assert issues == []
+
+
+def test_comment_only_config_change_passes_without_trailer(repo: Path) -> None:
+    (repo / "config" / "sprout.yaml").write_text(
+        "generation:\n  relevance_floor: 0.30  # clearer comment only\n", encoding="utf-8"
+    )
+    _git(["commit", "-q", "-am", "docs(config): clarify threshold comment"], repo)
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+def test_semantic_config_change_still_requires_real_case(repo: Path) -> None:
+    (repo / "config" / "sprout.yaml").write_text(
+        "generation:\n  relevance_floor: 0.35  # changed behavior\n", encoding="utf-8"
+    )
+    _git(["commit", "-q", "-am", "fix(config): change threshold"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "config/sprout.yaml" in issues[0]
+
+
+def test_named_lifecycle_wrapper_only_passes_without_trailer(repo: Path) -> None:
+    (repo / "src" / "sprout" / "providers" / "__init__.py").write_text(
+        "def build(config):\n"
+        "    from ..provider_lifecycle import observe_generation\n"
+        "    from .bedrock import BedrockGenerator\n"
+        "    model = config.generation.model or 'model-a'\n"
+        "    return observe_generation(\n"
+        "        BedrockGenerator(model=model, region=config.generation.region),\n"
+        "        max_cost_usd=config.generation.max_cost_usd,\n"
+        "    )\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(ops): observe provider lifecycle"], repo)
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("'model-a'", "'model-b'"),
+        ("'temperature': 0.0", "'temperature': 0.4"),
+        ("'grounded'", "'answer freely'"),
+    ],
+)
+def test_provider_model_decoding_and_prompt_edits_fail_closed(
+    repo: Path, old: str, new: str
+) -> None:
+    path = repo / "src" / "sprout" / "providers" / "bedrock.py"
+    path.write_text(path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
+    _git(["commit", "-q", "-am", "feat(provider): alter behavior"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/providers/bedrock.py" in issues[0]
+
+
+def test_provider_factory_model_edit_is_not_erased_with_wrapper(repo: Path) -> None:
+    (repo / "src" / "sprout" / "providers" / "__init__.py").write_text(
+        "def build(config):\n"
+        "    from ..provider_lifecycle import observe_generation\n"
+        "    from .bedrock import BedrockGenerator\n"
+        "    model = config.generation.model or 'model-b'\n"
+        "    return observe_generation(\n"
+        "        BedrockGenerator(model=model, region=config.generation.region),\n"
+        "        max_cost_usd=config.generation.max_cost_usd,\n"
+        "    )\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(provider): switch model under wrapper"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/providers/__init__.py" in issues[0]
+
+
+def test_provider_wrapper_with_unapproved_budget_expression_fails_closed(repo: Path) -> None:
+    (repo / "src" / "sprout" / "providers" / "__init__.py").write_text(
+        "def build(config):\n"
+        "    from ..provider_lifecycle import observe_generation\n"
+        "    from .bedrock import BedrockGenerator\n"
+        "    model = config.generation.model or 'model-a'\n"
+        "    return observe_generation(\n"
+        "        BedrockGenerator(model=model, region=config.generation.region),\n"
+        "        max_cost_usd=999.0,\n"
+        "    )\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(provider): bypass configured budget"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/providers/__init__.py" in issues[0]
+
+
+def test_provider_wrapper_around_unapproved_factory_fails_closed(repo: Path) -> None:
+    (repo / "src" / "sprout" / "providers" / "__init__.py").write_text(
+        "def build(config):\n"
+        "    from ..provider_lifecycle import observe_generation\n"
+        "    from .bedrock import BedrockGenerator\n"
+        "    model = config.generation.model or 'model-a'\n"
+        "    return observe_generation(\n"
+        "        make_generator(model=model, region=config.generation.region),\n"
+        "        max_cost_usd=config.generation.max_cost_usd,\n"
+        "    )\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(provider): use an unapproved factory"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/providers/__init__.py" in issues[0]
+
+
+def test_operational_comparison_uses_merge_base_when_base_advances(repo: Path) -> None:
+    (repo / "src" / "sprout" / "providers" / "__init__.py").write_text(
+        "def build(config):\n"
+        "    from ..provider_lifecycle import observe_generation\n"
+        "    from .bedrock import BedrockGenerator\n"
+        "    model = config.generation.model or 'model-a'\n"
+        "    return observe_generation(\n"
+        "        BedrockGenerator(model=model, region=config.generation.region),\n"
+        "        max_cost_usd=config.generation.max_cost_usd,\n"
+        "    )\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(ops): observe provider lifecycle"], repo)
+
+    _git(["checkout", "-q", "main"], repo)
+    path = repo / "src" / "sprout" / "providers" / "__init__.py"
+    path.write_text(
+        path.read_text(encoding="utf-8").replace("model-a", "model-main-only"),
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(provider): advance main model"], repo)
+    _git(["checkout", "-q", "work"], repo)
+
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+def test_unknown_provider_hunk_fails_closed(repo: Path) -> None:
+    path = repo / "src" / "sprout" / "providers" / "bedrock.py"
+    path.write_text(path.read_text(encoding="utf-8") + "\nEXTRA = 'unknown behavior'\n")
+    _git(["commit", "-q", "-am", "feat(provider): add unknown behavior"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/providers/bedrock.py" in issues[0]
+
+
+def test_guard_edit_still_requires_real_case(repo: Path) -> None:
+    (repo / "src" / "sprout" / "guards.py").write_text("# guards v2\n", encoding="utf-8")
+    _git(["commit", "-q", "-am", "fix(guards): alter guard"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/guards.py" in issues[0]
 
 
 def test_tunable_change_without_trailer_fails(repo: Path) -> None:

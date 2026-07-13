@@ -12,22 +12,12 @@ requires live AWS credentials; exercised via the injectable client in integratio
 from __future__ import annotations
 
 import json
-import time
 from typing import Any
 
-from ..genai_telemetry import (
-    GenAiCall,
-    TelemetrySink,
-    Usage,
-    cost_usd,
-    emit_call,
-    record_safely,
-    usage_from_mapping,
-)
 from ..models import RetrievedChunk
 from ..text import coverage, split_sentences
 
-TITAN_MODEL_ID = "amazon.titan-embed-text-v2:0"
+_PRICING_PER_1K = {"haiku": 0.0013, "sonnet": 0.018, "opus": 0.09}
 
 
 def _client(region: str) -> Any:
@@ -48,74 +38,24 @@ def _client(region: str) -> Any:
 class TitanEmbedding:
     """Amazon Titan text embeddings (returns an L2-normalised vector)."""
 
-    def __init__(
-        self,
-        dim: int = 512,
-        region: str = "us-west-2",
-        client: Any = None,
-        telemetry: TelemetrySink = emit_call,
-    ) -> None:
+    def __init__(self, dim: int = 512, region: str = "us-west-2", client: Any = None) -> None:
         self._dim = dim
         self._region = region
         self._client = client
-        self._telemetry = telemetry
 
     @property
     def dim(self) -> int:
         return self._dim
 
     def embed(self, text: str) -> list[float]:
-        started = time.monotonic()
-        model = TITAN_MODEL_ID
-        try:
-            if self._client is None:
-                # Cache the lazily-built client: ingest calls embed() once per chunk, and a
-                # fresh boto3 client (with its own connection pool) per call is a leak.
-                self._client = _client(self._region)
-            client = self._client
-            resp = client.invoke_model(
-                modelId=model,
-                body=json.dumps({"inputText": text, "dimensions": self._dim}),
-            )
-            payload = json.loads(resp["body"].read())
-            if not isinstance(payload, dict):
-                raise TypeError("Titan response must be a JSON object")
-            raw_embedding = payload.get("embedding")
-            if not isinstance(raw_embedding, list):
-                raise TypeError("Titan response embedding must be a list")
-            vec = [float(x) for x in raw_embedding]
-            norm = sum(v * v for v in vec) ** 0.5
-        except Exception as exc:
-            record_safely(
-                self._telemetry,
-                GenAiCall(
-                    system="aws.bedrock",
-                    model=model,
-                    operation="embeddings",
-                    duration_seconds=time.monotonic() - started,
-                    error_type=type(exc).__name__,
-                ),
-            )
-            raise
-        record_safely(
-            self._telemetry,
-            GenAiCall(
-                system="aws.bedrock",
-                model=model,
-                operation="embeddings",
-                duration_seconds=time.monotonic() - started,
-                usage=usage_from_mapping(
-                    {
-                        "input_tokens": (
-                            payload.get("inputTextTokenCount")
-                            if isinstance(payload, dict)
-                            else None
-                        )
-                    },
-                    region=self._region,
-                ),
-            ),
+        client = self._client or _client(self._region)
+        resp = client.invoke_model(
+            modelId="amazon.titan-embed-text-v2:0",
+            body=json.dumps({"inputText": text, "dimensions": self._dim}),
         )
+        payload = json.loads(resp["body"].read())
+        vec: list[float] = [float(x) for x in payload["embedding"]]
+        norm = sum(v * v for v in vec) ** 0.5
         return [v / norm for v in vec] if norm else vec
 
 
@@ -124,15 +64,19 @@ class BedrockGenerator:
 
     def __init__(
         self,
-        model: str = "anthropic.claude-haiku-4-5-20251001-v1:0",
+        model: str = "anthropic.claude-3-5-haiku-20241022-v1:0",
         region: str = "us-west-2",
         client: Any = None,
-        telemetry: TelemetrySink = emit_call,
     ) -> None:
         self._model = model
         self._region = region
         self._client = client
-        self._telemetry = telemetry
+
+    def _tier(self) -> str:
+        for tier in _PRICING_PER_1K:
+            if tier in self._model:
+                return tier
+        return "opus"  # most expensive tier as the conservative default
 
     def generate(
         self, query: str, context: list[RetrievedChunk], max_sentences: int
@@ -150,78 +94,31 @@ class BedrockGenerator:
         return out
 
     def _invoke(self, query: str, context: list[RetrievedChunk], max_sentences: int) -> str:
-        started = time.monotonic()
-        try:
-            if self._client is None:
-                # Cache the lazily-built client (see TitanEmbedding.embed) rather than
-                # constructing a fresh one per generation call.
-                self._client = _client(self._region)
-            client = self._client
-            sources = "\n".join(
-                f"[{i}] (chunk {rc.chunk.chunk_id}) {rc.chunk.text}" for i, rc in enumerate(context)
-            )
-            prompt = (
-                "Answer the question using ONLY the sources above. Quote them faithfully, "
-                f"never certify a plant 'safe', and use at most {max_sentences} sentences.\n\n"
-                f"SOURCES:\n{sources}\n\nQUESTION: {query}"
-            )
-            resp = client.invoke_model(
-                modelId=self._model,
-                body=json.dumps(
-                    {
-                        "anthropic_version": "bedrock-2023-05-31",
-                        "max_tokens": 400,
-                        "temperature": 0.0,
-                        "messages": [{"role": "user", "content": prompt}],
-                    }
-                ),
-            )
-            payload = json.loads(resp["body"].read())
-            if not isinstance(payload, dict):
-                raise TypeError("Bedrock response must be a JSON object")
-            blocks = payload.get("content", [])
-            if not isinstance(blocks, list):
-                raise TypeError("Bedrock response content must be a list")
-            text = "".join(
-                block.get("text", "")
-                for block in blocks
-                if isinstance(block, dict) and isinstance(block.get("text"), str)
-            )
-        except Exception as exc:
-            record_safely(
-                self._telemetry,
-                GenAiCall(
-                    system="aws.bedrock",
-                    model=self._model,
-                    operation="chat",
-                    duration_seconds=time.monotonic() - started,
-                    error_type=type(exc).__name__,
-                ),
-            )
-            raise
-        record_safely(
-            self._telemetry,
-            GenAiCall(
-                system="aws.bedrock",
-                model=self._model,
-                response_model=(
-                    str(payload["model"]) if isinstance(payload.get("model"), str) else None
-                ),
-                operation="chat",
-                duration_seconds=time.monotonic() - started,
-                usage=usage_from_mapping(payload.get("usage"), region=self._region),
-                finish_reason=(
-                    str(payload["stop_reason"])
-                    if isinstance(payload.get("stop_reason"), str)
-                    else None
-                ),
+        client = self._client or _client(self._region)
+        sources = "\n".join(
+            f"[{i}] (chunk {rc.chunk.chunk_id}) {rc.chunk.text}" for i, rc in enumerate(context)
+        )
+        prompt = (
+            "Answer the question using ONLY the sources above. Quote them faithfully, "
+            f"never certify a plant 'safe', and use at most {max_sentences} sentences.\n\n"
+            f"SOURCES:\n{sources}\n\nQUESTION: {query}"
+        )
+        resp = client.invoke_model(
+            modelId=self._model,
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 400,
+                    "temperature": 0.0,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
             ),
         )
-        return text
+        payload = json.loads(resp["body"].read())
+        blocks = payload.get("content", [])
+        return "".join(b.get("text", "") for b in blocks)
 
-    def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float | None:
+    def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float:
         chars = len(query) + sum(len(rc.chunk.text) for rc in context)
-        return cost_usd(
-            self._model,
-            Usage(input_tokens=int(chars / 4), output_tokens=400, region=self._region),
-        )
+        approx_tokens = chars / 4 + 400
+        return (approx_tokens / 1000.0) * _PRICING_PER_1K[self._tier()]

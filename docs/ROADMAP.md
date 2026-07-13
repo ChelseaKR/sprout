@@ -88,9 +88,10 @@ Anthropic answers, Bedrock Claude answers, Titan embeddings, and the native Anth
 record success/error duration and the usage/response fields their providers supply, without
 content capture. Claude answer/judge calls and Titan embeddings receive shared-table estimates;
 Titan's AWS catalog price is selected by the configured Bedrock region carried on `Usage`.
-Answer calls are rejected by `Assistant` before generation when the model is unpriced or the
-estimate exceeds `generation.max_cost_usd`; Titan activation likewise rejects a missing or
-unsupported region rather than borrowing a false rate. Provider-separated fresh,
+The operational provider wrapper rejects answer calls before transport when the model is unpriced
+or the estimate exceeds `generation.max_cost_usd`; Titan activation likewise rejects a missing or
+unsupported region rather than borrowing a false rate. The wrapper forwards the original
+query/context/limit into the behavior-bearing provider unchanged. Provider-separated fresh,
 cache-creation, and cache-read tokens are summed into canonical total input before cache-hit and
 Claude cost math; Titan's input-only row rejects unsupported output/cache usage.
 Streaming first-chunk latency is N/A because none of these adapters streams. The implementation
@@ -276,7 +277,9 @@ implementation" banner.*
 - Done: tuning only against committed eval failures is mechanically enforced by `sprout
   check-tuning-scope`, a required CI job. Changes to retrieval, generation, guards,
   calibration, lexical logic, or config must cite a case already recorded in the committed
-  eval baseline via a `Tunes-Against:` commit trailer.
+  eval baseline via a `Tunes-Against:` commit trailer. Comment-only YAML and the exact named
+  operational lifecycle wrapper are excluded by semantic/AST comparison; adversarial tests keep
+  model, prompt, decoding, real-config, retrieval/guard, and unknown provider edits fail-closed.
 - Outstanding: deploy the UI behind a real URL with the reference-implementation banner; get a
   clean Promptfoo `redteam` run wired and
   promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical

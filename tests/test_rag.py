@@ -26,7 +26,6 @@ from sprout.guards import (
 )
 from sprout.lexical import BM25Index
 from sprout.models import AnswerSentence, Chunk, Citation, RetrievedChunk
-from sprout.providers.base import GenerationProvider
 from sprout.providers.deterministic import HashingEmbedding
 from sprout.store import VectorStore
 from sprout.text import has_negation
@@ -274,80 +273,6 @@ def test_safety_filter_drops_certifications(tiny_chunks: list[Chunk]) -> None:
     )
     filtered = safety_filter([*sentences, bad], "en", Config().guards)
     assert all("perfectly fine" not in s.text for s in filtered)
-
-
-# --- pipeline --------------------------------------------------------------------
-class _BudgetGenerator:
-    def __init__(self, estimate: float | None, *, fail_estimate: bool = False) -> None:
-        self.estimate = estimate
-        self.fail_estimate = fail_estimate
-        self.generate_calls = 0
-
-    def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float | None:
-        if self.fail_estimate:
-            raise RuntimeError("pricing unavailable")
-        return self.estimate
-
-    def generate(
-        self, query: str, context: list[RetrievedChunk], max_sentences: int
-    ) -> list[tuple[str, str]]:
-        self.generate_calls += 1
-        sentence = context[0].chunk.text.split(". ", 1)[0] + "."
-        return [(sentence, context[0].chunk.chunk_id)]
-
-
-def _with_generator(
-    config: Config, assistant: Assistant, generator: GenerationProvider
-) -> Assistant:
-    return Assistant(
-        config,
-        assistant._store,
-        HashingEmbedding(dim=config.retrieval.embedding_dim),
-        generator,
-    )
-
-
-def test_assistant_rejects_unpriced_model_before_generation(assistant: Assistant) -> None:
-    generator = _BudgetGenerator(None)
-    engine = _with_generator(Config(), assistant, generator)
-
-    answer = engine.answer("why are my monstera leaves yellowing")
-
-    assert answer.refused
-    assert answer.refusal_reason == "generation_model_unpriced"
-    assert generator.generate_calls == 0
-
-
-def test_assistant_rejects_cost_estimate_failure_before_generation(
-    assistant: Assistant,
-) -> None:
-    generator = _BudgetGenerator(None, fail_estimate=True)
-    engine = _with_generator(Config(), assistant, generator)
-
-    answer = engine.answer("why are my monstera leaves yellowing")
-
-    assert answer.refused
-    assert answer.refusal_reason == "generation_cost_unavailable"
-    assert generator.generate_calls == 0
-
-
-def test_assistant_enforces_max_cost_and_trace_invokes_provider_once(
-    assistant: Assistant,
-) -> None:
-    blocked = _BudgetGenerator(0.02)
-    blocked_cfg = Config.model_validate({"generation": {"max_cost_usd": 0.01}})
-    blocked_engine = _with_generator(blocked_cfg, assistant, blocked)
-    answer = blocked_engine.answer("why are my monstera leaves yellowing")
-    assert answer.refused
-    assert answer.refusal_reason == "generation_cost_limit_exceeded"
-    assert blocked.generate_calls == 0
-
-    allowed = _BudgetGenerator(0.01)
-    allowed_engine = _with_generator(blocked_cfg, assistant, allowed)
-    trace = allowed_engine.trace("why are my monstera leaves yellowing")
-    assert not trace.answer.refused
-    assert trace.raw_candidates
-    assert allowed.generate_calls == 1
 
 
 def test_grounded_answer_is_cited(assistant: Assistant) -> None:

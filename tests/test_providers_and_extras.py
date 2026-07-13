@@ -11,8 +11,7 @@ from sprout.chunk import _windows
 from sprout.config import Config
 from sprout.lang import _langdetect_fallback, detect_language
 from sprout.providers import build_embedding, build_generator
-from sprout.providers.anthropic_native import AnthropicGenerator
-from sprout.providers.bedrock import BedrockGenerator, TitanEmbedding
+from sprout.providers.bedrock import TitanEmbedding
 from sprout.providers.deterministic import ExtractiveGenerator, HashingEmbedding
 
 
@@ -23,8 +22,19 @@ def test_factory_deterministic_default() -> None:
 
 
 def test_factory_bedrock() -> None:
-    generator_cfg = Config.model_validate({"generation": {"provider": "bedrock"}})
-    assert isinstance(build_generator(generator_cfg), BedrockGenerator)
+    unpriced_default = Config.model_validate({"generation": {"provider": "bedrock"}})
+    with pytest.raises(ValueError, match=r"no pinned price"):
+        build_generator(unpriced_default)
+
+    generator_cfg = Config.model_validate(
+        {
+            "generation": {
+                "provider": "bedrock",
+                "model": "anthropic.claude-haiku-4-5-20251001-v1:0",
+            }
+        }
+    )
+    assert build_generator(generator_cfg).estimated_cost_usd("question", []) > 0
 
     embedding_cfg = Config.model_validate({"retrieval": {"embedding_provider": "bedrock"}})
     assert isinstance(build_embedding(embedding_cfg), TitanEmbedding)
@@ -35,13 +45,13 @@ def test_factory_bedrock() -> None:
             "generation": {"region": "moon-1"},
         }
     )
-    with pytest.raises(ValueError, match=r"no pinned shared price.*moon-1"):
+    with pytest.raises(ValueError, match=r"no pinned price.*moon-1"):
         build_embedding(unknown_region_cfg)
 
 
 def test_factory_anthropic() -> None:
     cfg = Config.model_validate({"generation": {"provider": "anthropic"}})
-    assert isinstance(build_generator(cfg), AnthropicGenerator)
+    assert build_generator(cfg).estimated_cost_usd("question", []) > 0
 
 
 @pytest.mark.parametrize(
@@ -51,11 +61,12 @@ def test_factory_anthropic() -> None:
         {"provider": "bedrock", "model": "claude-haiku-4-5-20251001"},
     ],
 )
-def test_generation_config_rejects_provider_model_namespace_mismatch(
+def test_provider_activation_rejects_model_namespace_mismatch(
     generation: dict[str, str],
 ) -> None:
-    with pytest.raises(ValueError, match=r"generation\.model"):
-        Config.model_validate({"generation": generation})
+    cfg = Config.model_validate({"generation": generation})
+    with pytest.raises(ValueError, match=r"model must"):
+        build_generator(cfg)
 
 
 def test_generation_config_accepts_native_bedrock_profile_and_arn_ids() -> None:

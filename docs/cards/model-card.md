@@ -147,7 +147,9 @@ guard → confidence/abstention → answer-or-refuse`.
 
 - **Answer model:** Claude **Haiku** — `anthropic.claude-haiku-4-5-20251001-v1:0` on Bedrock, or
   `claude-haiku-4-5-20251001` via the native Anthropic Messages API. Temperature 0.0; the prompt
-  constrains the model to quote the numbered sources and never certify a plant "safe."
+  constrains the model to quote the numbered sources and never certify a plant "safe." Bedrock
+  activation requires this priced model to be set explicitly; the older constructor fallback is
+  intentionally rejected as unpriced rather than silently substituted.
 - **Embedding (Bedrock):** Amazon Titan `amazon.titan-embed-text-v2:0`.
 - **Same failure posture as offline.** Any exception, timeout, or malformed/empty model response
   logs and returns an *empty* candidate list, so a provider outage degrades to a refusal — never an
@@ -156,8 +158,9 @@ guard → confidence/abstention → answer-or-refuse`.
   and then **independently re-verified by the same citation guard**, so a hallucinated or
   mis-attributed sentence is *dropped*, not shown. Groundedness does not depend on the model's good
   behavior; it depends on the guard.
-- **Cost & dependencies:** Claude answer calls are shared-table priced and fail closed before the
-  provider call when unpriced or above the configured per-answer ceiling. Titan uses the exact
+- **Cost & dependencies:** A separate operational lifecycle wrapper shared-table prices Claude
+  answer calls and fails closed before transport when unpriced or above the configured per-answer
+  ceiling; it forwards provider inputs unchanged. Titan uses the exact
   shared AWS catalog rate for the configured Bedrock region and rejects missing/unsupported
   regions rather than borrowing a rate. `boto3` and `httpx` are lazily imported and their clients
   cached only when selected, so a plain install runs offline end to end. These paths require live

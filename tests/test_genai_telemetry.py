@@ -25,11 +25,13 @@ from sprout.genai_telemetry import (
     usage_from_mapping,
 )
 from sprout.models import Chunk, RetrievedChunk
+from sprout.provider_lifecycle import observe_embedding, observe_generation
 from sprout.providers.anthropic_native import AnthropicGenerator
 from sprout.providers.bedrock import BedrockGenerator, TitanEmbedding
 
 _ROOT = Path(__file__).parents[1]
 _VENDOR_COMMIT = "e8150c82fc35267f022af46ac71fe5a851e2d042"
+_BEDROCK_MODEL = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 
 class _Response:
@@ -53,6 +55,15 @@ class _Response:
 class _Client:
     def post(self, *_args: object, **_kwargs: object) -> _Response:
         return _Response()
+
+
+class _CountingClient(_Client):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def post(self, *_args: object, **_kwargs: object) -> _Response:
+        self.calls += 1
+        return super().post(*_args, **_kwargs)
 
 
 class _Body:
@@ -203,9 +214,9 @@ def test_json_record_uses_shim_names_and_never_captures_content() -> None:
 
 def test_anthropic_provider_emits_actual_usage_without_query_content() -> None:
     calls: list[GenAiCall] = []
-    generator = AnthropicGenerator(
-        client=_Client(),
-        api_key="test-key",
+    generator = observe_generation(
+        AnthropicGenerator(client=_Client(), api_key="test-key"),
+        max_cost_usd=1.0,
         telemetry=calls.append,
     )
     query = "SENTINEL private plant question"
@@ -222,13 +233,37 @@ def test_anthropic_provider_emits_actual_usage_without_query_content() -> None:
     assert query not in json.dumps(calls[0].as_record())
 
 
+def test_cost_ceiling_blocks_transport_and_allowed_calls_forward_unchanged() -> None:
+    blocked_client = _CountingClient()
+    blocked = observe_generation(
+        AnthropicGenerator(client=blocked_client, api_key="test-key"),
+        max_cost_usd=0.0,
+        telemetry=lambda _call: None,
+    )
+    assert blocked.generate("private question", _context(), 2) == []
+    assert blocked_client.calls == 0
+
+    allowed_client = _CountingClient()
+    allowed = observe_generation(
+        AnthropicGenerator(client=allowed_client, api_key="test-key"),
+        max_cost_usd=1.0,
+        telemetry=lambda _call: None,
+    )
+    assert allowed.generate("private question", _context(), 2)
+    assert allowed_client.calls == 1
+
+
 def test_bedrock_chat_and_embedding_calls_emit_telemetry() -> None:
     calls: list[GenAiCall] = []
     client = _BedrockClient()
-    generator = BedrockGenerator(client=client, telemetry=calls.append)
+    generator = observe_generation(
+        BedrockGenerator(model=_BEDROCK_MODEL, client=client),
+        max_cost_usd=1.0,
+        telemetry=calls.append,
+    )
     assert generator.generate("How much water?", _context(), 2)
 
-    embedding = TitanEmbedding(dim=2, client=client, telemetry=calls.append)
+    embedding = observe_embedding(TitanEmbedding(dim=2, client=client), telemetry=calls.append)
     assert embedding.embed("private input") == pytest.approx([0.6, 0.8])
 
     assert [call.operation for call in calls] == ["chat", "embeddings"]
@@ -292,9 +327,9 @@ class _FailingBedrockClient:
 
 def test_anthropic_failure_emits_error_metadata() -> None:
     calls: list[GenAiCall] = []
-    generator = AnthropicGenerator(
-        client=_FailingClient(),
-        api_key="test-key",
+    generator = observe_generation(
+        AnthropicGenerator(client=_FailingClient(), api_key="test-key"),
+        max_cost_usd=1.0,
         telemetry=calls.append,
     )
 
@@ -306,8 +341,9 @@ def test_anthropic_failure_emits_error_metadata() -> None:
 
 def test_bedrock_chat_failure_emits_error_metadata() -> None:
     calls: list[GenAiCall] = []
-    generator = BedrockGenerator(
-        client=_FailingBedrockClient(),
+    generator = observe_generation(
+        BedrockGenerator(model=_BEDROCK_MODEL, client=_FailingBedrockClient()),
+        max_cost_usd=1.0,
         telemetry=calls.append,
     )
 
@@ -319,9 +355,8 @@ def test_bedrock_chat_failure_emits_error_metadata() -> None:
 
 def test_titan_failure_emits_error_metadata() -> None:
     calls: list[GenAiCall] = []
-    embedding = TitanEmbedding(
-        dim=2,
-        client=_FailingBedrockClient(),
+    embedding = observe_embedding(
+        TitanEmbedding(dim=2, client=_FailingBedrockClient()),
         telemetry=calls.append,
     )
 
@@ -340,7 +375,11 @@ def test_lazy_client_construction_failures_emit_error_metadata(
 
     monkeypatch.setattr("httpx.Client", fail_httpx)
     anthropic_calls: list[GenAiCall] = []
-    anthropic = AnthropicGenerator(api_key="test-key", telemetry=anthropic_calls.append)
+    anthropic = observe_generation(
+        AnthropicGenerator(api_key="test-key"),
+        max_cost_usd=1.0,
+        telemetry=anthropic_calls.append,
+    )
     assert anthropic.generate("private question", _context(), 2) == []
     assert anthropic_calls[0].error_type == "RuntimeError"
 
@@ -349,12 +388,16 @@ def test_lazy_client_construction_failures_emit_error_metadata(
 
     monkeypatch.setattr("sprout.providers.bedrock._client", fail_bedrock)
     chat_calls: list[GenAiCall] = []
-    bedrock = BedrockGenerator(telemetry=chat_calls.append)
+    bedrock = observe_generation(
+        BedrockGenerator(model=_BEDROCK_MODEL),
+        max_cost_usd=1.0,
+        telemetry=chat_calls.append,
+    )
     assert bedrock.generate("private question", _context(), 2) == []
     assert chat_calls[0].error_type == "RuntimeError"
 
     embedding_calls: list[GenAiCall] = []
-    titan = TitanEmbedding(dim=2, telemetry=embedding_calls.append)
+    titan = observe_embedding(TitanEmbedding(dim=2), telemetry=embedding_calls.append)
     with pytest.raises(RuntimeError, match="construction failed"):
         titan.embed("private input")
     assert embedding_calls[0].error_type == "RuntimeError"
@@ -371,7 +414,11 @@ def test_lazy_anthropic_and_bedrock_clients_are_cached(
         return _Client()
 
     monkeypatch.setattr("httpx.Client", anthropic_client)
-    native = AnthropicGenerator(api_key="test-key", telemetry=lambda _call: None)
+    native = observe_generation(
+        AnthropicGenerator(api_key="test-key"),
+        max_cost_usd=1.0,
+        telemetry=lambda _call: None,
+    )
     assert native.generate("water?", _context(), 1)
     assert native.generate("water?", _context(), 1)
     assert anthropic_constructions == 1
@@ -384,12 +431,16 @@ def test_lazy_anthropic_and_bedrock_clients_are_cached(
         return _BedrockClient()
 
     monkeypatch.setattr("sprout.providers.bedrock._client", bedrock_client)
-    bedrock = BedrockGenerator(telemetry=lambda _call: None)
+    bedrock = observe_generation(
+        BedrockGenerator(model=_BEDROCK_MODEL),
+        max_cost_usd=1.0,
+        telemetry=lambda _call: None,
+    )
     assert bedrock.generate("water?", _context(), 1)
     assert bedrock.generate("water?", _context(), 1)
     assert bedrock_constructions == 1
 
-    titan = TitanEmbedding(dim=2, telemetry=lambda _call: None)
+    titan = observe_embedding(TitanEmbedding(dim=2), telemetry=lambda _call: None)
     assert titan.embed("one")
     assert titan.embed("two")
     assert bedrock_constructions == 2
@@ -414,9 +465,9 @@ def test_telemetry_sink_failure_never_breaks_a_successful_model_call() -> None:
     def broken_sink(_call: GenAiCall) -> None:
         raise RuntimeError("exporter unavailable")
 
-    generator = AnthropicGenerator(
-        client=_Client(),
-        api_key="test-key",
+    generator = observe_generation(
+        AnthropicGenerator(client=_Client(), api_key="test-key"),
+        max_cost_usd=1.0,
         telemetry=broken_sink,
     )
     assert generator.generate("How much water?", _context(), 2)
@@ -425,14 +476,15 @@ def test_telemetry_sink_failure_never_breaks_a_successful_model_call() -> None:
 @pytest.mark.parametrize(
     "generator",
     [
-        AnthropicGenerator(model="future-unpriced-model", api_key="test-key"),
+        AnthropicGenerator(model="claude-future-unpriced-model", api_key="test-key"),
         BedrockGenerator(model="anthropic.future-unpriced-model"),
     ],
 )
-def test_unpriced_provider_estimates_are_explicitly_unknown(
+def test_unpriced_provider_activation_fails_closed(
     generator: AnthropicGenerator | BedrockGenerator,
 ) -> None:
-    assert generator.estimated_cost_usd("question", _context()) is None
+    with pytest.raises(ValueError, match="no pinned price"):
+        observe_generation(generator, max_cost_usd=1.0, telemetry=lambda _call: None)
 
 
 def test_titan_price_requires_an_exact_supported_region() -> None:

@@ -200,10 +200,12 @@ generation:
   redact_query_pii: false             # redact PII before sending a query to a network provider
 ```
 
-`generation.model` is provider-specific: Bedrock uses an `anthropic.*` model id, inference
-profile, or Bedrock ARN; the native API uses a `claude-*` id. Config validation rejects crossing
-those namespaces. The answer pipeline estimates cost before every generation call and refuses
-when the model is absent from the shared price table or the estimate exceeds `max_cost_usd`.
+`generation.model` is provider-specific: Bedrock uses an `anthropic.*` model id or supported
+inference profile; the native API uses a `claude-*` id. Cloud-provider activation rejects crossing
+those namespaces and any id absent from the pinned price table. Set the Bedrock model explicitly:
+the legacy constructor fallback is unpriced and intentionally fails closed. The operational
+wrapper estimates cost before every transport call and returns no candidates when the estimate
+exceeds `max_cost_usd`, so the normal answer pipeline refuses.
 
 Titan embedding pricing is exact and region-aware: `amazon.titan-embed-text-v2:0` uses the AWS
 catalog row for `generation.region`, which Sprout carries into the shared `Usage` record. A missing
