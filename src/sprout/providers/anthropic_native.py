@@ -56,9 +56,13 @@ class AnthropicGenerator:
         return out
 
     def _invoke(self, query: str, context: list[RetrievedChunk], max_sentences: int) -> str:
-        import httpx
+        if self._client is None:
+            import httpx
 
-        client = self._client or httpx.Client(timeout=60.0)
+            # Cache the lazily-built client: constructing a new (never-closed) Client on
+            # every call leaks connections/file descriptors in a long-running server.
+            self._client = httpx.Client(timeout=60.0)
+        client = self._client
         sources = "\n".join(
             f"[{i}] (chunk {rc.chunk.chunk_id}) {rc.chunk.text}" for i, rc in enumerate(context)
         )
