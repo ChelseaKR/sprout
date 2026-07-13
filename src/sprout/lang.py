@@ -10,7 +10,7 @@ network. ``langdetect`` is consulted only as an optional tie-breaker when instal
 from __future__ import annotations
 
 from . import locales
-from .text import tokenize
+from .text import strip_accents, tokenize
 
 # Which languages are detectable is driven by which locale bundles exist on disk
 # (FIX-09, src/sprout/locales/) — adding language #3 is dropping a
@@ -20,8 +20,13 @@ DEFAULT_LANGUAGE = locales.REFERENCE_LANGUAGE
 
 # Function words that are strong, mutually-exclusive signals for each language,
 # authored in src/sprout/locales/<lang>/bundle.yaml under ``lang.markers``.
+# Markers are accent-folded at load because ``tokenize`` accent-folds every token:
+# an accented marker as authored ("está", "tóxica") could otherwise never match.
 _MARKERS: dict[str, frozenset[str]] = {
-    lang: frozenset(locales.load_bundle(lang).get("lang", {}).get("markers", []))
+    lang: frozenset(
+        strip_accents(str(m).lower())
+        for m in locales.load_bundle(lang).get("lang", {}).get("markers", [])
+    )
     for lang in SUPPORTED
 }
 

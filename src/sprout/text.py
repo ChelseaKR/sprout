@@ -191,7 +191,7 @@ _NEGATIONS: frozenset[str] = frozenset(
         "ningun",
         "ningún",
         "ninguna",
-        "noun",
+        "non",
     }
 )
 

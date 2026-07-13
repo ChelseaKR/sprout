@@ -237,7 +237,10 @@ def _register_identify(
             image = base64.b64decode(raw, validate=True)
         except (binascii.Error, ValueError):
             return JSONResponse({"error": "image_b64 is not valid base64"}, status_code=400)
-        question = payload.get("question")
+        raw_question = payload.get("question")
+        # Coerce like /api/chat does: a non-string ``question`` (e.g. a number) must not
+        # crash the language/answer pipeline with an unhandled 500.
+        question = str(raw_question) if raw_question is not None else None
         result = service.identify_and_answer(
             image, question=question, language=payload.get("language")
         )
@@ -292,7 +295,12 @@ def _register_reminders(app: FastAPI, config: Config, log: Logger) -> None:
         kind = str(payload.get("kind", "water"))
         if not plant:
             return JSONResponse({"error": "plant is required"}, status_code=400)
-        interval = payload.get("interval_days") or config.reminders.default_intervals.get(kind, 7)
+        supplied_interval = payload.get("interval_days")
+        interval = (
+            config.reminders.default_intervals.get(kind, 7)
+            if supplied_interval is None
+            else supplied_interval
+        )
         try:
             reminder = _store().add(
                 plant=plant,
@@ -302,7 +310,9 @@ def _register_reminders(app: FastAPI, config: Config, log: Logger) -> None:
                 note=str(payload.get("note", "")),
                 source=payload.get("source"),
             )
-        except (ReminderError, ValueError) as exc:
+        except (ReminderError, TypeError, ValueError) as exc:
+            # TypeError: a non-numeric ``interval_days`` (e.g. a list) must be a 400,
+            # not an unhandled 500.
             return JSONResponse({"error": str(exc)}, status_code=400)
         log.event("reminder_added", status="ok")
         return JSONResponse(_reminder_dump(reminder), status_code=201)

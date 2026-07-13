@@ -205,6 +205,26 @@ def test_identify_fallback_and_validation(assistant: Assistant, config: Config) 
     assert c.post("/api/identify", json={"image_b64": "not base64!!"}).status_code == 400
 
 
+def test_identify_coerces_non_string_question_instead_of_500(
+    assistant: Assistant, config: Config
+) -> None:
+    import base64
+
+    from sprout.identify import Identification, PlantCandidate
+
+    class _Fake:
+        def identify(self, image: bytes) -> Identification:
+            return Identification(
+                provider="fake",
+                candidates=(PlantCandidate(scientific_name="Epipremnum aureum", score=0.9),),
+            )
+
+    c = TestClient(create_app(config, assistant=assistant, identifier=_Fake()))
+    img = base64.b64encode(b"jpeg-bytes").decode("ascii")
+    response = c.post("/api/identify", json={"image_b64": img, "question": 123})
+    assert response.status_code == 200
+
+
 def test_reminders_crud(assistant: Assistant, tmp_path: object) -> None:
     cfg = Config.model_validate({"reminders": {"path": str(tmp_path) + "/r.json"}})
     c = TestClient(create_app(cfg, assistant=assistant))
@@ -224,6 +244,34 @@ def test_reminders_crud(assistant: Assistant, tmp_path: object) -> None:
     assert c.post("/api/reminders/missing/complete").status_code == 404
     assert c.delete(f"/api/reminders/{rid}").json() == {"removed": True}
     assert c.delete(f"/api/reminders/{rid}").status_code == 404
+
+
+@pytest.mark.parametrize("invalid", [0, False, [], ""])
+def test_reminder_explicit_invalid_interval_never_falls_back_to_default(
+    assistant: Assistant, tmp_path: Path, invalid: object
+) -> None:
+    cfg = Config.model_validate({"reminders": {"path": str(tmp_path / "r.json")}})
+    c = TestClient(create_app(cfg, assistant=assistant))
+    response = c.post(
+        "/api/reminders",
+        json={"plant": "pothos", "kind": "water", "interval_days": invalid},
+    )
+    assert response.status_code == 400
+    assert not (tmp_path / "r.json").exists()
+
+
+def test_reminder_absent_or_null_interval_uses_configured_default(
+    assistant: Assistant, tmp_path: Path
+) -> None:
+    cfg = Config.model_validate({"reminders": {"path": str(tmp_path / "r.json")}})
+    c = TestClient(create_app(cfg, assistant=assistant))
+    first = c.post("/api/reminders", json={"plant": "pothos", "kind": "water"})
+    second = c.post(
+        "/api/reminders",
+        json={"plant": "monstera", "kind": "water", "interval_days": None},
+    )
+    assert first.status_code == second.status_code == 201
+    assert first.json()["interval_days"] == second.json()["interval_days"] == 7
 
 
 def test_shipped_ui_passes_structural_a11y() -> None:

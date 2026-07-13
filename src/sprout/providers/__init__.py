@@ -26,9 +26,12 @@ def build_embedding(config: Config) -> EmbeddingProvider:
     if provider == "deterministic":
         return HashingEmbedding(dim=config.retrieval.embedding_dim)
     if provider == "bedrock":
+        from ..provider_lifecycle import observe_embedding
         from .bedrock import TitanEmbedding
 
-        return TitanEmbedding(dim=config.retrieval.embedding_dim, region=config.generation.region)
+        return observe_embedding(
+            TitanEmbedding(dim=config.retrieval.embedding_dim, region=config.generation.region)
+        )
     raise ValueError(f"unknown embedding provider: {provider}")  # pragma: no cover
 
 
@@ -37,13 +40,21 @@ def build_generator(config: Config) -> GenerationProvider:
     if provider == "deterministic":
         return ExtractiveGenerator(relevance_floor=config.generation.relevance_floor)
     if provider == "bedrock":
+        from ..provider_lifecycle import observe_generation
         from .bedrock import BedrockGenerator
 
         model = config.generation.model or "anthropic.claude-3-5-haiku-20241022-v1:0"
-        return BedrockGenerator(model=model, region=config.generation.region)
+        return observe_generation(
+            BedrockGenerator(model=model, region=config.generation.region),
+            max_cost_usd=config.generation.max_cost_usd,
+        )
     if provider == "anthropic":
+        from ..provider_lifecycle import observe_generation
         from .anthropic_native import AnthropicGenerator
 
         model = config.generation.model or "claude-haiku-4-5-20251001"
-        return AnthropicGenerator(model=model)
+        return observe_generation(
+            AnthropicGenerator(model=model),
+            max_cost_usd=config.generation.max_cost_usd,
+        )
     raise ValueError(f"unknown generation provider: {provider}")  # pragma: no cover

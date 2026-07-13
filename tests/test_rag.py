@@ -28,6 +28,7 @@ from sprout.lexical import BM25Index
 from sprout.models import AnswerSentence, Chunk, Citation, RetrievedChunk
 from sprout.providers.deterministic import HashingEmbedding
 from sprout.store import VectorStore
+from sprout.text import has_negation
 
 
 # --- lexical ---------------------------------------------------------------------
@@ -243,6 +244,10 @@ def test_asserts_safety_bilingual() -> None:
     assert not asserts_safety("The source lists it as toxic to cats", "en", g)
 
 
+def test_hyphenated_non_toxic_preserves_negation_polarity() -> None:
+    assert has_negation("The source says the plant is non-toxic.")
+
+
 def test_citation_guard_drops_ungrounded(tiny_chunks: list[Chunk]) -> None:
     chunk = tiny_chunks[0]
     retrieved = [RetrievedChunk(chunk=chunk, score=0.5)]
@@ -270,7 +275,6 @@ def test_safety_filter_drops_certifications(tiny_chunks: list[Chunk]) -> None:
     assert all("perfectly fine" not in s.text for s in filtered)
 
 
-# --- pipeline --------------------------------------------------------------------
 def test_grounded_answer_is_cited(assistant: Assistant) -> None:
     ans = assistant.answer("why are my monstera leaves yellowing")
     assert not ans.refused

@@ -107,7 +107,8 @@ The PR template ([`/.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMP
       regression** against `docs/audits/eval-baseline.json`. Intentional baseline movement is its
       own commit with `make eval-baseline` and a rationale.
 - [ ] A **rollback plan** is noted (a config flag in `config/sprout.yaml`, or a clean revert).
-- [ ] If the change touches retrieval, generation, guards, calibration, lexical scoring, or their
+- [ ] If the change semantically changes retrieval, generation, guards, calibration, lexical
+      scoring, or their
       config (`src/sprout/{retrieve,answer,guards,confidence,lexical,config}.py`,
       `src/sprout/providers/`, `config/sprout.yaml`), at least one commit carries a
       `Tunes-Against: <case-id>[, <case-id>...]` trailer citing the eval case(s) the change is a
@@ -130,8 +131,16 @@ failures** — never against results only visible from a private/local run. Mech
   `Tunes-Against: safety-025, refusal-003`.
 - `sprout check-tuning-scope --base origin/main` (the `tuning-scope` CI job, part of the required
   `ci-gate`) fails the PR if tunable surface changed with no `Tunes-Against` trailer, or if a
-  cited id is not present in the committed baseline's `failing_examples` — so a change cannot be
-  laundered through a case that was never publicly known to be failing.
+  cited id is not present in the branch merge-base commit's baseline `failing_examples` — so a
+  change cannot be laundered through a case added to the base branch after work began, or through
+  a case that was never publicly known to be failing.
+- The gate compares `config/sprout.yaml` as parsed YAML, so comments alone are not tuning. It also
+  normalizes exactly one operational seam: `observe_generation` / `observe_embedding` may wrap an
+  otherwise-identical provider constructor, with the configured cost ceiling forwarded exactly.
+  The initial `provider_lifecycle.py` is admitted once by an exact reviewed digest because it is
+  absent at this branch's merge base. Model literals, prompts, decoding parameters, real config
+  values, retrieval/guard edits, every later lifecycle edit, and every unknown provider hunk
+  remain fail-closed and require a real pre-existing case.
 - This does not (and cannot) stop a contributor from *looking* at more than the committed
   failures before writing the trailer; what it enforces is a checkable, falsifiable citation
   trail for every tuning change, the same spirit as the coverage and baseline-regression gates.

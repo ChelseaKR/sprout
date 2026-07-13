@@ -4,7 +4,8 @@
 > justified deviation from the named engineering standards. Silent
 > deviation from a standard is a defect, not a footnote.
 
-Author: Chelsea Kelly-Reif · Last updated: 2026-07-05 (conformance-audit remediation pass —
+Author: Chelsea Kelly-Reif · Last updated: 2026-07-12 (GenAI lifecycle telemetry and weekly
+corpus-freshness gate; conformance-audit remediation pass began 2026-07-05 —
 corrected several rows below that had gone stale since 2026-06-22; see the dated erratum/gap
 notes throughout) · Status: `In build` (Phase 3).
 
@@ -76,6 +77,33 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 **Provider note (per standard §0):** Sprout standardizes on Anthropic Claude — Haiku to answer,
 Sonnet to judge — behind a config switch; the deterministic offline generator is the default and
 is what CI exercises (no network, no key). No "rejected because" deviation is recorded.
+
+### GenAI lifecycle measurement
+
+The optional Anthropic and Bedrock paths adopt the shared OpenTelemetry GenAI runtime vendored
+byte-for-byte under `src/sprout/_vendor/genai_telemetry/` from immutable STANDARDS commit
+`e8150c82fc35267f022af46ac71fe5a851e2d042`; `.standards-version` pins the boundary and
+`src/sprout/genai_telemetry.py` is only the Sprout record/sink wrapper. Native
+Anthropic answers, Bedrock Claude answers, Titan embeddings, and the native Anthropic judge all
+record success/error duration, the locally selected request model, allowlisted protocol finish
+reasons, and normalized usage fields, without reflecting provider strings or capturing content.
+Claude answer/judge calls and Titan embeddings receive shared-table estimates;
+Titan's AWS catalog price is selected by the configured Bedrock region carried on `Usage`.
+The operational provider wrapper rejects answer calls before transport when the model is unpriced
+or the estimate exceeds `generation.max_cost_usd`; Titan activation likewise rejects a missing or
+unsupported region rather than borrowing a false rate. The wrapper forwards the original
+query/context/limit into the behavior-bearing provider unchanged. Provider-separated fresh,
+cache-creation, and cache-read tokens are summed into canonical total input before cache-hit and
+Claude cost math; Titan's input-only row rejects unsupported output/cache usage.
+Streaming first-chunk latency is N/A because none of these adapters streams. The implementation
+and privacy proof are recorded in
+`docs/audits/genai-lifecycle-telemetry-2026-07-12.md` and gated by
+`tests/test_genai_telemetry.py`.
+
+The offline eval/calibration loop remains merge-blocking, and the corpus has a weekly scheduled
+freshness gate. The production trace-to-weekly-judge loop remains an explicit external launch
+gate until the optional cloud API, credentials, and trace store exist; it cannot produce an
+honest measured distribution before there is production traffic.
 
 ### Accessibility — `ACCESSIBILITY-STANDARD`
 
@@ -250,7 +278,11 @@ implementation" banner.*
 - Done: tuning only against committed eval failures is mechanically enforced by `sprout
   check-tuning-scope`, a required CI job. Changes to retrieval, generation, guards,
   calibration, lexical logic, or config must cite a case already recorded in the committed
-  eval baseline via a `Tunes-Against:` commit trailer.
+  eval baseline via a `Tunes-Against:` commit trailer. Comment-only YAML and the exact named
+  operational lifecycle wrapper are excluded by semantic/AST comparison. The initial lifecycle
+  module is pinned to one reviewed bootstrap digest; all later lifecycle hunks are gated.
+  Authorization comes from the merge-base baseline, and adversarial tests keep model, prompt,
+  decoding, real-config, retrieval/guard, lifecycle-output, and unknown provider edits fail-closed.
 - Outstanding: deploy the UI behind a real URL with the reference-implementation banner; get a
   clean Promptfoo `redteam` run wired and
   promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical
