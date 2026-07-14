@@ -5,6 +5,11 @@ name: codeql
 # ran when no such workflow existed.
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 10 * * 1"
   workflow_dispatch: {}
 
 permissions:

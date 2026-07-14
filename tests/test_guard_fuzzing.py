@@ -17,7 +17,7 @@ below is resolved to one of two outcomes, never silently skipped:
   limitation (never a silent failure) with a test that demonstrates it directly.
 
 Zero-width injection and case perturbation turned out to be invariants (after the
-``text.normalize``/``text.tokenize`` fix in this change — see ADR-0012). Homoglyph
+``text.normalize``/``text.tokenize`` fix in this change — see ADR-0014). Homoglyph
 substitution is an invariant for the deny-list *phrase-match* path only (after the
 ``guards._fold`` homoglyph table added in this change) and a residual for the
 negation/harm-token path. Letter-spacing is a residual on every path. The citation-guard
@@ -173,7 +173,7 @@ def test_case_perturbation_does_not_defeat_the_guard(perturbed: tuple[str, str])
 def test_homoglyph_substitution_does_not_defeat_the_deny_list_phrase_match(
     perturbed: tuple[str, str],
 ) -> None:
-    """guards._fold folds the minimal Cyrillic a/e/o lookalike table (ADR-0012) before the
+    """guards._fold folds the minimal Cyrillic a/e/o lookalike table (ADR-0014) before the
     deny-list phrase-match check, so substituting Cyrillic lookalikes into a phrase-match
     seed must not let it slip past *this* path."""
     text, lang = perturbed
@@ -181,7 +181,7 @@ def test_homoglyph_substitution_does_not_defeat_the_deny_list_phrase_match(
 
 
 def test_homoglyph_substitution_of_a_harm_token_is_a_documented_residual() -> None:
-    """Known, undefended residual (see ADR-0012 Consequences): the negation-aware
+    """Known, undefended residual (see ADR-0014 Consequences): the negation-aware
     harm-token branch of ``asserts_safety`` reads ``text.tokenize``, which is not routed
     through the homoglyph fold (that fold is deliberately scoped to ``guards._fold`` only,
     to avoid changing retrieval/stemming behavior for every other caller). Substituting a
@@ -305,6 +305,6 @@ def test_citation_guard_recombination_admit_rate_is_quantified() -> None:
     rate = admitted / total
     assert 0.05 <= rate <= 0.70, (
         f"same-plant cross-chunk recombination admit-rate = {rate:.1%} "
-        f"({admitted}/{total}) fell outside the documented bound; see ADR-0012 and the "
+        f"({admitted}/{total}) fell outside the documented bound; see ADR-0014 and the "
         "model card's Cloud-mode residual risk note"
     )
