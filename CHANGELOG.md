@@ -14,6 +14,9 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 - Re-armed CodeQL on pull requests, pushes to `main`, and a weekly schedule; corrected the
   Standards Conformance label consumed by the portfolio checker; and assigned the homoglyph
   hardening decision its unique ADR number.
+- Made the tuning-scope gate compare ordinary Python tunable files by parsed syntax, so
+  comment/format-only documentation edits no longer demand a fabricated `Tunes-Against` case;
+  semantic edits and invalid syntax remain fail-closed.
 
 > **2026-07-05 correction:** this project has **never been tagged or released** — `git tag`
 > returns nothing, and no release workflow has ever run. A previous version of this file carried
