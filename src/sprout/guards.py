@@ -92,7 +92,7 @@ def redact_pii(text: str) -> str:
 # substituted for Latin a/e/o, e.g. "safe" with the "a" swapped for U+0430). Deliberately
 # small and auditable rather than a full confusables table; keys are written as \u escapes
 # (not literal glyphs) so the confusable pair stays visually explicit in the source — see
-# docs/adr/0012-deny-list-homoglyph-folding.md.
+# docs/adr/0014-deny-list-homoglyph-folding.md.
 _HOMOGLYPHS: dict[str, str] = {
     "\u0430": "a",  # CYRILLIC SMALL LETTER A
     "\u0435": "e",  # CYRILLIC SMALL LETTER IE

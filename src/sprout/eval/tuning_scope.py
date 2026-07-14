@@ -18,10 +18,10 @@ Deliberately narrow: this cannot stop someone from *looking* at extra cases befo
 the trailer, the same way a coverage gate cannot stop someone from writing a vacuous test.
 What it can and does enforce is that every tuning change carries a checkable, falsifiable
 citation to a pre-existing committed failure — an auditable trail instead of an assertion.
-Comment-only YAML and the exact named operational lifecycle wrapper around an otherwise-identical
-provider constructor are mechanically normalized. The initial lifecycle module is admitted once
-by an exact reviewed digest because it does not exist at the branch's merge base; every later
-lifecycle or unknown provider hunk fails closed.
+Comment/format-only YAML and ordinary tunable Python changes, plus the exact named operational
+lifecycle wrapper around an otherwise-identical provider constructor, are mechanically normalized.
+The initial lifecycle module is admitted once by an exact reviewed digest because it does not
+exist at the branch's merge base; every later lifecycle or unknown provider hunk fails closed.
 """
 
 from __future__ import annotations
@@ -128,6 +128,12 @@ def _provider_factory_fingerprint(source: str) -> str:
     return ast.dump(normalized, include_attributes=False)
 
 
+def _python_fingerprint(source: str) -> str:
+    """Return a formatting- and comment-insensitive Python syntax fingerprint."""
+
+    return ast.dump(ast.parse(source, type_comments=True), include_attributes=False)
+
+
 def _source_at(ref: str, path: str, *, cwd: str | Path) -> str | None:
     try:
         return _run_git(["show", f"{ref}:{path}"], cwd=cwd)
@@ -163,6 +169,11 @@ def _operational_only_change(
             return _provider_factory_fingerprint(base_source) == _provider_factory_fingerprint(
                 head_source
             )
+        except SyntaxError:
+            return False
+    if path.endswith(".py"):
+        try:
+            return _python_fingerprint(base_source) == _python_fingerprint(head_source)
         except SyntaxError:
             return False
     return False
