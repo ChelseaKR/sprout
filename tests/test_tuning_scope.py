@@ -129,8 +129,12 @@ def repo(tmp_path: Path) -> Path:
     (root / "src" / "sprout" / "providers").mkdir()
     (root / "docs" / "audits").mkdir(parents=True)
     (root / "config").mkdir()
-    (root / "src" / "sprout" / "retrieve.py").write_text("# retrieval v1\n", encoding="utf-8")
-    (root / "src" / "sprout" / "guards.py").write_text("# guards v1\n", encoding="utf-8")
+    (root / "src" / "sprout" / "retrieve.py").write_text(
+        "RELEVANCE_FLOOR = 0.30  # retrieval v1\n", encoding="utf-8"
+    )
+    (root / "src" / "sprout" / "guards.py").write_text(
+        "DENIED = {'unsafe'}  # guards v1\n", encoding="utf-8"
+    )
     (root / "src" / "sprout" / "server.py").write_text("# server\n", encoding="utf-8")
     (root / "config" / "sprout.yaml").write_text(
         "generation:\n  relevance_floor: 0.30  # baseline comment\n", encoding="utf-8"
@@ -180,6 +184,23 @@ def test_comment_only_config_change_passes_without_trailer(repo: Path) -> None:
     )
     _git(["commit", "-q", "-am", "docs(config): clarify threshold comment"], repo)
     assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+def test_comment_only_python_change_passes_without_trailer(repo: Path) -> None:
+    (repo / "src" / "sprout" / "guards.py").write_text(
+        "# Explain why unsafe claims are denied.\nDENIED = {'unsafe'}  # guards v1\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "docs(guards): clarify deny-list rationale"], repo)
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+def test_invalid_python_change_fails_closed(repo: Path) -> None:
+    (repo / "src" / "sprout" / "guards.py").write_text("def broken(:\n", encoding="utf-8")
+    _git(["commit", "-q", "-am", "fix(guards): introduce invalid syntax"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/guards.py" in issues[0]
 
 
 def test_semantic_config_change_still_requires_real_case(repo: Path) -> None:
@@ -333,7 +354,9 @@ def test_unknown_provider_hunk_fails_closed(repo: Path) -> None:
 
 
 def test_guard_edit_still_requires_real_case(repo: Path) -> None:
-    (repo / "src" / "sprout" / "guards.py").write_text("# guards v2\n", encoding="utf-8")
+    (repo / "src" / "sprout" / "guards.py").write_text(
+        "DENIED = {'unsafe', 'dangerous'}  # guards v2\n", encoding="utf-8"
+    )
     _git(["commit", "-q", "-am", "fix(guards): alter guard"], repo)
     issues = check_tuning_scope(base_ref="main", repo_root=repo)
     assert len(issues) == 1
@@ -341,7 +364,9 @@ def test_guard_edit_still_requires_real_case(repo: Path) -> None:
 
 
 def test_tunable_change_without_trailer_fails(repo: Path) -> None:
-    (repo / "src" / "sprout" / "retrieve.py").write_text("# retrieval v2\n", encoding="utf-8")
+    (repo / "src" / "sprout" / "retrieve.py").write_text(
+        "RELEVANCE_FLOOR = 0.35  # retrieval v2\n", encoding="utf-8"
+    )
     _git(["commit", "-q", "-am", "fix(retrieve): widen the score gate"], repo)
     issues = check_tuning_scope(
         base_ref="main", baseline_path="docs/audits/eval-baseline.json", repo_root=repo
@@ -351,7 +376,9 @@ def test_tunable_change_without_trailer_fails(repo: Path) -> None:
 
 
 def test_tunable_change_citing_unknown_id_fails(repo: Path) -> None:
-    (repo / "src" / "sprout" / "retrieve.py").write_text("# retrieval v2\n", encoding="utf-8")
+    (repo / "src" / "sprout" / "retrieve.py").write_text(
+        "RELEVANCE_FLOOR = 0.35  # retrieval v2\n", encoding="utf-8"
+    )
     _git(
         ["commit", "-q", "-am", "fix(retrieve): widen gate\n\nTunes-Against: not-a-real-id"],
         repo,
@@ -364,7 +391,9 @@ def test_tunable_change_citing_unknown_id_fails(repo: Path) -> None:
 
 
 def test_tunable_change_citing_committed_failure_passes(repo: Path) -> None:
-    (repo / "src" / "sprout" / "retrieve.py").write_text("# retrieval v2\n", encoding="utf-8")
+    (repo / "src" / "sprout" / "retrieve.py").write_text(
+        "RELEVANCE_FLOOR = 0.35  # retrieval v2\n", encoding="utf-8"
+    )
     _git(
         ["commit", "-q", "-am", "fix(retrieve): widen gate\n\nTunes-Against: safety-025"],
         repo,
@@ -379,7 +408,9 @@ def test_tunable_change_with_no_committed_baseline_fails(repo: Path) -> None:
     (repo / "docs" / "audits" / "eval-baseline.json").unlink()
     _git(["commit", "-q", "-am", "chore: drop baseline"], repo)
     _git(["branch", "-f", "main", "HEAD"], repo)
-    (repo / "src" / "sprout" / "retrieve.py").write_text("# retrieval v2\n", encoding="utf-8")
+    (repo / "src" / "sprout" / "retrieve.py").write_text(
+        "RELEVANCE_FLOOR = 0.35  # retrieval v2\n", encoding="utf-8"
+    )
     _git(
         ["commit", "-q", "-am", "fix(retrieve): widen gate\n\nTunes-Against: safety-025"],
         repo,
@@ -396,7 +427,9 @@ def test_head_branch_cannot_self_authorize_by_editing_baseline(repo: Path) -> No
     (repo / "docs" / "audits" / "eval-baseline.json").write_text(
         baseline.model_dump_json(), encoding="utf-8"
     )
-    (repo / "src" / "sprout" / "retrieve.py").write_text("# retrieval v2\n", encoding="utf-8")
+    (repo / "src" / "sprout" / "retrieve.py").write_text(
+        "RELEVANCE_FLOOR = 0.35  # retrieval v2\n", encoding="utf-8"
+    )
     _git(
         [
             "commit",
@@ -415,7 +448,9 @@ def test_head_branch_cannot_self_authorize_by_editing_baseline(repo: Path) -> No
 
 
 def test_advancing_base_cannot_authorize_a_branch_with_a_new_failure(repo: Path) -> None:
-    (repo / "src" / "sprout" / "retrieve.py").write_text("# retrieval v2\n", encoding="utf-8")
+    (repo / "src" / "sprout" / "retrieve.py").write_text(
+        "RELEVANCE_FLOOR = 0.35  # retrieval v2\n", encoding="utf-8"
+    )
     _git(
         [
             "commit",

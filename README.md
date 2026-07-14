@@ -120,7 +120,7 @@ targets, and evidence are recorded in this public repository. Per-repo *values* 
 |---|---|---|
 | Quality & Metrics (ISO 25010 / DORA) | ✅ | Metrics ledger in ROADMAP; `make verify` uses the same tools/thresholds as the CI-required checks |
 | Code Quality | ✅ | `ruff` + `mypy --strict`; branch coverage ≥90% (published-library floor); src layout |
-| Security & Supply Chain | ✅ | ASVS L1 offline mode; scoped ASVS L2 review for the authenticated Family Greenhouse boundary; pip-audit + Semgrep blocking; gitleaks; CodeQL + zizmor; SHA-pinned actions; release SBOM |
+| Security & Supply-Chain | ✅ | ASVS L1 offline mode; scoped ASVS L2 review for the authenticated Family Greenhouse boundary; pip-audit + Semgrep blocking; gitleaks; CodeQL + zizmor; SHA-pinned actions; release SBOM |
 | CI/CD | ✅ | Single `ci-gate` required check; least-privilege tokens; `make verify` mirrors CI's tools/thresholds |
 | Release & Versioning | ✅ | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
 | Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
@@ -128,7 +128,7 @@ targets, and evidence are recorded in this public repository. Per-repo *values* 
 | Internationalization | ✅ | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
 | AI Evaluation | ✅ | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, gap tracked); judge-calibration (deterministic judge, 66 probes) gated at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
 | Documentation | ✅ | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
-| Responsible-Tech Framework | ✅ | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; no audit is N/A (added to this table 2026-07-05 — was silently omitted) |
+| Responsible-Tech Framework | ✅ | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; every audit applies (added to this table 2026-07-05 — was silently omitted) |
 
 No standard is `N/A`. Family Greenhouse Phase A personalization is implemented behind a feature
 flag with an ASVS L2 review; notification and confirmed-write phases remain deferred. Every row above with a

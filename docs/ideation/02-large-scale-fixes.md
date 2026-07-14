@@ -178,7 +178,7 @@ deny-list phrase match and the (separate) negation/harm-token check — `text.no
 and `text.tokenize` both needed the NFKC + format-character strip, since the harm-token
 path reads `tokenize` directly rather than `normalize`. Homoglyph substitution
 (Cyrillic а/е/о for Latin a/e/o) defeated the phrase match; closed with a minimal,
-documented 3-entry table in `guards._fold` (ADR-0012, since `guards.py` is
+documented 3-entry table in `guards._fold` (ADR-0014, since `guards.py` is
 CODEOWNERS-guarded). Case perturbation was already an invariant (no fix needed).
 Two residuals were found, fixed only partially in scope, and pinned as tests rather than
 left unmeasured: homoglyph substitution into a harm token (e.g. "not"/"toxic") still
@@ -187,7 +187,7 @@ fold, to avoid changing retrieval/stemming for every other caller); letter-spaci
 ("s a f e") defeats every path and is undefended. The `citation_guard` same-plant
 cross-chunk recombination admit-rate is quantified at a bounded, deterministic
 Monte-Carlo sample (`0.05 <= rate <= 0.70`) instead of the prior qualitative-only model
-card note, and a cross-species non-leakage invariant is pinned. See ADR-0012 for the
+card note, and a cross-species non-leakage invariant is pinned. See ADR-0014 for the
 full write-up; "file every surviving bypass as an eval case" (item (d) below) and the
 model-card admit-rate rewrite are follow-on work, not done in this pass.
 
