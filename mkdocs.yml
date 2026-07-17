@@ -52,3 +52,4 @@ nav:
   - ADRs:
       - Record decisions: adr/0000-record-architecture-decisions.md
       - Family Greenhouse integration: adr/0013-family-greenhouse-first-party-integration.md
+      - Public web surface: adr/0014-web-is-a-reference-and-assurance-surface.md

@@ -279,6 +279,20 @@ def test_shipped_ui_passes_structural_a11y() -> None:
     assert check_html(html) == []
 
 
+def test_shipped_ui_is_a_stateless_reference_surface() -> None:
+    html = Path("web/dist/index.html").read_text(encoding="utf-8")
+    script = Path("web/dist/app.js").read_text(encoding="utf-8")
+
+    assert 'id="try"' in html
+    assert 'id="evaluation"' in html
+    assert 'id="docs"' in html
+    assert "Sprout proves the answer. Family Greenhouse owns the home." in html
+    assert 'id="reminder-form"' not in html
+    assert 'id="photo-form"' not in html
+    assert "/api/reminders" not in script
+    assert "/api/identify" not in script
+
+
 # --- logger ----------------------------------------------------------------------
 def test_logger_text_and_json_and_pii_filter() -> None:
     buf = io.StringIO()

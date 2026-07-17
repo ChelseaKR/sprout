@@ -1,8 +1,9 @@
 """The ``sprout`` command-line interface.
 
 Subcommands: ``ingest`` (build the index), ``ask`` (a cited answer or honest refusal),
-``serve`` (the chat UI + API), ``eval`` (record the live engine, run the suites, regenerate
-the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML), ``freshness``
+``serve`` (the stateless reference UI + API), ``eval`` (record the live engine, run the suites,
+regenerate the committed report), ``a11y-check`` (structural WCAG gate on rendered HTML),
+``freshness``
 (offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
 their code/config source of truth), ``smoke`` (the Phase 1 CI smoke suite of corpus-derived
 questions), ``check-tuning-scope`` (fail-closed gate for tunable-surface changes),
@@ -112,7 +113,7 @@ def serve(
     host: Annotated[str | None, typer.Option("--host")] = None,
     port: Annotated[int | None, typer.Option("--port")] = None,
 ) -> None:  # pragma: no cover - launches a blocking server
-    """Run the accessible chat UI and JSON/SSE API."""
+    """Run the accessible reference UI and JSON/SSE API."""
     import uvicorn
 
     from .server import create_app

@@ -1,4 +1,4 @@
-"""Accessible chat server: a small FastAPI app over the Assistant.
+"""Accessible reference server: a small FastAPI app over the Assistant.
 
 Endpoints: ``/livez`` (liveness, no deps), ``/readyz`` (index loaded), ``/health`` (index
 size), ``/api/disclosure``, ``POST /api/chat`` (JSON), and ``GET /api/chat/stream`` (SSE).

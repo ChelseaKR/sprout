@@ -109,7 +109,7 @@ honest measured distribution before there is production traffic.
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
-| Conformance level | **WCAG 2.2 AA** | axe + pa11y (merge-blocking) and Lighthouse accessibility (merge-blocking, threshold 0.95) on chat UI + HTML eval report; transcript view not yet built (see row below) | AUTO |
+| Conformance level | **WCAG 2.2 AA** | axe + pa11y (merge-blocking) and Lighthouse accessibility (merge-blocking, threshold 0.95) on the reference question UI + HTML eval report; transcript view not yet built (see row below) | AUTO |
 | Structural a11y check | zero violations | `sprout a11y-check` on `web/dist/index.html` + `docs/audits/eval-report.html` | AUTO |
 | Non-chat alternate view | static, paginated Q/A/citations renders | transcript-view check | AUTO |
 | Color independence | severity + provenance never color-only | manual SR review (NVDA, VoiceOver) | REVIEW |
@@ -259,13 +259,15 @@ the CI smoke suite. Commit a baseline scoreboard, mediocre numbers included.*
 
 ### Phase 3 — quality + multilingual
 *Tune retrieval/prompts against eval failures only; add calibration suite and abstention; Spanish
-to parity; model card. Accessible web UI deployed behind a real URL with a "reference
-implementation" banner.*
+to parity; model card. Deploy the accessible, stateless reference-and-assurance web surface behind
+a real URL.*
 
 **Status: in progress (current phase).**
 - Done: calibration suite + two-threshold abstention (`confidence.py`), EN/ES throughout
-  (`lang.py`, per-language bundles, parity suite), framework-free WCAG 2.2 chat UI shipped in
-  `web/dist/`, structural a11y check, structured PII-free logging, the **ACR**
+  (`lang.py`, per-language bundles, parity suite), framework-free WCAG 2.2 reference surface
+  shipped in `web/dist/` (one stateless corpus question, claim chain, evaluation evidence, and
+  docs; household/photo/reminder workflows excluded per ADR 0014), structural a11y check,
+  structured PII-free logging, the **ACR**
   (`docs/accessibility/ACR.md`, VPAT 2.5 Rev 508) and a dedicated **OWASP-LLM red-team report**
   (`docs/audits/red-team-2026-06-22.md`, LLM01–LLM10:2025 coverage table, 0 open critical
   findings) — both committed in the 2026-07-05 conformance pass. Corrected here 2026-07-08: this
@@ -283,7 +285,7 @@ implementation" banner.*
   module is pinned to one reviewed bootstrap digest; all later lifecycle hunks are gated.
   Authorization comes from the merge-base baseline, and adversarial tests keep model, prompt,
   decoding, real-config, retrieval/guard, lifecycle-output, and unknown provider edits fail-closed.
-- Outstanding: deploy the UI behind a real URL with the reference-implementation banner; get a
+- Outstanding: deploy the reference surface behind a real URL; get a
   clean Promptfoo `redteam` run wired and
   promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical
   check rather than only the manual, dated one (tracked in the ledger row above).
