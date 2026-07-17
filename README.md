@@ -32,9 +32,11 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
   guarded pipeline. Offline by default, with a graceful "type the plant's name" fallback
   and an allowlisted Pl@ntNet provider behind a config switch — see
   [ADR-0010](docs/adr/0010-photo-plant-id-as-selector-not-fact-source.md).
-- **Sets local care reminders** (watering/fertilizing) tied to a plant and answer, stored
-  only on your device — offline, opt-in, nothing uploaded — see
-  [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md).
+- **Provides local reminder contracts** for CLI/API adopters, stored only on the running
+  device — offline, opt-in, nothing uploaded. Reminders are intentionally absent from the
+  public web reference because household tasks belong in Family Greenhouse; see
+  [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md) and
+  [ADR-0014](docs/adr/0014-web-is-a-reference-and-assurance-surface.md).
 
 ### The four hard rules (enforced, not aspirational)
 
@@ -70,7 +72,7 @@ uv run sprout ask "Why are my Monstera's leaves yellowing?"
 uv run sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
 uv run sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer
 uv run sprout remind add pothos --kind water --every 7    # local, offline reminder
-uv run sprout serve                     # accessible chat UI + JSON/SSE API at :8000
+uv run sprout serve                     # stateless reference UI + JSON/SSE API at :8000
 make eval                        # regenerate the committed eval report, fully offline
 ```
 
@@ -161,7 +163,7 @@ src/sprout/        ingest · retrieve · answer · guards · confidence · provi
   eval/            the harness: dataset · suites · runner · judges · report · calibration
 corpus/            manifest.yaml (dated, licensed) + processed passages (EN/ES, synthetic CC0)
 eval/suites/       120+ YAML cases; baseline.json
-web/dist/          framework-free WCAG 2.2 chat UI
+web/dist/          framework-free WCAG 2.2 reference and assurance surface
 docs/              ARCHITECTURE · THREAT-MODEL · ACCESSIBILITY · ROADMAP · audits/ · cards/ · adr/
 ```
 

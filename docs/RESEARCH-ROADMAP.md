@@ -51,7 +51,7 @@ Priority: **P0** now · **P1** next · **P2** soon. Effort: **S** ≈ an afterno
 | R6 | **Reconcile the photo-ID status drift**: remove/replace the "Not a plant-ID-from-photo tool" non-goal in [`RESPONSIBLE-TECH-AUDITS.md`](RESPONSIBLE-TECH-AUDITS.md) §A, and add a **photo-ID + reminders privacy/DPIA row** (Pl@ntNet egress, image-not-retained, `var/reminders.json` local state) to §C | E1,A3 | P1 | S | EV9 · **[NET-NEW]** (doc-consistency gap; complements [ADR-0010](adr/0010-photo-plant-id-as-selector-not-fact-source.md)/[ADR-0011](adr/0011-local-first-reminder-scheduler.md)) |
 | R7 | **Add an explicit "non-toxic ≠ safe" disclosure** for low-toxicity plants (mild-GI-upset cases) so the never-assert-safe rule covers the *subtle* case, EN+ES; add the phrase to the safety deny-list review | A2,B1,B2 | P1 | S | EV2,EV3 · **[NET-NEW]** |
 | R8 | **Surface photo-ID uncertainty in the UI**: show the visual-match label + the abstain-on-low-confidence path, screen-reader-announced; emit a "species not in corpus → fallback" message | A3,D1 | P1 | S | EV9 · **[corroborates ADR-0010]** (extend) |
-| R9 | **State the reminder honest-limits in-product** (local-only, no sync, no push) and verify the reminders panel passes the SR a11y gate | E1,D1 | P2 | S | — · **[corroborates ADR-0011]** |
+| R9 | **Clarify the reminder boundary in-product**: household reminders belong in Family Greenhouse; retain the local CLI/API contract without promoting it in Sprout's public web surface | E1,D1 | P2 | S | — · **[corroborates ADR-0011; resolved by ADR-0014]** |
 | R10 | **Make the eval job a required CI status check** with per-item "why it failed" traces surfaced in the report | C1,E1 | P2 | S | EV6 · **[corroborates ROADMAP Phase 2]** |
 
 ## Expansion backlog (new capability)
@@ -176,6 +176,12 @@ only when explicitly requested. Wired up as `sprout freshness [--check-links]`
 `pytest tests/test_freshness.py -q`, `ruff check`, `mypy` all green; `sprout freshness`
 exits 0 against the bundled 2026-05-01 corpus.
 
-**R9 done.** The reminders panel note (`web/dist/index.html`, `<section aria-labelledby="reminders-h">`) now states all three ADR-0011 honest limits in-product: reminders live only in a local file on-device (`var/reminders.json`), are never uploaded, do not sync across devices, and have no push/notification delivery (the app must be opened to see what's due) — alongside the existing "cadence is your own setting, not a cited fact" line. Structural a11y unchanged (plain `<p>` text, no new interactive/tabindex elements). Verify: `uv run sprout a11y-check web/dist/index.html` and `uv run pytest tests/test_server.py::test_shipped_ui_passes_structural_a11y -q` both pass.
+**R9 superseded and resolved by ADR-0014 (2026-07-16).** The earlier implementation put a
+local-only reminders panel in `web/dist/index.html` and documented its no-sync/no-push limits.
+The product-boundary review found that even an honestly limited panel duplicated Family
+Greenhouse's task domain. The public Sprout surface now carries no reminder UI or household
+state; the tested local CLI/API contract remains available for compatibility. Verify with
+`uv run sprout a11y-check web/dist/index.html` and
+`uv run pytest tests/test_server.py::test_shipped_ui_is_a_stateless_reference_surface -q`.
 
 Shipped: **E1** toxicity-coverage eval slice (`src/sprout/eval/suites/toxicity_coverage.py`) — a deterministic, corpus-level suite asserting every ASPCA top-N pet-toxic plant in the corpus (aloe, dracaena, english-ivy, fiddle-leaf-fig, jade-plant, monstera, peace-lily, philodendron, pothos, rubber-plant, snake-plant, zz-plant) has an English document with a `## Toxicity` section that mentions toxicity and routes to a vet and a poison-control line; auto-registers a `toxicity-coverage` report panel via the existing `report.py` suite-iteration. Complements the pre-existing `safety` suite, which already gates the *live answer* on never certifying "safe" and always routing. Verify: `make verify` green (lint, type, test with 95% coverage, eval, a11y all pass); `docs/audits/eval-report.md` shows `toxicity-coverage` — ✅ PASS, n=12.

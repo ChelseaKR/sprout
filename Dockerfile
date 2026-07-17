@@ -1,4 +1,4 @@
-# Minimal container for the offline chat UI + API. Builds the index at image time so
+# Minimal container for the offline reference UI + API. Builds the index at image time so
 # the container is self-contained and needs no network at runtime.
 FROM python:3.12-slim AS base
 
