@@ -50,10 +50,10 @@
         <aside class="claim-chain" aria-labelledby="chain-title">
           <p class="utility-label" id="chain-title">Claim chain</p>
           <ol>
-            <li><span>01</span><strong>Cited passage</strong><small>dated corpus</small></li>
-            <li><span>02</span><strong>Verbatim sentence</strong><small>extractive output</small></li>
-            <li><span>03</span><strong>Guard verified</strong><small>unsupported text drops</small></li>
-            <li><span>04</span><strong>Answer rendered</strong><small>or an honest refusal</small></li>
+            <li><span aria-hidden="true"></span><strong>Cited passage</strong><small>dated corpus</small></li>
+            <li><span aria-hidden="true"></span><strong>Verbatim sentence</strong><small>extractive output</small></li>
+            <li><span aria-hidden="true"></span><strong>Guard verified</strong><small>unsupported text drops</small></li>
+            <li><span aria-hidden="true"></span><strong>Answer rendered</strong><small>or an honest refusal</small></li>
           </ol>
         </aside>
       </section>
@@ -99,7 +99,7 @@
               </div>
             </form>
 
-            <div class="examples" id="examples" aria-labelledby="examples-title" hidden>
+            <section class="examples" id="examples" aria-labelledby="examples-title" hidden>
               <p class="utility-label" id="examples-title">Or use a test question</p>
               <div>
                 <button type="button" data-lang="en" data-q="How should I water my Monstera?">
@@ -119,7 +119,7 @@
                   Toxicidad del potho
                 </button>
               </div>
-            </div>
+            </section>
           </div>
 
           <section class="evidence-panel" aria-labelledby="answer-h" aria-busy="true">

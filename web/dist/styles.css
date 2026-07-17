@@ -60,7 +60,7 @@ a:hover { color: var(--blue); }
   position: relative;
   z-index: 10;
   border-bottom: 1px solid var(--rule);
-  background: rgb(243 247 244 / 0.96);
+  background: var(--paper);
 }
 
 .header-inner,
@@ -121,7 +121,7 @@ nav a {
 
 nav a:hover { color: var(--leaf-deep); }
 
-main { background: rgb(243 247 244 / 0.84); }
+main { background: var(--paper); }
 
 .hero {
   min-height: 37rem;
@@ -248,8 +248,8 @@ button:hover {
   display: grid;
   place-items: center;
   grid-row: 1 / 3;
-  color: var(--leaf-deep);
-  background: var(--surface-soft);
+  color: #fff;
+  background: var(--leaf-deep);
   border: 1px solid var(--leaf);
   border-radius: 50%;
   font: 700 0.68rem/1 var(--utility);
@@ -568,6 +568,7 @@ footer {
   gap: 0.5rem 2rem;
   padding-block: 2rem;
   color: var(--muted);
+  background: var(--paper);
   font-size: 0.82rem;
 }
 

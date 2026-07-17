@@ -49,10 +49,10 @@
         <aside class="claim-chain" aria-labelledby="chain-title">
           <p class="utility-label" id="chain-title">Claim chain</p>
           <ol>
-            <li><span>01</span><strong>Cited passage</strong><small>dated corpus</small></li>
-            <li><span>02</span><strong>Verbatim sentence</strong><small>extractive output</small></li>
-            <li><span>03</span><strong>Guard verified</strong><small>unsupported text drops</small></li>
-            <li><span>04</span><strong>Answer rendered</strong><small>or an honest refusal</small></li>
+            <li><span aria-hidden="true"></span><strong>Cited passage</strong><small>dated corpus</small></li>
+            <li><span aria-hidden="true"></span><strong>Verbatim sentence</strong><small>extractive output</small></li>
+            <li><span aria-hidden="true"></span><strong>Guard verified</strong><small>unsupported text drops</small></li>
+            <li><span aria-hidden="true"></span><strong>Answer rendered</strong><small>or an honest refusal</small></li>
           </ol>
         </aside>
       </section>
@@ -95,7 +95,7 @@
               </div>
             </form>
 
-            <div class="examples" aria-labelledby="examples-title">
+            <section class="examples" aria-labelledby="examples-title">
               <p class="utility-label" id="examples-title">Or use a test question</p>
               <div id="examples">
                 <button type="button" data-q="How should I water my Monstera?">
@@ -111,7 +111,7 @@
                   Toxicidad del potho
                 </button>
               </div>
-            </div>
+            </section>
           </div>
 
           <section class="evidence-panel" aria-labelledby="answer-h" aria-busy="false">
@@ -145,7 +145,7 @@
         </div>
         <div class="evidence-grid">
           <article>
-            <p class="metric">128</p>
+            <p class="metric">142</p>
             <h3>Committed cases</h3>
             <p>Groundedness, safety, refusal, calibration, and English/Spanish parity.</p>
           </article>
