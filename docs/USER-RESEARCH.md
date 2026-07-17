@@ -295,7 +295,7 @@ Each card compresses the simulated interview to five lines: **Goal · Values tod
   WCAG 2.2 additions incl. 2.5.8 Target Size 24×24 are covered.
 - **Gets stuck.** The reference surface is deployed, but a committed screen-reader
   walkthrough remains outstanding. Photo and reminder workflows
-  no longer appear in this public surface (ADR-0014); automated checks still are not lived
+  no longer appear in this public surface (ADR-0015); automated checks still are not lived
   experience for the streaming question and evidence path that remains.
 - **Wants next.** A scripted screen-reader walkthrough
   artifact; an explicit `aria-live="polite"` audit of streaming answer and refusal paths.

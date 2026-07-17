@@ -4,7 +4,7 @@
 - Date: 2026-06-29
 - Author: Chelsea Kelly-Reif
 - Deciders: Chelsea Kelly-Reif (maintainer)
-- Web-surface amendment: [ADR 0014](0014-web-is-a-reference-and-assurance-surface.md)
+- Web-surface amendment: [ADR 0015](0015-web-is-a-reference-and-assurance-surface.md)
 
 ## Context
 
@@ -36,7 +36,7 @@ Reminders are **local-first and opt-in** (`reminders.py`, `config.py::RemindersC
    only event names and counts pass the existing whitelist logger, so the Tier-C posture holds.
 5. **Available through local contracts.** A `sprout remind` CLI sub-app
    (add/list/due/done/remove) and JSON endpoints (`/api/reminders`, `/due`,
-   `/{id}/complete`, `DELETE`) retain the offline reference capability. ADR 0014
+   `/{id}/complete`, `DELETE`) retain the offline reference capability. ADR 0015
    removes the reminder panel from the public web interface: household tasks and
    notifications belong in Family Greenhouse.
 

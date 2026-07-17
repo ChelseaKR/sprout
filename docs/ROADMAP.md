@@ -267,7 +267,7 @@ a real URL.*
   (`lang.py`, per-language bundles, parity suite), framework-free WCAG 2.2 reference surface
   shipped at `https://sprout.chelseakr.com` through the zero-server TypeScript port (one
   stateless corpus question, claim chain, evaluation evidence, and docs;
-  household/photo/reminder workflows excluded per ADR 0014), structural a11y check,
+  household/photo/reminder workflows excluded per ADR 0015), structural a11y check,
   structured PII-free logging, the **ACR**
   (`docs/accessibility/ACR.md`, VPAT 2.5 Rev 508) and a dedicated **OWASP-LLM red-team report**
   (`docs/audits/red-team-2026-06-22.md`, LLM01–LLM10:2025 coverage table, 0 open critical

@@ -1,4 +1,4 @@
-# ADR 0014: The public web interface is a reference and assurance surface
+# ADR 0015: The public web interface is a reference and assurance surface
 
 - Status: accepted
 - Date: 2026-07-16
