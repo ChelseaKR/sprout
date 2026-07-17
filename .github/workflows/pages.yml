@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false # never cancel an in-flight deploy (CI-CD-STANDARD §8b)
 
 jobs:
   build-and-deploy:
@@ -24,12 +24,15 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+      # No caching in this deploy job: it holds pages: write + id-token: write, and a
+      # poisoned/stale cache is the standard's canonical cache-poisoning exposure for a
+      # credentialed deploy job (CI-CD-STANDARD §8c, CICD-24) — same reasoning as release.yml.
       - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: web-static/package-lock.json
       - name: Install documentation dependencies
         run: uv sync --frozen --group docs
       - name: Build the deterministic corpus index
