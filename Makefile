@@ -3,7 +3,8 @@ PY := uv run
 CONFIG ?= config/sprout.yaml
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        smoke a11y claims calibrate freshness audits docs workflow-lint ci-parity-check demo verify clean
+        smoke a11y claims calibrate freshness audits docs workflow-lint ci-parity-check demo \
+        verify clean web-static-bundle web-static-fixtures web-static-test web-static-build
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -75,9 +76,22 @@ ci-parity-check: ## Mechanically diff make verify's commands against the require
 demo: ingest ## Reproduce a short scripted session
 	$(PY) sprout demo --config $(CONFIG)
 
-verify: lint type test security eval smoke a11y claims calibrate docs workflow-lint ci-parity-check ## Full local mirror of the CI gate set
+web-static-bundle: ingest ## Export index.json + config.json for the TS port (EXP-08)
+	$(PY) python scripts/export_web_bundle.py --config $(CONFIG)
+
+web-static-fixtures: ingest ## Regenerate the Python-side cross-language conformance fixtures
+	$(PY) python scripts/generate_conformance_fixtures.py
+
+web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conformance test (128 eval-suite cases)
+	cd web-static && npm ci && npm test
+
+web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
+	cd web-static && npm ci && npm run build:site
+
+verify: lint type test security eval smoke a11y claims calibrate docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts
 	rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov build dist *.egg-info \
-	       var/index.json site
+	       var/index.json site web-static/dist web-static/public/data web-static/public/assets \
+	       web-static/public/styles.css web-static/test/fixtures web-static/node_modules
