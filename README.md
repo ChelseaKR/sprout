@@ -40,7 +40,7 @@ sent, saved, or logged.
   device — offline, opt-in, nothing uploaded. Reminders are intentionally absent from the
   public web reference because household tasks belong in Family Greenhouse; see
   [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md) and
-  [ADR-0014](docs/adr/0014-web-is-a-reference-and-assurance-surface.md).
+  [ADR-0015](docs/adr/0015-web-is-a-reference-and-assurance-surface.md).
 
 ### The four hard rules (enforced, not aspirational)
 
