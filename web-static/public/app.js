@@ -1,11 +1,12 @@
-// Thin UI glue over the TypeScript pipeline (compiled to ./assets/*.js by `npm run
-// build:site`). No framework, matching the framework-free ethos of `web/dist/app.js` —
-// this file only wires DOM events to `Assistant.answer()` and renders the result.
-import { loadAssistant, answerText, answerDisplayText, answerCitations } from "./assets/index.js";
+// Thin UI glue over the deterministic TypeScript pipeline. The only requests this
+// page makes are for same-origin, static corpus assets; questions never leave the tab.
+import { loadAssistant, answerCitations } from "./assets/index.js";
 
 const loadStatus = document.getElementById("load-status");
 const askForm = document.getElementById("ask-form");
-const examplesSection = document.getElementById("examples-section");
+const examples = document.getElementById("examples");
+const evidencePanel = document.querySelector(".evidence-panel");
+const answerHeading = document.getElementById("answer-h");
 const qInput = document.getElementById("q");
 const statusEl = document.getElementById("status");
 const answerEl = document.getElementById("answer");
@@ -19,84 +20,117 @@ let assistant = null;
 async function init() {
   try {
     assistant = await loadAssistant("./data/");
-    loadStatus.textContent = "";
     loadStatus.hidden = true;
     askForm.hidden = false;
-    examplesSection.hidden = false;
-    qInput.focus();
+    examples.hidden = false;
+    evidencePanel.setAttribute("aria-busy", "false");
+    answerHeading.textContent = "Evidence appears here";
+    statusEl.textContent =
+      "Ask a question to see the supported sentences, citations, confidence, and safety routing.";
   } catch (err) {
+    evidencePanel.setAttribute("aria-busy", "false");
+    answerHeading.textContent = "Corpus unavailable";
+    statusEl.textContent = "The local reference data could not be prepared.";
     loadStatus.textContent =
-      "Could not load the corpus index (data/index.json, data/config.json). " +
-      "If you're developing locally, run `make web-static-bundle` first. " +
+      "Could not load the cited corpus. Try reloading this page. " +
       String(err && err.message ? err.message : err);
   }
 }
 
 function selectedLanguage() {
   const checked = askForm.querySelector('input[name="lang"]:checked');
-  const value = checked ? checked.value : "";
-  return value === "" ? null : value;
+  return checked?.value === "es" ? "es" : "en";
+}
+
+function resetOutput() {
+  answerEl.replaceChildren();
+  citationsEl.replaceChildren();
+  safetyEl.hidden = true;
+  safetyEl.textContent = "";
+  sourcesWrap.hidden = true;
+  metaEl.textContent = "";
+}
+
+function renderCitation(citation) {
+  const text = `${citation.title} — ${citation.source} (as of ${citation.fetch_date})`;
+  if (citation.url?.startsWith("http")) {
+    const link = document.createElement("a");
+    link.href = citation.url;
+    link.textContent = text;
+    link.rel = "noreferrer";
+    return link;
+  }
+  return document.createTextNode(text);
 }
 
 function render(question) {
-  const language = selectedLanguage();
-  const answer = assistant.answer(question, language);
+  if (!question) return;
 
-  statusEl.textContent = answer.refused ? "No cited answer found." : "Answered.";
-  answerEl.textContent = answerDisplayText(answer);
+  evidencePanel.setAttribute("aria-busy", "true");
+  resetOutput();
+  const answer = assistant.answer(question, selectedLanguage());
+
+  if (answer.refused) {
+    answerHeading.textContent = "Honest refusal";
+    statusEl.textContent = "The corpus did not support an answer.";
+    const refusal = document.createElement("p");
+    refusal.textContent = answer.refusal_text ?? "The cited corpus cannot support this answer.";
+    answerEl.appendChild(refusal);
+  } else {
+    answerHeading.textContent = "Verified answer";
+    statusEl.textContent = "Every rendered sentence passed the citation guard.";
+    for (const sentence of answer.sentences) {
+      const paragraph = document.createElement("p");
+      paragraph.append(document.createTextNode(`${sentence.text} `));
+      const marker = document.createElement("span");
+      marker.className = "cite-marker";
+      marker.append("[");
+      marker.append(renderCitation(sentence.citation));
+      marker.append("]");
+      paragraph.append(marker);
+      answerEl.appendChild(paragraph);
+    }
+  }
 
   if (answer.safety_notice) {
     safetyEl.textContent = answer.safety_notice;
     safetyEl.hidden = false;
-  } else {
-    safetyEl.hidden = true;
-    safetyEl.textContent = "";
   }
 
   const citations = answerCitations(answer);
-  citationsEl.innerHTML = "";
-  if (citations.length > 0) {
-    for (const c of citations) {
-      const li = document.createElement("li");
-      li.textContent = `${c.title} — ${c.source} (as of ${c.fetch_date})`;
-      citationsEl.appendChild(li);
-    }
-    sourcesWrap.hidden = false;
-  } else {
-    sourcesWrap.hidden = true;
+  for (const citation of citations) {
+    const item = document.createElement("li");
+    item.append(renderCitation(citation));
+    citationsEl.appendChild(item);
   }
+  sourcesWrap.hidden = citations.length === 0;
 
-  const bits = [];
-  if (answer.as_of) {
-    bits.push(`Based on references as of ${answer.as_of}.`);
-  }
-  bits.push(`[confidence ${answer.confidence.toFixed(2)}${answer.low_confidence ? " · low" : ""}]`);
-  bits.push(answer.disclosure);
-  metaEl.textContent = bits.join(" ");
-
-  // `answerText` is available for programmatic/debug use (devtools console) even though
-  // the UI renders `answerDisplayText`, which also includes the safety notice.
-  void answerText;
+  const confidence = `${Math.round(answer.confidence * 100)}% confidence${
+    answer.low_confidence ? " · low" : ""
+  }`;
+  const references = answer.as_of ? `References current through ${answer.as_of}` : "No supporting reference";
+  metaEl.textContent = `${confidence} · ${references} · ${answer.disclosure}`;
+  evidencePanel.setAttribute("aria-busy", "false");
 }
 
-askForm.addEventListener("submit", (ev) => {
-  ev.preventDefault();
-  if (!assistant) return;
-  render(qInput.value.trim());
+askForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (assistant) render(qInput.value.trim());
 });
 
-document.getElementById("examples").addEventListener("click", (ev) => {
-  const btn = ev.target.closest("button[data-q]");
-  if (!btn || !assistant) return;
-  qInput.value = btn.dataset.q;
-  render(btn.dataset.q);
+examples.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-q]");
+  if (!button || !assistant) return;
+  const language = askForm.querySelector(`input[name="lang"][value="${button.dataset.lang}"]`);
+  if (language) language.checked = true;
+  qInput.value = button.dataset.q;
+  render(button.dataset.q);
 });
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js").catch(() => {
-      // Installability is a progressive enhancement; a registration failure (e.g. this
-      // page served over plain http in local dev) must never block asking a question.
+      // Offline support is progressive enhancement and never blocks the reference UI.
     });
   });
 }

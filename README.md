@@ -13,6 +13,10 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 [![CI](https://github.com/ChelseaKR/sprout/actions/workflows/ci.yml/badge.svg)](https://github.com/ChelseaKR/sprout/actions/workflows/ci.yml)
 &nbsp;Python ≥3.12 · offline by default · WCAG 2.2 AA
 
+**Live reference:** [sprout.chelseakr.com](https://sprout.chelseakr.com) — the
+deterministic cited-answer pipeline runs entirely in the browser; questions are not
+sent, saved, or logged.
+
 ---
 
 ## What it does

@@ -9,6 +9,7 @@ import type { AnswerSentence, RetrievedChunk } from "./models.js";
 import {
   containsPhrase,
   coverage,
+  hasAntonymConflict,
   hasNegation,
   normalizeText,
   stripAccents,
@@ -90,9 +91,18 @@ export function redactPii(text: string): string {
 
 // --- output guards ---------------------------------------------------------------
 
-/** Mirrors `_fold`: lower-case, collapse space, fold accents and hyphens. */
+const HOMOGLYPHS: Readonly<Record<string, string>> = {
+  "\u0430": "a",
+  "\u0435": "e",
+  "\u043e": "o",
+};
+
+/** Mirrors `_fold`: lower-case, collapse space, fold accents, hyphens, and lookalikes. */
 function fold(text: string): string {
-  return stripAccents(normalizeText(text)).replace(/-/g, " ");
+  return [...stripAccents(normalizeText(text))]
+    .map((character) => HOMOGLYPHS[character] ?? character)
+    .join("")
+    .replace(/-/g, " ");
 }
 
 // Toxicity/harm terms whose negation amounts to a safety certification (EN + ES, folded).
@@ -143,6 +153,9 @@ function supportedBy(sentence: string, chunkText: string, supportOverlap: number
     return false;
   }
   if (hasNegation(sentence) !== hasNegation(chunkText)) {
+    return false;
+  }
+  if (hasAntonymConflict(sentence, chunkText)) {
     return false;
   }
   return coverage(sentence, chunkText) >= supportOverlap;

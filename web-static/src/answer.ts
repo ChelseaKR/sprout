@@ -55,8 +55,12 @@ export class Assistant {
     const safety = isSafetyQuery(query, lang, this.config.guards);
     const retrieved = this.retriever.retrieve(query);
 
+    if (safety && this.retriever.namesUncoveredSpecies(query)) {
+      return this.refuse(query, lang, safety, "species_not_covered", false, 0.0, retrieved);
+    }
+
     if (!this.retriever.hasGrounding(query, retrieved)) {
-      return this.refuse(query, lang, safety, "out_of_scope", false);
+      return this.refuse(query, lang, safety, "out_of_scope", false, 0.0, retrieved);
     }
 
     const candidates = this.generator.generate(query, retrieved, this.config.generation.max_sentences);
@@ -64,12 +68,12 @@ export class Assistant {
     sentences = safetyFilter(sentences, lang, this.config.guards);
 
     if (sentences.length === 0) {
-      return this.refuse(query, lang, safety, "no_supported_sentences", false);
+      return this.refuse(query, lang, safety, "no_supported_sentences", false, 0.0, retrieved);
     }
 
     const confidence = scoreConfidence(retrieved, sentences.length);
     if (shouldAbstain(confidence, this.config.confidence)) {
-      return this.refuse(query, lang, safety, "low_confidence", true, confidence);
+      return this.refuse(query, lang, safety, "low_confidence", true, confidence, retrieved);
     }
 
     return this.render(query, lang, safety, sentences, retrieved, confidence);
@@ -116,7 +120,10 @@ export class Assistant {
     reason: string,
     abstained: boolean,
     confidence = 0.0,
+    retrieved: readonly RetrievedChunk[] = [],
   ): Answer {
+    const toxicityCited = retrieved.some((rc) => rc.chunk.topic === "toxicity");
+    const route = safety || toxicityCited;
     return {
       question: query,
       language: lang,
@@ -125,8 +132,8 @@ export class Assistant {
       refused: true,
       refusal_reason: reason,
       refusal_text: refusalFor(this.config, lang),
-      is_safety_query: safety,
-      safety_notice: safety ? safetyDirectiveFor(this.config, lang) : null,
+      is_safety_query: route,
+      safety_notice: route ? safetyDirectiveFor(this.config, lang) : null,
       confidence: round4(confidence),
       low_confidence: true,
       abstained,

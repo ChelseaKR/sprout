@@ -28,6 +28,7 @@ eval/golden.yaml.sha256
 node_modules/
 web-static/public/data/
 web-static/public/assets/
+web-static/public/styles.css
 web-static/test/fixtures/
 
 # Docs site build output

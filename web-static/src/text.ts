@@ -35,7 +35,7 @@ const STOPWORDS: ReadonlySet<string> = new Set([
 // only, for the same fold-before-lookup reason as `STOPWORDS` above).
 const NEGATIONS: ReadonlySet<string> = new Set([
   "no", "not", "never", "cannot", "cant", "without", "none", "neither", "nor", "nunca",
-  "ni", "sin", "tampoco", "jamas", "nada", "ningun", "ninguna", "noun",
+  "ni", "sin", "tampoco", "jamas", "nada", "ningun", "ninguna", "non",
 ]);
 
 // Mirrors Python's `r"[0-9]+(?:\.[0-9]+)?|[^\W\d_]+"` under `re.UNICODE` (the Python 3
@@ -54,10 +54,15 @@ export function stripAccents(token: string): string {
   return token.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
 }
 
+/** NFKC-normalize and remove invisible Unicode format characters. Mirrors `_strip_zero_width`. */
+function stripZeroWidth(text: string): string {
+  return text.normalize("NFKC").replace(/\p{Cf}/gu, "");
+}
+
 /** Lower-cased, accent-folded word/number tokens, in document order. */
 export function tokenize(text: string): string[] {
   const out: string[] = [];
-  for (const match of text.matchAll(TOKEN_RE)) {
+  for (const match of stripZeroWidth(text).matchAll(TOKEN_RE)) {
     out.push(stripAccents(match[0].toLowerCase()));
   }
   return out;
@@ -120,6 +125,44 @@ export function hasNegation(text: string): boolean {
     return true;
   }
   return tokenize(text).some((tok) => NEGATIONS.has(tok));
+}
+
+// Domain-specific safety antonyms. Each pair mirrors `_ANTONYM_PAIRS` in text.py.
+const ANTONYM_PAIRS: ReadonlyArray<ReadonlySet<string>> = [
+  ["safe", "toxic"],
+  ["safe", "poisonous"],
+  ["nontoxic", "toxic"],
+  ["harmless", "toxic"],
+  ["harmless", "poisonous"],
+  ["harmless", "dangerous"],
+  ["edible", "toxic"],
+  ["edible", "poisonous"],
+  ["seguro", "toxico"],
+  ["segura", "toxica"],
+  ["seguros", "toxicos"],
+  ["seguras", "toxicas"],
+  ["seguro", "venenoso"],
+  ["segura", "venenosa"],
+  ["inofensivo", "toxico"],
+  ["inofensiva", "toxica"],
+  ["comestible", "venenoso"],
+  ["comestible", "venenosa"],
+  ["comestible", "toxico"],
+  ["comestible", "toxica"],
+].map((pair) => new Set(pair));
+
+/** True when the texts assert opposite sides of a known safety antonym pair. */
+export function hasAntonymConflict(a: string, b: string): boolean {
+  const tokensA = new Set(tokenize(a));
+  const tokensB = new Set(tokenize(b));
+  for (const pair of ANTONYM_PAIRS) {
+    const sideA = [...pair].filter((token) => tokensA.has(token));
+    const sideB = [...pair].filter((token) => tokensB.has(token));
+    if (sideA.length > 0 && sideB.length > 0 && !sideA.some((token) => sideB.includes(token))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -186,7 +229,7 @@ export function jaccard(a: string, b: string): number {
 
 /** Collapse whitespace and lower-case for verbatim-containment checks. */
 export function normalizeText(text: string): string {
-  return text.replace(/\s+/g, " ").trim().toLowerCase();
+  return stripZeroWidth(text).replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 /** Case-insensitive, whitespace-insensitive substring test. */

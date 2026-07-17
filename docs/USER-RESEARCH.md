@@ -135,7 +135,7 @@ Each card compresses the simulated interview to five lines: **Goal · Values tod
 | B2 | **Ruth** — cooperative-extension horticulture SME | Keep Safe | Be the trustworthy, cited source the corpus is built from | No low-friction way to contribute or correct a cited passage |
 | C1 | **Sam** — eval / QA engineer running the harness | Build & Evaluate | Wire `make eval` into CI; a green gate that *means* something | Corpus + 120-case suite + baseline not committed yet (Phase 1/2) |
 | C2 | **Dr. Lindqvist** — RAG-eval researcher | Build & Evaluate | Compare Sprout's method to Ragas/DeepEval/ALCE-style suites | "100% grounded by construction" needs an honest measured comparison |
-| D1 | **Grace** — blind screen-reader user & a11y auditor | Assure & Audit | Verify the WCAG 2.2 AA claim is *real*, not a badge | UI not deployed behind a URL; ACR + SR walkthrough not committed |
+| D1 | **Grace** — blind screen-reader user & a11y auditor | Assure & Audit | Verify the WCAG 2.2 AA claim is *real*, not a badge | Deployed UI and ACR exist; lived screen-reader walkthrough is not committed |
 | E1 | **Chelsea** — owner / maintainer | Operate | Ship each phase with every gate green; keep the docs honest | Status drift: photo-ID is shipped but still listed as a *non-goal* |
 
 ---
@@ -293,11 +293,11 @@ Each card compresses the simulated interview to five lines: **Goal · Values tod
   reliability diagram has an equivalent data table; severity/provenance never depend
   on color alone; live regions announce streamed tokens without stealing focus; the
   WCAG 2.2 additions incl. 2.5.8 Target Size 24×24 are covered.
-- **Gets stuck.** The reference surface isn't deployed behind a real URL yet, and a
-  committed screen-reader walkthrough remains outstanding. Photo and reminder workflows
+- **Gets stuck.** The reference surface is deployed, but a committed screen-reader
+  walkthrough remains outstanding. Photo and reminder workflows
   no longer appear in this public surface (ADR-0014); automated checks still are not lived
   experience for the streaming question and evidence path that remains.
-- **Wants next.** The deployed reference surface; a scripted screen-reader walkthrough
+- **Wants next.** A scripted screen-reader walkthrough
   artifact; an explicit `aria-live="polite"` audit of streaming answer and refusal paths.
 - **Adopts if** she can personally complete every task with assistive tech.
   **Walks if** an automated pass green-lights a chat she can't actually use.

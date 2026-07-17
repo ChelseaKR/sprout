@@ -16,6 +16,35 @@ const GENERIC = new Set([
   "leaf", "leaves", "care", "house", "houseplant", "indoor",
 ]);
 
+// Common safety-relevant houseplants that have no passage in the bundled corpus.
+// This is deliberately the same small, auditable gazetteer as Python's retriever.
+const UNCOVERED_SPECIES_GAZETTEER: ReadonlySet<string> = new Set([
+  "dieffenbachia",
+  "dumb cane",
+  "sago palm",
+  "azalea",
+  "oleander",
+  "lily of the valley",
+  "amaryllis",
+  "caladium",
+  "croton",
+  "kalanchoe",
+  "cyclamen",
+  "foxglove",
+  "elephant ear",
+  "asparagus fern",
+  "diefenbaquia",
+  "palma sago",
+  "adelfa",
+  "lirio de los valles",
+  "amarilis",
+  "caladio",
+  "ciclamen",
+  "dedalera",
+  "oreja de elefante",
+  "esparraguera",
+]);
+
 /** Language-invariant species key: 'pothos.es.md' and 'pothos.md' -> 'pothos'. Mirrors `_canonical_slug`. */
 function canonicalSlug(source: string): string {
   const base = source.split("/").pop() ?? source;
@@ -68,6 +97,18 @@ export class Retriever {
       }
     }
     return named;
+  }
+
+  /** True when a safety question names a gazetteer species absent from the corpus. */
+  namesUncoveredSpecies(query: string): boolean {
+    if (this.namedSpecies(query).size > 0) {
+      return false;
+    }
+    const queryTokens = tokenSet(query);
+    return [...UNCOVERED_SPECIES_GAZETTEER].some((name) => {
+      const nameTokens = tokenSet(name);
+      return nameTokens.size > 0 && [...nameTokens].every((token) => queryTokens.has(token));
+    });
   }
 
   private candidates(query: string): Chunk[] {

@@ -9,8 +9,11 @@ import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
+const repoRoot = path.resolve(root, "..");
 const srcDir = path.join(root, "dist", "src");
 const destDir = path.join(root, "public", "assets");
+const sharedStyles = path.join(repoRoot, "web", "dist", "styles.css");
+const publicStyles = path.join(root, "public", "styles.css");
 
 mkdirSync(destDir, { recursive: true });
 
@@ -21,4 +24,5 @@ if (files.length === 0) {
 for (const file of files) {
   copyFileSync(path.join(srcDir, file), path.join(destDir, file));
 }
-console.log(`Copied ${files.length} compiled module(s) to ${destDir}`);
+copyFileSync(sharedStyles, publicStyles);
+console.log(`Copied ${files.length} compiled module(s) and the shared reference stylesheet`);

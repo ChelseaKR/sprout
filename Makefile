@@ -94,4 +94,4 @@ verify: lint type test security eval smoke a11y claims calibrate docs workflow-l
 clean: ## Remove caches, build, and runtime artifacts
 	rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov build dist *.egg-info \
 	       var/index.json site web-static/dist web-static/public/data web-static/public/assets \
-	       web-static/test/fixtures web-static/node_modules
+	       web-static/public/styles.css web-static/test/fixtures web-static/node_modules

@@ -9,11 +9,10 @@
 > surfaces something the existing docs don't cover, it is tagged **[NET-NEW]**.
 >
 > **Status context.** Sprout is `In build` (Phase 3). The *engine* (pipeline, five
-> eval suites, guards, fail-closed loader, providers) exists; much of the *committed
-> content* (synthetic corpus, 120+ cases, baseline scoreboard, model card, ACR,
-> red-team report, deployed UI) is outstanding per [`docs/ROADMAP.md`](ROADMAP.md).
-> Several top items below are therefore "finish what's specced," reframed and
-> re-prioritized by who is hurt when it's missing.
+> eval suites, guards, fail-closed loader, providers) exists. The synthetic corpus,
+> 120+ cases, baseline scoreboard, model card, ACR, red-team report, and deployed UI
+> are now committed; remaining gaps are tracked in [`docs/ROADMAP.md`](ROADMAP.md).
+> Several items below are retained as the research record that drove that work.
 >
 > **Synthetic-data caveat.** Personas are synthetic; this backlog is a hypothesis set
 > to validate, not validated demand. See the warning in [`USER-RESEARCH.md`](USER-RESEARCH.md).
@@ -46,7 +45,7 @@ Priority: **P0** now · **P1** next · **P2** soon. Effort: **S** ≈ an afterno
 | R1 | **Author & commit the synthetic CC0 corpus + dated manifest**, prioritizing (a) the top beginner houseplants and (b) the highest-call-volume *toxic* plants (lilies, sago palm, pothos, philodendron, azalea, tulip) so the safety suite has real toxicity refs to cite | A1,A2,A4,B1,B2 | P0 | L | EV1,EV2,EV4 · **[corroborates ROADMAP Phase 1]** |
 | R2 | **Author the 120+ YAML cases + commit the baseline scoreboard** (mediocre numbers shown, not hidden); wire the CI smoke suite of corpus-derived questions | C1,C2,E1 | P0 | L | EV6 · **[corroborates ROADMAP Phase 2]** |
 | R3 | **Commit the model card + data card** stating limits plainly: corpus coverage gaps, extractive-but-context-incomplete risk, and "non-toxic ≠ safe" | E1,B1,C2 | P0 | M | EV1,EV3 · **[corroborates ROADMAP Phase 3]** |
-| R4 | **Deploy the accessible UI behind a real URL** with the reference-implementation banner **and commit the ACR** (VPAT 2.5 Rev 508) | D1,A4,A5(→D1) | P1 | M | EV10 · **[corroborates ROADMAP Phase 3]** |
+| R4 | **Deploy the accessible UI behind a real URL** with the reference-implementation banner **and commit the ACR** (VPAT 2.5 Rev 508) | D1,A4,A5(→D1) | P1 | M | EV10 · **[corroborates ROADMAP Phase 3] · [DONE]** |
 | R5 | **Commit the judge-calibration probe set + κ** and the **OWASP-LLM red-team report** | C1,C2 | P1 | M | EV6,EV7 · **[corroborates ROADMAP Phase 2/3]** |
 | R6 | **Reconcile the photo-ID status drift**: remove/replace the "Not a plant-ID-from-photo tool" non-goal in [`RESPONSIBLE-TECH-AUDITS.md`](RESPONSIBLE-TECH-AUDITS.md) §A, and add a **photo-ID + reminders privacy/DPIA row** (Pl@ntNet egress, image-not-retained, `var/reminders.json` local state) to §C | E1,A3 | P1 | S | EV9 · **[NET-NEW]** (doc-consistency gap; complements [ADR-0010](adr/0010-photo-plant-id-as-selector-not-fact-source.md)/[ADR-0011](adr/0011-local-first-reminder-scheduler.md)) |
 | R7 | **Add an explicit "non-toxic ≠ safe" disclosure** for low-toxicity plants (mild-GI-upset cases) so the never-assert-safe rule covers the *subtle* case, EN+ES; add the phrase to the safety deny-list review | A2,B1,B2 | P1 | S | EV2,EV3 · **[NET-NEW]** |
@@ -82,7 +81,7 @@ C1 at once.
 
 **Next (P1 — make safety loud and prove the claims).** R7 + E9 + E2 (non-toxic≠safe
 disclosure, escalation card, urgency-forward routing) harden the keystone control with
-framing the research demands; R4 + R5 (deploy UI + ACR, judge-κ + red-team) turn three
+framing the research demands; R4 + R5 (deployed UI + ACR, judge-κ + red-team) turn three
 self-claims into artifacts; R6 + R8 reconcile the photo-ID docs and surface its
 uncertainty; E1 adds the toxicity-coverage slice.
 
