@@ -37,7 +37,7 @@ the public evaluation harness as the headline artifact.
   interactive assurance UI at the site root, preserves every MkDocs route, and runs a
   structural accessibility check on the assembled artifact. Questions execute entirely
   in the browser and are never sent, saved, or logged; household state remains the
-  Family Greenhouse product boundary described in ADR-0014.
+  Family Greenhouse product boundary described in ADR-0015.
 - **Family Greenhouse read-only integration:** HMAC-authenticated, replay-bounded API contract
   accepting only minimized household selectors, with strict provenance, PII sentinel tests,
   persisted citations, a scoped ASVS L2 review, and `sprout.chelseakr.com` custom-domain support.
