@@ -5,9 +5,10 @@ name: codeql
 # ran when no such workflow existed.
 
 on:
-  push:
-    branches: [main]
+  # PRs into main + weekly schedule (CI-CD-STANDARD §11e); the redundant push: main
+  # trigger was dropped 2026-07-17 — the PR run already covers every merged commit.
   pull_request:
+    branches: [main]
   schedule:
     - cron: "17 10 * * 1"
   workflow_dispatch: {}
