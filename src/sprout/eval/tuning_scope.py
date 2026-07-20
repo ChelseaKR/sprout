@@ -60,9 +60,13 @@ _CONFIG_MODULE_PATH = "src/sprout/config.py"
 # consult these classes (transport-level knobs consumed only by ``sprout.server`` /
 # ``sprout.cli``). A ``config.py`` delta confined to these class bodies therefore cannot
 # change any behavior the eval suites measure. The invariant that keeps this exemption
-# sound — no eval-visible module ever grows a read of ``config.server`` — is pinned by
+# sound — no eval-visible module ever grows a read of ``config.server`` /
+# ``config.observability`` — is pinned by
 # ``tests/test_tuning_scope.py::test_eval_visible_modules_never_read_exempt_config``.
-_EVAL_INVISIBLE_CONFIG_CLASSES = frozenset({"ServerConfig"})
+_EVAL_INVISIBLE_CONFIG_CLASSES = frozenset({"ServerConfig", "ObservabilityConfig"})
+# The same classes' top-level keys in ``config/sprout.yaml``; a YAML delta confined to
+# these subtrees is operational for the same reason (and with the same pinned invariant).
+_EVAL_INVISIBLE_YAML_KEYS = frozenset({"server", "observability"})
 _PROVIDER_FACTORY_PATH = "src/sprout/providers/__init__.py"
 _PROVIDER_LIFECYCLE_PATH = "src/sprout/provider_lifecycle.py"
 # One-time bootstrap: origin/main predates the operational lifecycle seam, so the exact
@@ -190,9 +194,19 @@ def _operational_only_change(
         return False
     if path in _SEMANTIC_YAML_PATHS:
         try:
-            return bool(yaml.safe_load(base_source) == yaml.safe_load(head_source))
+            base_data, head_data = yaml.safe_load(base_source), yaml.safe_load(head_source)
         except yaml.YAMLError:
             return False
+        if base_data == head_data:
+            return True
+        # A delta confined to eval-invisible top-level keys (server/observability) is
+        # operational: drop those subtrees from both sides and require equality on
+        # everything else, mirroring the config-class exemption above.
+        if isinstance(base_data, dict) and isinstance(head_data, dict):
+            base_rest = {k: v for k, v in base_data.items() if k not in _EVAL_INVISIBLE_YAML_KEYS}
+            head_rest = {k: v for k, v in head_data.items() if k not in _EVAL_INVISIBLE_YAML_KEYS}
+            return base_rest == head_rest
+        return False
     fingerprint = _FINGERPRINT_BY_PATH.get(
         path, _python_fingerprint if path.endswith(".py") else None
     )

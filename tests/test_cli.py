@@ -201,6 +201,7 @@ def test_freshness_check(tmp_path: Path) -> None:
     linked = runner.invoke(app, ["freshness", "--config", str(stale_cfg), "--check-links"])
     assert linked.exit_code == 1  # the stale finding alone still fails the gate offline
 
+
 def test_slo_check(tmp_path: Path) -> None:
     ok = runner.invoke(app, ["slo-check"])
     assert ok.exit_code == 0, ok.output
