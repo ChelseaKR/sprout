@@ -94,6 +94,24 @@ class AnswerSentence(_Frozen):
     provenance: Provenance = "corpus"
 
 
+class ConfidenceEvidence(_Frozen):
+    """Retrieval evidence for one question, captured *without* applying the confidence
+    gate — the (best cosine score, margin over runner-up) pair `confidence.py` maps to a
+    [0, 1] score, plus whether a grounded, guard-surviving answer actually resulted.
+
+    Collected by :meth:`sprout.answer.Assistant.confidence_signal` for `sprout
+    fit-confidence`, which needs this evidence independent of whatever threshold is
+    *currently* configured — using the live threshold to decide what counts as training
+    signal for a new one would be circular.
+    """
+
+    query: str
+    best: float
+    margin: float
+    grounded: bool
+    text: str
+
+
 class Answer(_Frozen):
     """The final, guard-checked answer object returned to callers and the UI."""
 

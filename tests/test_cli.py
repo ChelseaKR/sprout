@@ -242,6 +242,112 @@ def test_remind_lifecycle(tmp_path: Path) -> None:
     assert missing.exit_code == 1
 
 
+_TRAIN_CASES = {
+    "cases": [
+        {
+            "id": "tr1",
+            "question": "why are my monstera leaves yellowing?",
+            "expected_behavior": "answer",
+            "expected_facts": ["overwatering"],
+            "provenance": {
+                "source": "synthetic-train",
+                "license": "CC0-1.0",
+                "added": "2026-07-08",
+            },
+        },
+        {
+            "id": "tr2",
+            "question": "how do I patch a flat bicycle tire?",
+            "should_refuse": True,
+            "provenance": {
+                "source": "synthetic-train",
+                "license": "CC0-1.0",
+                "added": "2026-07-08",
+            },
+        },
+    ]
+}
+
+
+def test_fit_confidence_cmd_writes_fit_block(tmp_path: Path) -> None:
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    train = tmp_path / "train.yaml"
+    train.write_text(yaml.safe_dump(_TRAIN_CASES), encoding="utf-8")
+
+    result = runner.invoke(app, ["fit-confidence", "--train", str(train), "--config", str(cfg)])
+    assert result.exit_code == 0, result.stdout
+    assert "Fitted midpoint=" in result.stdout
+
+    written = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+    fit = written["confidence"]["fit"]
+    assert fit["n_items"] == 2
+    assert fit["train_dataset_hash"]
+
+    # `sprout eval` still runs clean immediately after a fresh fit (retrieval unchanged).
+    out = tmp_path / "audits"
+    eval_result = runner.invoke(
+        app,
+        [
+            "eval",
+            "--config",
+            str(cfg),
+            "--suites",
+            "groundedness,safety,refusal",
+            "--suite-dir",
+            str(tmp_path / "suites"),
+            "--out",
+            str(out),
+            "--update-baseline",
+        ],
+    )
+    assert eval_result.exit_code == 0, eval_result.stdout
+
+
+def test_fit_confidence_cmd_missing_config_fails(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["fit-confidence", "--config", str(tmp_path / "nope.yaml")])
+    assert result.exit_code == 2
+    assert "config not found" in result.output
+
+
+def test_eval_fails_closed_on_stale_confidence_fit(tmp_path: Path) -> None:
+    """A `confidence.fit.retrieval_config_hash` that no longer matches the live
+    retrieval config must fail `sprout eval` before it even records the engine (FIX-08 /
+    ADR-0016's drift check)."""
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    raw = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+    raw["confidence"] = {
+        "fit": {
+            "midpoint": 0.3,
+            "steepness": 6.0,
+            "margin_bonus": 0.05,
+            "train_dataset_hash": "irrelevant",
+            "train_path": "eval/train/calibration_train.yaml",
+            "retrieval_config_hash": "stale-does-not-match-live-retrieval-config",
+            "n_items": 24,
+            "fitted_at": "2026-07-08",
+        }
+    }
+    cfg.write_text(yaml.safe_dump(raw), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "--config",
+            str(cfg),
+            "--suite-dir",
+            str(tmp_path / "suites"),
+            "--out",
+            str(tmp_path / "audits"),
+            "--update-baseline",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "confidence.fit is stale" in result.output
+
+
 def test_eval_end_to_end(tmp_path: Path) -> None:
     cfg = _project(tmp_path)
     assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0

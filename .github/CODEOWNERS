@@ -4,9 +4,11 @@
 # Safety-critical guardrails — changes require an ADR and owner review.
 /src/sprout/guards.py           @ChelseaKR
 /src/sprout/confidence.py       @ChelseaKR
+/src/sprout/fit_confidence.py   @ChelseaKR
 /src/sprout/eval/               @ChelseaKR
 /tests/test_rag.py              @ChelseaKR
 /tests/test_eval_suites.py      @ChelseaKR
+/tests/test_fit_confidence.py   @ChelseaKR
 
 # CI, supply chain, and governance.
 /.github/                       @ChelseaKR

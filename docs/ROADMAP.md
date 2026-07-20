@@ -286,9 +286,15 @@ a real URL.*
   module is pinned to one reviewed bootstrap digest; all later lifecycle hunks are gated.
   Authorization comes from the merge-base baseline, and adversarial tests keep model, prompt,
   decoding, real-config, retrieval/guard, lifecycle-output, and unknown provider edits fail-closed.
+- Done: `sprout fit-confidence` (ADR-0016, 2026-07-08) — fits the confidence logistic on a
+  held-out train split (`eval/train/`, never `eval/suites/`) instead of hand-tuning it; wired
+  but not yet adopted as the shipped default (a real fit against the current 24-item train
+  split measures ECE 0.263, worse than the shipped 0.108 — see ADR-0016's evidence).
 - Outstanding: get a clean Promptfoo `redteam` run wired and
   promoted into the blocking `ci-gate` so the committed OWASP-LLM report is backed by a mechanical
-  check rather than only the manual, dated one (tracked in the ledger row above).
+  check rather than only the manual, dated one (tracked in the ledger row above); expand
+  `eval/train/calibration_train.yaml` and re-fit before adopting `confidence.fit` as the
+  shipped default (ADR-0016).
 
 ### Phase 4 — generalize
 *A `corpus.yaml` so any care corpus can be swapped in; "adapt this to your domain" doc.*
