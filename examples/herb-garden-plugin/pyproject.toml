@@ -13,7 +13,7 @@ dependencies = ["sprout"]
 
 # This is the whole point of the example: a package outside the sprout repo declares a
 # suite here, and `sprout eval` (or sprout.eval.suite.resolve_suites) discovers it with
-# zero changes to sprout's own source — see docs/adr/0013-frozen-plugin-api-for-sprout-eval.md.
+# zero changes to sprout's own source — see docs/adr/0019-frozen-plugin-api-for-sprout-eval.md.
 [project.entry-points."sprout.eval.suites"]
 herb-actionable-advice = "herb_garden_eval.suite:build_suite"
 

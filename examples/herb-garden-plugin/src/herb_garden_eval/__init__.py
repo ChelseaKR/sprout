@@ -2,7 +2,7 @@
 
 Nothing in this package reaches into sprout internals — it is written entirely against
 the frozen public surface documented in ``sprout.eval.__all__`` and
-``docs/adr/0013-frozen-plugin-api-for-sprout-eval.md``.
+``docs/adr/0019-frozen-plugin-api-for-sprout-eval.md``.
 """
 
 from __future__ import annotations

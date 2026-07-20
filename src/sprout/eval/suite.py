@@ -13,7 +13,7 @@ Design invariants borrowed from the portfolio's eval harness:
   ``importlib.metadata`` entry-point group (see :func:`load_entry_point_suites`) — a
   suite name collision between the built-ins/an already-loaded plugin and a newly
   discovered one is a hard error (fail-closed), never a silent overwrite. This is the
-  ADR-0013 plugin seam: an installed package can add a suite with zero fork of this repo.
+  ADR-0019 plugin seam: an installed package can add a suite with zero fork of this repo.
 """
 
 from __future__ import annotations
@@ -202,7 +202,6 @@ def load_entry_point_suites() -> list[str]:
     global _entry_points_loaded
     if _entry_points_loaded:
         return []
-    _entry_points_loaded = True
     newly_registered: list[str] = []
     for ep in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP):
         try:
@@ -225,6 +224,10 @@ def load_entry_point_suites() -> list[str]:
             )
         register(suite)
         newly_registered.append(suite.name)
+    # Only mark the scan complete after it finishes cleanly: a raising plugin must be
+    # re-scanned (and re-raise) on the next call, never silently skipped for the rest of
+    # the process lifetime.
+    _entry_points_loaded = True
     return newly_registered
 
 

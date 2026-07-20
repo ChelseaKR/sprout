@@ -178,7 +178,7 @@ the public evaluation harness as the headline artifact.
   HTML + JSON, plus JUnit and SARIF; runs are content-hashed and **byte-identical for identical
   inputs**. Fail-closed loader (`eval/dataset.py`) rejects hash mismatches, malformed cases, and
   empty suites.
-- **`sprout.eval` as a plugin-based package** (`eval/suite.py`, ADR-0013): third-party suites are
+- **`sprout.eval` as a plugin-based package** (`eval/suite.py`, ADR-0019): third-party suites are
   discovered via the `sprout.eval.suites` `importlib.metadata` entry-point group, alongside the
   five built-in suites, fail-closed on a name collision. The public plugin surface — `Dataset`,
   `Judge`, `Suite`/`EvalContext`, `SuiteResult`, `MetricDefinition`, and the registry — is frozen
