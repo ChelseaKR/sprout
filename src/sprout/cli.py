@@ -263,40 +263,50 @@ def evaluate(
     history = load_history(history_path)
     if release:
         entry = history_entry_from_result(result, release=release)
-        append_history_entry(history_path, entry)
-        history = [*history, entry]
+        append_history_entry(history_path, entry)  # idempotent per release id
+        history = load_history(history_path)
     write_reports(result, out, history=history)
     typer.echo(render_markdown(result, history))
     exit_code = result.exit_code
     baseline_path = Path(out, "eval-baseline.json")
     if update_baseline:
         baseline_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
-    elif baseline_path.exists():
-        baseline = load_run_result(baseline_path)
-        issues = diff_against_baseline(result, baseline)
-        if issues:
-            typer.echo("\nBaseline regression check FAILED:", err=True)
-            for issue in issues:
-                typer.echo(f"  - {issue}", err=True)
-            exit_code = 1
-        else:
-            typer.echo("\nBaseline regression check: no issues.")
-    else:
+    elif not _baseline_check_passes(result, baseline_path, load_run_result, diff_against_baseline):
+        exit_code = 1
+    if release and not _drift_check_passes(history, drift_k, check_drift):
+        exit_code = 1
+    raise typer.Exit(exit_code)
+
+
+def _baseline_check_passes(
+    result: Any, baseline_path: Path, load_run_result: Any, diff_against_baseline: Any
+) -> bool:
+    if not baseline_path.exists():
         typer.echo(
             f"\nNo committed baseline at {baseline_path} — skipping regression check "
             "(run `sprout eval --update-baseline` once to create it).",
             err=True,
         )
-    if release:
-        drift_issues = check_drift(history, k=drift_k)
-        if drift_issues:
-            typer.echo("\nEval trend drift check FAILED:", err=True)
-            for issue in drift_issues:
-                typer.echo(f"  - {issue}", err=True)
-            exit_code = 1
-        else:
-            typer.echo(f"\nEval trend drift check ({drift_k}-release window): no issues.")
-    raise typer.Exit(exit_code)
+        return True
+    issues = diff_against_baseline(result, load_run_result(baseline_path))
+    if issues:
+        typer.echo("\nBaseline regression check FAILED:", err=True)
+        for issue in issues:
+            typer.echo(f"  - {issue}", err=True)
+        return False
+    typer.echo("\nBaseline regression check: no issues.")
+    return True
+
+
+def _drift_check_passes(history: Any, drift_k: int, check_drift: Any) -> bool:
+    drift_issues = check_drift(history, k=drift_k)
+    if drift_issues:
+        typer.echo("\nEval trend drift check FAILED:", err=True)
+        for issue in drift_issues:
+            typer.echo(f"  - {issue}", err=True)
+        return False
+    typer.echo(f"\nEval trend drift check ({drift_k}-release window): no issues.")
+    return True
 
 
 @app.command()

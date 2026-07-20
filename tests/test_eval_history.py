@@ -218,3 +218,15 @@ def test_render_html_without_history_is_unaffected() -> None:
     result = _result(safety=0.97)
     doc = render_html(result)
     assert "Score trend across releases" not in doc
+
+
+def test_append_history_entry_is_idempotent_per_release(tmp_path: Path) -> None:
+    # Re-running a failed/repeated release build must not duplicate the tag's line and
+    # dilute the k-consecutive-releases drift window.
+    path = tmp_path / "eval-history.jsonl"
+    entry = history_entry_from_result(_result(safety=0.97), release="v1.0.0")
+    append_history_entry(path, entry)
+    append_history_entry(path, entry)
+    assert len(load_history(path)) == 1
+    append_history_entry(path, history_entry_from_result(_result(safety=0.96), release="v1.0.1"))
+    assert [e.release for e in load_history(path)] == ["v1.0.0", "v1.0.1"]
