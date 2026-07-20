@@ -20,7 +20,7 @@ without changing a single line of the `sprout` package itself:
 
 Once this package is installed alongside `sprout`, `sprout.eval.suite.resolve_suites`
 (and `sprout eval --suites all`) discovers `herb-actionable-advice` automatically — see
-`docs/adr/0013-frozen-plugin-api-for-sprout-eval.md` at the repo root for the design
+`docs/adr/0019-frozen-plugin-api-for-sprout-eval.md` at the repo root for the design
 rationale and the frozen public-API commitment this example is written against.
 
 ## What's here

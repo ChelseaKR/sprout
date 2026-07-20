@@ -1,4 +1,4 @@
-"""EXP-14 / ADR-0013: entry-point suite discovery and the frozen public API surface."""
+"""EXP-14 / ADR-0019: entry-point suite discovery and the frozen public API surface."""
 
 from __future__ import annotations
 
@@ -138,7 +138,7 @@ def test_resolve_suites_all_includes_a_discovered_plugin(monkeypatch: pytest.Mon
     assert "stub-b" in available()  # cached: the second call doesn't re-scan (or re-collide)
 
 
-# --- the frozen public API surface (ADR-0013) --------------------------------------
+# --- the frozen public API surface (ADR-0019) --------------------------------------
 def test_eval_package_exports_the_frozen_plugin_surface() -> None:
     expected = {
         "Dataset",
@@ -170,6 +170,8 @@ def test_dataset_judge_suiteresult_metricdefinition_are_frozen() -> None:
     assert Dataset.model_config.get("frozen") is True
     assert SuiteResult.model_config.get("frozen") is True
     assert MetricDefinition.model_config.get("frozen") is True
-    assert getattr(Suite, "_is_protocol", False) is True  # still a Protocol, not accidentally a class
+    assert (
+        getattr(Suite, "_is_protocol", False) is True
+    )  # still a Protocol, not accidentally a class
     judge = DeterministicJudge()
     assert isinstance(judge, Judge)  # runtime_checkable Protocol conformance

@@ -1,4 +1,4 @@
-# Authored cases for the EXP-14 worked example (ADR-0013): a second-domain corpus
+# Authored cases for the EXP-14 worked example (ADR-0019): a second-domain corpus
 # (culinary herbs) evaluated end-to-end by the unmodified sprout.eval runner, plus a
 # domain-specific `herb-actionable-advice` suite registered through the sprout.eval.suites
 # entry point (see ../src/herb_garden_eval/suite.py). As in the primary corpus's suite
@@ -18,7 +18,7 @@ cases:
     source: synthetic
     license: CC0-1.0
     added: '2026-07-08'
-    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+    note: Written for the EXP-14 worked example (ADR-0019), not the primary corpus.
 - id: herb-groundedness-mint-light
   question: What kind of light does Mint need?
   expected_behavior: answer
@@ -31,7 +31,7 @@ cases:
     source: synthetic
     license: CC0-1.0
     added: '2026-07-08'
-    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+    note: Written for the EXP-14 worked example (ADR-0019), not the primary corpus.
 - id: herb-groundedness-rosemary-watering
   question: How often should I water my Rosemary?
   expected_behavior: answer
@@ -44,7 +44,7 @@ cases:
     source: synthetic
     license: CC0-1.0
     added: '2026-07-08'
-    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+    note: Written for the EXP-14 worked example (ADR-0019), not the primary corpus.
 
 # -- refusal: an out-of-scope question outside the herb-garden corpus -------------------
 - id: herb-refusal-apple-tree-pruning
@@ -59,7 +59,7 @@ cases:
     source: synthetic
     license: CC0-1.0
     added: '2026-07-08'
-    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+    note: Written for the EXP-14 worked example (ADR-0019), not the primary corpus.
 
 # -- herb-actionable-advice: the domain-specific plugin suite (see suite.py) -------------
 - id: herb-advice-basil-yellow-leaves
@@ -75,7 +75,7 @@ cases:
     source: synthetic
     license: CC0-1.0
     added: '2026-07-08'
-    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+    note: Written for the EXP-14 worked example (ADR-0019), not the primary corpus.
 - id: herb-advice-mint-powdery-patches
   question: There are white powdery patches on my Mint leaves, what should I do?
   expected_behavior: answer
@@ -89,7 +89,7 @@ cases:
     source: synthetic
     license: CC0-1.0
     added: '2026-07-08'
-    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+    note: Written for the EXP-14 worked example (ADR-0019), not the primary corpus.
 - id: herb-advice-rosemary-browning-needles
   question: My Rosemary's needles are browning and dropping, what should I check?
   expected_behavior: answer
@@ -103,4 +103,4 @@ cases:
     source: synthetic
     license: CC0-1.0
     added: '2026-07-08'
-    note: Written for the EXP-14 worked example (ADR-0013), not the primary corpus.
+    note: Written for the EXP-14 worked example (ADR-0019), not the primary corpus.

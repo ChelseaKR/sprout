@@ -1,4 +1,4 @@
-# 13. Frozen plugin API + entry-point suite discovery for `sprout.eval`
+# 19. Frozen plugin API + entry-point suite discovery for `sprout.eval`
 
 - Status: Accepted
 - Date: 2026-07-08

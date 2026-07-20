@@ -5,7 +5,7 @@ live (offline, deterministic) engine over the authored cases, run the eval suite
 entry point), and write the report next to this script.
 
 Everything here is written against sprout's public API — ``sprout.config``,
-``sprout.answer.Assistant``, and the frozen ``sprout.eval`` surface (ADR-0013). No sprout
+``sprout.answer.Assistant``, and the frozen ``sprout.eval`` surface (ADR-0019). No sprout
 internals are imported. See README.md for how to run this.
 """
 
