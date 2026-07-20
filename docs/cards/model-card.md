@@ -337,7 +337,7 @@ case set — are authoritative in the committed report, not here.
   residual remains: lexical (bag-of-token) verification can still admit a same-plant *recombination*
   (e.g. swapping which attribute applies), bounded in practice because retrieval is species-scoped to
   one plant. An optional NLI-grade cross-encoder entailment verifier now exists behind the citation
-  guard for exactly this residual (`generation.support_verifier: nli`, cloud path only, ADR-0013) —
+  guard for exactly this residual (`generation.support_verifier: nli`, cloud path only, ADR-0018) —
   it is an *additional* gate, applied after the lexical check, that must also judge the cited chunk as
   entailing the sentence. It defaults **off**; enabling it requires a pinned, hash-verified model
   weight file (fail-closed on a hash mismatch) and is currently **EN-validated only** — off-the-shelf

@@ -1,4 +1,4 @@
-# 13. NLI-grade entailment verifier behind the citation guard (cloud path only)
+# 18. NLI-grade entailment verifier behind the citation guard (cloud path only)
 
 - Status: Accepted
 - Date: 2026-07-08

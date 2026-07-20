@@ -11,7 +11,7 @@ On the cloud (non-deterministic) generation path, ``citation_guard`` can additio
 an ``entailment_verifier`` (EXP-04, ``verifiers.py``) — a cross-encoder NLI model that must
 also agree the cited chunk entails the sentence. It is a strictly *additional* gate applied
 after the lexical check below, never a replacement for it. The offline extractive path
-never passes one, so its by-construction groundedness guarantee is unchanged (ADR-0013).
+never passes one, so its by-construction groundedness guarantee is unchanged (ADR-0018).
 """
 
 from __future__ import annotations
