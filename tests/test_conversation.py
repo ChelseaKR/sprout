@@ -222,7 +222,7 @@ def test_api_chat_stream_session_id_query_param(assistant: Assistant, config: Co
 
 
 def test_server_disables_memory_when_session_memory_zero(assistant: Assistant) -> None:
-    cfg = Config.model_validate({"server": {"session_memory": 0}})
+    cfg = Config.model_validate({"conversation": {"session_memory": 0}})
     client = TestClient(create_app(cfg, assistant=assistant))
     ambiguous = "is it toxic to cats?"
     client.post(

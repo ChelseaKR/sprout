@@ -185,7 +185,7 @@ no personal data to protect**, by design.
 | Photo bytes (photo-ID, opt-in) | *select* a candidate species to route to the corpus (ADR-0010) | **not persisted**; the offline default does no I/O; the `plantnet` provider streams the image once to the allowlisted Pl@ntNet endpoint and retains nothing | duration of the request | the process; Pl@ntNet **only if** the `plantnet` provider is enabled |
 | Care reminders (opt-in) | user-set watering/fertilizing schedule the user asked Sprout to remember (ADR-0011) | **one local JSON file** (`var/reminders.json`) on the user's own device; created lazily on first use | until the user deletes it; **never uploaded**, no sync, no push | the local process only |
 | API keys (cloud + Pl@ntNet seams) | auth to Bedrock/Anthropic; `PLANTNET_API_KEY` for the photo seam | **env vars only**, never config/repo | n/a | operator |
-| Conversation turn selector (opt-in, EXP-07) | resolve which species/topic a follow-up question is about | **in-memory only** (`conversation.SessionMemory`), keyed by a caller-supplied opaque session id; holds only `{species_slug, topic, language}` per turn — **never** question or answer text | last `ServerConfig.session_memory` turns (default 4) per session, cleared on process restart | the process |
+| Conversation turn selector (opt-in, EXP-07) | resolve which species/topic a follow-up question is about | **in-memory only** (`conversation.SessionMemory`), keyed by a caller-supplied opaque session id; holds only `{species_slug, topic, language}` per turn — **never** question or answer text | last `ConversationConfig.session_memory` turns (default 4) per session, cleared on process restart | the process |
 
 - **No query persistence in the demo.** The assistant holds the question in memory for the
   duration of a request and returns an `Answer`; nothing writes the question to disk. The
@@ -195,7 +195,7 @@ no personal data to protect**, by design.
   multi-turn session context is ever added, EXP-07 (grounded multi-turn) is the designed
   path — it would re-introduce this row behind its own DPIA entry, not silently.
   optional server keeps at most a small in-memory session window
-  (`ServerConfig.session_memory`, default 4, `conversation.SessionMemory`) and has **no
+  (`ConversationConfig.session_memory`, default 4, `conversation.SessionMemory`) and has **no
   database** — there is no mutable server state to leak or subpoena (README: "No database, no
   agentic loop"). The window carries only a closed-vocabulary selector
   (species-slug/topic/language) so a follow-up can resolve "what about in winter?" without

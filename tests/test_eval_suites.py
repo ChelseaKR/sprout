@@ -379,8 +379,7 @@ def test_completeness_fails_when_a_facet_is_missing() -> None:
 
 
 def test_resolve_suites() -> None:
-    assert len(resolve_suites("all")) == 7
-    assert len(resolve_suites("all")) == 6
+    assert len(resolve_suites("all")) == 8
     assert [s.name for s in resolve_suites("safety,refusal")] == ["safety", "refusal"]
     with pytest.raises(KeyError, match="unknown suite"):
         resolve_suites("nope")
