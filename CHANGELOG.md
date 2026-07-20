@@ -111,7 +111,7 @@ the public evaluation harness as the headline artifact.
   `static_vectors.json`) with a hashing fallback for out-of-vocabulary tokens, so
   synonym/paraphrase and EN/ES cross-lingual questions can score higher than the hashing
   baseline without any network or cloud account. Opt-in, not the offline default — see
-  [ADR-0013](docs/adr/0013-offline-static-vector-semantic-embedding-provider.md) for the
+  [ADR-0017](docs/adr/0017-offline-static-vector-semantic-embedding-provider.md) for the
   measured eval delta (refusal 0.9118 → 0.9412, over-refusal 10% → 0%, groundedness
   unchanged at 1.000) and why it doesn't yet clear the 0.95 excellence bar.
 - **Grounded extractive assistant.** Retrieval-mandatory pipeline

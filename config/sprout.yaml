@@ -16,7 +16,7 @@ retrieval:
   top_k: 6
   min_score: 0.12                 # below this, refuse rather than pad
   embedding_dim: 512
-  embedding_provider: deterministic   # deterministic (offline hashing) | static (offline curated EN/ES vectors, ADR-0013) | bedrock (Titan)
+  embedding_provider: deterministic   # deterministic (offline hashing) | static (offline curated EN/ES vectors, ADR-0017) | bedrock (Titan)
   hybrid: true                    # fuse dense + BM25 via reciprocal rank fusion
   rrf_k: 60
   dedup_threshold: 0.92

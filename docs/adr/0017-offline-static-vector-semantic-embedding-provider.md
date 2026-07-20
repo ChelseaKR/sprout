@@ -1,4 +1,4 @@
-# 13. Offline static-vector semantic embedding provider (EXP-03)
+# 17. Offline static-vector semantic embedding provider (EXP-03)
 
 - Status: Accepted (opt-in; not the offline default)
 - Date: 2026-07-08

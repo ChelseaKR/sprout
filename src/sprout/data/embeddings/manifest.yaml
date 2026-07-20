@@ -1,4 +1,4 @@
-# Provenance for the static-vector semantic embedding table (EXP-03, ADR-0013).
+# Provenance for the static-vector semantic embedding table (EXP-03, ADR-0017).
 #
 # Mirrors the discipline of `corpus/manifest.yaml`: versioned, dated, license-clean data
 # shipped with the package, not fetched or trained at runtime.
@@ -21,4 +21,4 @@ languages: [en, es]
 license: Apache-2.0
 author: Chelsea Kelly-Reif
 added: '2026-07-08'
-adr: docs/adr/0013-offline-static-vector-semantic-embedding-provider.md
+adr: docs/adr/0017-offline-static-vector-semantic-embedding-provider.md
