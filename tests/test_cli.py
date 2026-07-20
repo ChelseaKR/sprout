@@ -12,6 +12,9 @@ from typer.testing import CliRunner
 from sprout import __version__
 from sprout.cli import app
 from sprout.eval.dataset import load_suite_dir, write_sidecar
+from sprout.eval.history import load_history
+from sprout.eval.runner import RunFingerprint, RunResult
+from sprout.eval.suite import MetricDefinition, SuiteResult, Verdict
 
 runner = CliRunner()
 
@@ -528,6 +531,139 @@ def test_eval_baseline_regression_gate(tmp_path: Path) -> None:
     assert stale_result.exit_code == 1
     assert "dataset_hash" in stale_result.output
     assert "Baseline regression check FAILED" in stale_result.output
+
+
+def _fixed_result(score: float) -> RunResult:
+    """A one-suite RunResult pinned to ``score``, for controlling the eval-history ledger's
+    trend deterministically (the live offline assistant scores this fixture's tiny, clean
+    case set at a perfect 1.0 every run, which can never itself supply a *declining*
+    trajectory to exercise the drift gate against)."""
+    metric = MetricDefinition(name="safety", definition="d", threshold=0.9)
+    suite = SuiteResult(
+        suite="safety",
+        metric=metric,
+        score=score,
+        verdict=Verdict.PASS if score >= 0.9 else Verdict.FAIL,
+        n_items=10,
+        ci_low=max(0.0, score - 0.05),
+        ci_high=min(1.0, score + 0.05),
+        underpowered=False,
+        dataset_version="sha256:" + "c" * 64,
+        judge_method="deterministic",
+        judge_config_hash="sha256:" + "b" * 64,
+    )
+    fp = RunFingerprint(
+        harness_version="0.1.0",
+        seed=1729,
+        dataset_hash="sha256:" + "a" * 64,
+        judge_config_hash="sha256:" + "b" * 64,
+        target="deterministic:extractive",
+        suite_names=("safety",),
+    )
+    return RunResult(fingerprint=fp, overall_verdict=suite.verdict, suite_results=(suite,))
+
+
+def test_eval_release_appends_history_and_renders_trend(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`sprout eval --release <tag>` appends one ledger entry and threads it into the report."""
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    out = tmp_path / "audits"
+    base_args = [
+        "eval",
+        "--config",
+        str(cfg),
+        "--suite-dir",
+        str(tmp_path / "suites"),
+        "--out",
+        str(out),
+        "--update-baseline",
+    ]
+
+    monkeypatch.setattr("sprout.eval.runner.run_evaluation", lambda *a, **kw: _fixed_result(0.97))
+    result = runner.invoke(app, [*base_args, "--release", "v1.0.0"])
+    assert result.exit_code == 0, result.output
+    assert "Score trend across releases" in result.output
+    assert "Eval trend drift check (3-release window): no issues." in result.output
+
+    history_path = out / "eval-history.jsonl"
+    assert history_path.exists()
+    entries = load_history(history_path)
+    assert [e.release for e in entries] == ["v1.0.0"]
+    safety_score = entries[0].score_for("safety")
+    assert safety_score is not None
+    assert safety_score.score == pytest.approx(0.97)
+    assert "Score trend across releases" in (out / "eval-report.md").read_text(encoding="utf-8")
+    assert "score-trend" in (out / "eval-report.html").read_text(encoding="utf-8")
+
+
+def test_eval_release_never_appends_without_the_flag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A plain `sprout eval` (the per-PR CI path) must never touch the release ledger."""
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    out = tmp_path / "audits"
+    monkeypatch.setattr("sprout.eval.runner.run_evaluation", lambda *a, **kw: _fixed_result(0.97))
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "--config",
+            str(cfg),
+            "--suite-dir",
+            str(tmp_path / "suites"),
+            "--out",
+            str(out),
+            "--update-baseline",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert not (out / "eval-history.jsonl").exists()
+
+
+def test_eval_release_drift_gate_fails_on_k_consecutive_declines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each release drops the `safety` score by a hair — well inside baseline tolerance — but
+    three drops in a row must fail the release gate (EXP-13's whole point)."""
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    out = tmp_path / "audits"
+    base_args = [
+        "eval",
+        "--config",
+        str(cfg),
+        "--suite-dir",
+        str(tmp_path / "suites"),
+        "--out",
+        str(out),
+        "--update-baseline",
+    ]
+
+    scores = [0.970, 0.965, 0.960, 0.955]
+    releases = [f"v1.{i}.0" for i in range(len(scores))]
+    for score, release, expect_fail in zip(
+        scores, releases, [False, False, False, True], strict=True
+    ):
+        monkeypatch.setattr(
+            "sprout.eval.runner.run_evaluation", lambda *a, s=score, **kw: _fixed_result(s)
+        )
+        result = runner.invoke(app, [*base_args, "--release", release])
+        if expect_fail:
+            assert result.exit_code == 1, result.output
+            assert "Eval trend drift check FAILED" in result.output
+            assert "safety" in result.output
+            assert "declined for 3 consecutive releases" in result.output
+        else:
+            assert result.exit_code == 0, result.output
+
+    entries = load_history(out / "eval-history.jsonl")
+    assert [e.release for e in entries] == releases
+    recorded_scores = [e.score_for("safety") for e in entries]
+    assert all(s is not None for s in recorded_scores)
+    assert [s.score for s in recorded_scores if s is not None] == pytest.approx(scores)
 
 
 _PROBES = {

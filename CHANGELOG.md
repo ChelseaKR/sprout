@@ -198,6 +198,16 @@ the public evaluation harness as the headline artifact.
   `docs/audits/red-team-2026-06-22.md`. Advisory `redteam` CI job (opt-in, needs
   `ANTHROPIC_API_KEY`, excluded from `ci-gate`) added to `.github/workflows/ci.yml`; see
   `eval/redteam/README.md`.
+- **Eval score trend ledger across releases** (`eval/history.py`). `sprout eval --release <tag>`
+  appends this run's fingerprinted per-suite scores to `docs/audits/eval-history.jsonl`
+  (append-only, one line per release — never per PR) and the report gains a trend section
+  (per-suite sparkline plus its required accessible data-table equivalent, in both the
+  Markdown and HTML reports). A drift rule fails the release gate if any suite declined for
+  `--drift-k` (default 3) consecutive releases in a row, even when every individual decline
+  was inside `diff_against_baseline`'s tolerance — the single pinned-baseline diff cannot see
+  a slow, multi-release bleed. `make eval RELEASE_TAG=<tag>` wires this into the release flow;
+  `release.yml`'s tag-triggered re-verification runs the same gate at the tagged commit. See
+  `docs/ideation/03-expansions.md` EXP-13.
 
 ### Changed
 - `create_app` accepts an optional `identifier` override (mirroring the existing `assistant`

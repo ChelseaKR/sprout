@@ -35,7 +35,14 @@ jobs:
         with:
           enable-cache: false
       - name: Re-run the full gate set at the tagged commit
-        run: uv sync --frozen --extra serve && uv run sprout ingest && make verify
+        # RELEASE_TAG makes `make eval` (inside `make verify`) append this release's scores to
+        # docs/audits/eval-history.jsonl and run the consecutive-decline drift gate (EXP-13),
+        # gating on whatever ledger is committed at the tagged commit. This job has
+        # `contents: read` only and cannot push, so the actual append-and-commit happens the
+        # same way `docs/audits/eval-baseline.json` already does: the maintainer runs
+        # `make eval RELEASE_TAG=<tag>` locally and commits the updated ledger before tagging;
+        # this step is the fail-closed re-verification at the tagged commit, not the writer.
+        run: uv sync --frozen --extra serve && uv run sprout ingest && make verify RELEASE_TAG="$GITHUB_REF_NAME"
 
   build-and-publish:
     needs: verify
