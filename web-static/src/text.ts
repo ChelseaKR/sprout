@@ -119,6 +119,32 @@ export function tokenSet(text: string): Set<string> {
   return new Set(contentTokens(text));
 }
 
+// Splits a query into clauses on coordinating conjunctions and clause punctuation, in
+// both languages — mirrors `text.py`'s `_FACET_SPLIT_RE` (EXP-01). `\p{L}\p{N}_` stands
+// in for Python's Unicode-aware `\w` so accented boundaries split identically.
+const FACET_SPLIT_RE =
+  /\s*(?:[,;?]+|(?<=[\p{L}\p{N}_])\s+(?:and|but|or|as well as|y|pero|o)\s+(?=[\p{L}\p{N}_]))\s*/giu;
+
+/**
+ * Split a query into per-clause content-token sets ("facets") — mirrors
+ * `text.py::extract_facets`. Single-part questions yield one facet; empty or
+ * stop-word-only clauses are dropped.
+ */
+export function extractFacets(query: string): Set<string>[] {
+  const clauses = query
+    .trim()
+    .split(FACET_SPLIT_RE)
+    .filter((c) => c !== undefined && c.trim() !== "");
+  const facets: Set<string>[] = [];
+  for (const clause of clauses) {
+    const toks = tokenSet(clause);
+    if (toks.size > 0) {
+      facets.push(toks);
+    }
+  }
+  return facets;
+}
+
 /** True if `text` contains an explicit negation marker (either language). */
 export function hasNegation(text: string): boolean {
   if (NEG_NT_RE.test(text)) {
