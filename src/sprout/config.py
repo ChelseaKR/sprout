@@ -42,9 +42,6 @@ class CorpusConfig(_Model):
     manifest: str = "corpus/manifest.yaml"
     default_language: str = "en"
     freshness: FreshnessConfig = Field(default_factory=FreshnessConfig)
-    # EXP-09: machine-readable species x animal x severity toxicity table, cited per row,
-    # alongside the "## Toxicity" prose. See src/sprout/toxicity.py.
-    toxicity_table: str = "corpus/toxicity.yaml"
 
 
 class ChunkConfig(_Model):
