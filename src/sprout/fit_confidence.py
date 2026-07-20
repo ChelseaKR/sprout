@@ -1,6 +1,6 @@
 """``sprout fit-confidence``: fit the confidence logistic on a held-out train split.
 
-FIX-08 (`docs/ideation/02-large-scale-fixes.md`), ADR-0013. `confidence.py`'s
+FIX-08 (`docs/ideation/02-large-scale-fixes.md`), ADR-0016. `confidence.py`'s
 ``_MIDPOINT``/``_STEEPNESS``/``_MARGIN_BONUS`` were hand-tuned once (ADR-0012) and never
 re-fit; every retrieval change silently invalidates them and nothing notices except a
 slow ECE drift. This module:
@@ -157,7 +157,7 @@ def fit_constants(examples: list[TrainExample]) -> tuple[float, float, float]:
 def render_fit_yaml_block(fit: ConfidenceFit) -> str:
     """The ``confidence.fit:`` YAML block, at 2-space indent to nest under ``confidence:``."""
     return (
-        "  fit:  # written by `sprout fit-confidence` -- see ADR-0013\n"
+        "  fit:  # written by `sprout fit-confidence` -- see ADR-0016\n"
         f"    midpoint: {fit.midpoint}\n"
         f"    steepness: {fit.steepness}\n"
         f"    margin_bonus: {fit.margin_bonus}\n"

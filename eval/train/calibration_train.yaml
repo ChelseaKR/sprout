@@ -1,4 +1,4 @@
-# Held-out TRAIN split for `sprout fit-confidence` (FIX-08, ADR-0013).
+# Held-out TRAIN split for `sprout fit-confidence` (FIX-08, ADR-0016).
 #
 # This file is deliberately *outside* `eval/suites/` and is never loaded, hashed, or
 # scored by `sprout eval` -- it exists only so `sprout fit-confidence` has evidence to

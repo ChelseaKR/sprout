@@ -1,4 +1,4 @@
-# 13. Fitted, provenance-stamped confidence constants (`sprout fit-confidence`)
+# 16. Fitted, provenance-stamped confidence constants (`sprout fit-confidence`)
 
 - Status: Accepted
 - Date: 2026-07-08

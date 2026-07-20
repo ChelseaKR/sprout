@@ -141,7 +141,7 @@ def evaluate(
     longer matches this run's dataset/judge/target — fails the command even if every suite
     individually passed its own threshold.
 
-    Also fails closed (FIX-08 / ADR-0013) if ``confidence.fit`` is recorded but no longer
+    Also fails closed (FIX-08 / ADR-0016) if ``confidence.fit`` is recorded but no longer
     matches the live ``retrieval:`` config — a retrieval change since the fit invalidates
     its evidence scale; re-run ``sprout fit-confidence`` before trusting it again.
     """
@@ -473,6 +473,7 @@ def gate_inventory(
             typer.echo(f"  - {r.row.metric}: {r.detail}", err=True)
     raise typer.Exit(1 if gate and unresolved else 0)
 
+
 @app.command("fit-confidence")
 def fit_confidence_cmd(
     train: Annotated[
@@ -488,7 +489,7 @@ def fit_confidence_cmd(
     3-parameter logistic ``confidence.py`` already uses. Writes the fitted constants plus
     provenance (train-dataset hash, retrieval-config hash, item count, date) into
     ``confidence.fit`` in ``--config``, so the next ``sprout eval`` run uses them (FIX-08,
-    ADR-0013). The write is a targeted text edit that preserves every other line of the
+    ADR-0016). The write is a targeted text edit that preserves every other line of the
     config file, including its hand-written comments.
     """
     from .fit_confidence import fit_confidence as run_fit_confidence

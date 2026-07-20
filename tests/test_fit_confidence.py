@@ -1,4 +1,4 @@
-"""`sprout fit-confidence` (FIX-08 / ADR-0013): train-split loading, evidence collection,
+"""`sprout fit-confidence` (FIX-08 / ADR-0016): train-split loading, evidence collection,
 the grid-search fit, and the config-YAML text surgery that writes `confidence.fit`."""
 
 from __future__ import annotations
