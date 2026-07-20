@@ -293,6 +293,7 @@ def test_shipped_ui_is_a_stateless_reference_surface() -> None:
     assert "/api/reminders" not in script
     assert "/api/identify" not in script
 
+
 # --- Tier-A observability wiring --------------------------------------------------
 def _red_point_count(metric_reader: InMemoryMetricReader, name: str) -> int:
     data = metric_reader.get_metrics_data()

@@ -95,8 +95,12 @@ server:
 
 observability:
   log_format: text                # text | json (Tier C offline CLI; Tier A for the API)
-  tier: C
+  tier: C                         # C (offline CLI, default) | A (the optional serverless
+                                   # API, infra/ — turns on OTel traces/RED metrics; see
+                                   # docs/ROADMAP.md's Observability tier section)
   service_name: sprout
+  service_version: 0.1.0
+  deployment_environment: production
 
 store:
   path: var/index.json

@@ -211,6 +211,30 @@ def test_invalid_python_change_fails_closed(repo: Path) -> None:
     assert "src/sprout/guards.py" in issues[0]
 
 
+def test_observability_only_yaml_change_passes_without_trailer(repo: Path) -> None:
+    # A config/sprout.yaml delta confined to the eval-invisible `observability:` (or
+    # `server:`) subtree is operational — the eval harness never reads either.
+    (repo / "config" / "sprout.yaml").write_text(
+        "generation:\n  relevance_floor: 0.30  # baseline comment\n"
+        "observability:\n  tier: A\n  service_version: 0.1.0\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(obs): declare tier A"], repo)
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+def test_yaml_change_mixing_observability_and_tunable_keys_fails(repo: Path) -> None:
+    (repo / "config" / "sprout.yaml").write_text(
+        "generation:\n  relevance_floor: 0.35\n"  # tunable delta hiding under obs cover
+        "observability:\n  tier: A\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(obs): tier A plus a sneaky floor change"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "config/sprout.yaml" in issues[0]
+
+
 def test_server_config_only_module_change_passes_without_trailer(repo: Path) -> None:
     # A config.py delta confined to the eval-invisible ServerConfig body is operational:
     # the eval harness drives Assistant directly and nothing eval-visible reads it.
@@ -265,7 +289,7 @@ def test_eval_visible_modules_never_read_exempt_config() -> None:
     for module in eval_visible:
         tree = _ast.parse(module.read_text(encoding="utf-8"))
         for node in _ast.walk(tree):
-            if isinstance(node, _ast.Attribute) and node.attr == "server":
+            if isinstance(node, _ast.Attribute) and node.attr in {"server", "observability"}:
                 offenders.append(f"{module}:{node.lineno}")
     assert not offenders, f"eval-visible module(s) read `.server`: {offenders}"
 
