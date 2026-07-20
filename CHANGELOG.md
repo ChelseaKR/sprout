@@ -104,6 +104,16 @@ the public evaluation harness as the headline artifact.
   sub-commands (add/list/due/done/remove), reminder endpoints under `/api/reminders`, and an
   accessible reminders panel in the chat UI. See
   [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md).
+- **Offline static-vector semantic embedding provider** (`providers/static_embedding.py`,
+  `embedding_provider: static`, EXP-03). A third, fully offline, deterministic
+  `EmbeddingProvider`: a curated EN/ES plant-care vocabulary table
+  (`data/embeddings/clusters.yaml` → `scripts/generate_static_vectors.py` →
+  `static_vectors.json`) with a hashing fallback for out-of-vocabulary tokens, so
+  synonym/paraphrase and EN/ES cross-lingual questions can score higher than the hashing
+  baseline without any network or cloud account. Opt-in, not the offline default — see
+  [ADR-0017](docs/adr/0017-offline-static-vector-semantic-embedding-provider.md) for the
+  measured eval delta (refusal 0.9118 → 0.9412, over-refusal 10% → 0%, groundedness
+  unchanged at 1.000) and why it doesn't yet clear the 0.95 excellence bar.
 - **Grounded extractive assistant.** Retrieval-mandatory pipeline
   (`guards(input) → retrieve → extractive generate → guards(output) → confidence/abstention`)
   that answers only from the cited corpus, with an inline citation to the governing passage and its

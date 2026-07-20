@@ -10,12 +10,14 @@ from __future__ import annotations
 from ..config import Config
 from .base import EmbeddingProvider, GenerationProvider
 from .deterministic import ExtractiveGenerator, HashingEmbedding
+from .static_embedding import StaticEmbedding
 
 __all__ = [
     "EmbeddingProvider",
     "ExtractiveGenerator",
     "GenerationProvider",
     "HashingEmbedding",
+    "StaticEmbedding",
     "build_embedding",
     "build_generator",
 ]
@@ -25,6 +27,8 @@ def build_embedding(config: Config) -> EmbeddingProvider:
     provider = config.retrieval.embedding_provider
     if provider == "deterministic":
         return HashingEmbedding(dim=config.retrieval.embedding_dim)
+    if provider == "static":
+        return StaticEmbedding()
     if provider == "bedrock":
         from ..provider_lifecycle import observe_embedding
         from .bedrock import TitanEmbedding

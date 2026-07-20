@@ -1,0 +1,24 @@
+# Provenance for the static-vector semantic embedding table (EXP-03, ADR-0017).
+#
+# Mirrors the discipline of `corpus/manifest.yaml`: versioned, dated, license-clean data
+# shipped with the package, not fetched or trained at runtime.
+
+_note: >
+  Hand-authored, original vocabulary clustering of Sprout's plant-care domain (English and
+  Spanish). No third-party embedding model, corpus, or word list was used as an input —
+  clusters were written directly from the terms already in this project's corpus, config,
+  and eval suites (retrieval.species_aliases, guards.toxicity_keywords, and the suite
+  cases). Vectors are deterministically generated from cluster names by
+  `scripts/generate_static_vectors.py`; no learned weights, no network call, no
+  nondeterminism. Regenerate after editing `clusters.yaml` with:
+  `uv run python scripts/generate_static_vectors.py`.
+
+source_file: clusters.yaml
+generated_file: static_vectors.json
+generator: scripts/generate_static_vectors.py
+dim: 64
+languages: [en, es]
+license: Apache-2.0
+author: Chelsea Kelly-Reif
+added: '2026-07-08'
+adr: docs/adr/0017-offline-static-vector-semantic-embedding-provider.md

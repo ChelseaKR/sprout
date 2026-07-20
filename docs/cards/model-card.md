@@ -143,6 +143,19 @@ guard → confidence/abstention → answer-or-refuse`.
   generator can only copy retrieved text, and the citation guard re-verifies it. The whole project,
   including the eval, runs with **no network and no cloud account**, for free.
 
+### Opt-in offline semantic embedder (`embedding_provider: static`)
+
+- **Embedding:** `StaticEmbedding` — a curated, precomputed lookup table (EN+ES plant-care
+  vocabulary clusters, `data/embeddings/`) with a hashing fallback for any token outside the
+  table, so coverage is total. Same determinism guarantee as `HashingEmbedding`: no network, no
+  training, byte-identical output for identical input. See ADR-0017.
+- **Generator and everything else unchanged** — this only swaps the embedder; `generation.provider`
+  stays `deterministic` (or any other value) independently.
+- **Why it exists:** it closes part of the offline recall gap `HashingEmbedding` has by
+  construction (see "Offline retrieval is a baseline" below) without giving up any offline
+  guarantee. It is not the default because it does not yet clear the suite's 0.95 excellence bar
+  on its own — see ADR-0017's measured delta and honest analysis of what it does and does not fix.
+
 ### Claude-on-Bedrock production seam (`provider: bedrock`) and native Anthropic (`provider: anthropic`)
 
 - **Answer model:** Claude **Haiku** — `anthropic.claude-haiku-4-5-20251001-v1:0` on Bedrock, or
@@ -304,7 +317,13 @@ case set — are authoritative in the committed report, not here.
   are stored only on the user's device (`var/reminders.json`): no sync, no push delivery (ADR-0011).
 - **Offline retrieval is a baseline.** The default `HashingEmbedding` is lexical, not semantic;
   paraphrased or synonym-heavy questions may under-retrieve and refuse where a semantic embedder
-  (Titan/Bedrock) would answer. This trades recall for zero-dependency reproducibility.
+  would answer. This trades recall for zero-dependency reproducibility. An opt-in offline
+  alternative, `StaticEmbedding` (`embedding_provider: static`), closes part of that gap with a
+  curated EN/ES vocabulary table while staying fully offline and deterministic — see ADR-0017 for
+  the measured eval delta (refusal 0.9118 → 0.9412, groundedness unchanged) and its remaining
+  limits (unknown-species and persona-override cases are not recall problems it can fix). It is
+  not yet the default; `Titan`/`Bedrock` remains the path for maximum recall when a network and
+  cloud account are available.
 - **Calibration is empirical and corpus-specific.** Confidence is derived from retrieval evidence
   and tuned to the bundled data; on a different corpus the thresholds should be re-calibrated and
   the reliability diagram re-checked.
