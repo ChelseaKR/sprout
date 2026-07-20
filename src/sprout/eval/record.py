@@ -9,7 +9,7 @@ keeps the scripted offline evaluation faithful to the engine and fully reproduci
 
 Cases with a non-empty ``history`` (EXP-07, the ``conversation`` suite) are replayed
 turn-by-turn through a scratch :class:`~sprout.conversation.SessionMemory` bounded by the
-*same* ``ServerConfig.session_memory`` the live server uses, so the eval replay's window is
+*same* ``ConversationConfig.session_memory`` the live server uses, so the eval replay's window is
 never more generous than what a real session gets. Only the resulting selector
 (:class:`~sprout.models.Turn`) is carried forward into the final ``item.question`` call —
 never the history questions' text, matching the server's own history-as-selector contract.
@@ -56,7 +56,7 @@ def _is_correct(item: DatasetItem, ans: Answer, config: Config) -> bool:
 def _replay_history(assistant: Assistant, history: list[str], config: Config) -> Turn | None:
     """Replay prior turns through a scratch, bounded session and return the resulting
     selector context — the same mechanism the live server uses, never the raw turn text."""
-    memory = SessionMemory(max_turns=config.server.session_memory, max_sessions=1)
+    memory = SessionMemory(max_turns=config.conversation.session_memory, max_sessions=1)
     for turn_question in history:
         ans = assistant.answer(turn_question)  # auto-detect language per historical turn
         memory.record(_EVAL_SESSION_ID, extract_turn(ans))

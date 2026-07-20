@@ -546,6 +546,22 @@ class PromptConfig(_Model):
         return " ".join(parts)
 
 
+class ConversationConfig(_Model):
+    """EXP-07 conversation-window bounds — deliberately *not* part of ServerConfig.
+
+    The eval harness replays authored multi-turn cases through the same
+    ``SessionMemory`` bound the live server uses (``eval/record.py``), which makes this
+    knob eval-visible: changing it can change recorded eval outcomes. ServerConfig is
+    exempt from the tuning-scope gate precisely because nothing eval-visible reads it,
+    so this bound lives in its own, non-exempt config class instead.
+    """
+
+    # Turns kept per session in the in-memory conversation window
+    # (`conversation.SessionMemory`) — species-slug/topic/language selectors only, never
+    # answer text, never persisted. 0 disables conversation memory entirely.
+    session_memory: int = Field(default=4, ge=0, le=50)
+
+
 class ServerConfig(_Model):
     """App-level hardening for ``serve`` (ASVS L2 delta — ``docs/audits/asvs-l2-delta.md``).
 
@@ -557,10 +573,6 @@ class ServerConfig(_Model):
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
     max_question_chars: int = Field(default=500, ge=1, le=4000)
-    # EXP-07: turns kept per session in the in-memory conversation window
-    # (`conversation.SessionMemory`) — species-slug/topic/language selectors only, never
-    # answer text, never persisted. 0 disables conversation memory entirely.
-    session_memory: int = Field(default=4, ge=0, le=50)
     # Body-size cap independent of any proxy config. Sized above the largest legitimate
     # payload — an 8 MB photo, base64-inflated ~1.33x, plus JSON/field overhead — with margin.
     max_body_bytes: int = Field(default=12_000_000, ge=1_000, le=100_000_000)
@@ -613,6 +625,7 @@ class Config(_Model):
     languages: LanguageConfig = Field(default_factory=LanguageConfig)
     prompts: PromptConfig = Field(default_factory=PromptConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
+    conversation: ConversationConfig = Field(default_factory=ConversationConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     store: StoreConfig = Field(default_factory=StoreConfig)
 

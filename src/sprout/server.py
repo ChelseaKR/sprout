@@ -28,7 +28,7 @@ import binascii
 import contextlib
 import json
 import os
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -266,7 +266,7 @@ def create_app(
     # EXP-07: a bounded, in-memory-only turn window per (opaque) session id, holding only
     # {species-slug, topic, language} — never answer text. Cleared on process restart, same
     # as every other piece of Sprout's mutable state (docs/RESPONSIBLE-TECH-AUDITS.md §C).
-    sessions = SessionMemory(max_turns=config.server.session_memory)
+    sessions = SessionMemory(max_turns=config.conversation.session_memory)
     app = FastAPI(title="Sprout", version="0.1.0", lifespan=_lifespan)
     _register_hardening(app, config)
     if handles is not None:
@@ -295,6 +295,20 @@ def create_app(
 
     _register_health(app, engine)
     _register_family_greenhouse(app, engine, log)
+    _register_chat(app, config, log, _resolve)
+    _register_identify(app, engine, config, log, identifier)
+    _register_reminders(app, config, log)
+    _mount_ui(app)
+    return app
+
+
+def _register_chat(
+    app: FastAPI,
+    config: Config,
+    log: Logger,
+    resolve: Callable[..., Answer],
+) -> None:
+    """The disclosure + chat endpoints (JSON and SSE), split out of ``create_app``."""
 
     @app.get("/api/disclosure")
     def disclosure(language: str = "en") -> dict[str, str]:
@@ -308,7 +322,7 @@ def create_app(
             log.event("request_rejected")
             return JSONResponse({"error": error}, status_code=400)
         session_id = _valid_session_id(payload.get("session_id"))
-        answer = _resolve(
+        answer = resolve(
             question,
             payload.get("language"),
             session_id,
@@ -337,14 +351,9 @@ def create_app(
         # Normalize + bound the GET qualifiers exactly like the JSON path does.
         return EventSourceResponse(
             _sse_events(
-                _resolve(q.strip(), language, sid, _optional_str(season), _optional_str(light))
+                resolve(q.strip(), language, sid, _optional_str(season), _optional_str(light))
             )
         )
-
-    _register_identify(app, engine, config, log, identifier)
-    _register_reminders(app, config, log)
-    _mount_ui(app)
-    return app
 
 
 def _register_identify(

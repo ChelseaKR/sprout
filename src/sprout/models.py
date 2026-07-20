@@ -128,6 +128,8 @@ class SourceDisagreement(_Frozen):
     citation_a: Citation
     mention_b: str
     citation_b: Citation
+
+
 class Turn(_Frozen):
     """One turn's selector context for the multi-turn conversation window.
 

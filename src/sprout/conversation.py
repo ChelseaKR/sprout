@@ -1,6 +1,6 @@
 """Bounded in-memory multi-turn conversation context — history as a selector, never a source.
 
-EXP-07 (the designed replacement for the phantom ``ServerConfig.session_memory`` field):
+EXP-07 (the designed replacement for the phantom ``ConversationConfig.session_memory`` field):
 a follow-up ("what about in winter?", "¿y para los perros?") often omits the species/topic
 named in an earlier turn. Restating it every turn is real chat-product friction, but letting
 history answer *for* the assistant is exactly the grounding risk Sprout's provenance
@@ -15,7 +15,7 @@ architecture exists to control. The contract this module enforces:
   from ``SessionMemory`` into ``GenerationProvider`` or the citation guard, so a turn cannot
   manufacture or override a cited fact even in principle — see ``tests/test_conversation.py``
   for the adversarial proof and ``eval/suites/conversation.yaml`` for the harness-level cases.
-* The window is bounded (``ServerConfig.session_memory`` turns per session, default 4) and
+* The window is bounded (``ConversationConfig.session_memory`` turns per session, default 4) and
   in-memory only — nothing is persisted to disk. A session cap bounds total memory even if a
   caller never signals a session has ended (the oldest session is evicted first).
 * Process restart clears every session: this matches the "no database, no mutable server
@@ -30,9 +30,9 @@ from collections import OrderedDict, deque
 from .models import Answer, Turn
 from .retrieve import species_slug
 
-# A hard ceiling on concurrently-tracked sessions, independent of the per-session turn window
-# (``ServerConfig.session_memory``). Bounds total memory even if callers never signal a session
-# has ended; the least-recently-used session is evicted first.
+# A hard ceiling on concurrently-tracked sessions, independent of the per-session turn
+# window (``ConversationConfig.session_memory``). Bounds total memory even if callers
+# never signal a session has ended; the least-recently-used session is evicted first.
 _DEFAULT_MAX_SESSIONS = 5000
 
 
