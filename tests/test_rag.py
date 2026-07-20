@@ -338,6 +338,7 @@ def test_refusal_routes_when_retrieved_cites_toxicity(assistant: Assistant) -> N
         "some unrelated query",
         "en",
         False,
+        None,
         reason="low_confidence",
         abstained=True,
         retrieved=retrieved,
@@ -351,6 +352,7 @@ def test_refusal_does_not_route_without_safety_or_toxicity(assistant: Assistant)
         "how do I patch a flat bicycle tire",
         "en",
         False,
+        None,
         reason="out_of_scope",
         abstained=False,
         retrieved=[],
@@ -411,6 +413,41 @@ def test_safety_directive_localised_to_spanish(assistant: Assistant) -> None:
     assert "ASPCA Animal Poison Control Center" in notice
     assert "855-764-7661" in notice
     assert not asserts_safety(ans.display_text, "es", Config().guards)
+
+
+def test_child_ingestion_exposure_type_detected_end_to_end(assistant: Assistant) -> None:
+    # FIX-13: a child-ingestion question must be classified "child" through the full
+    # pipeline, and -- gated off by default -- still shows only the animal escalation
+    # card (unchanged behavior from before FIX-13) until a clinician sign-off enables
+    # the human card.
+    ans = assistant.answer("my toddler chewed on this pothos leaf, is that toxic?")
+    assert ans.is_safety_query
+    assert ans.exposure_type == "child"
+    notice = ans.safety_notice or ""
+    assert "888-426-4435" in notice  # animal card unchanged
+    assert "1-800-222-1222" not in notice  # human card gated off by default
+
+
+def test_son_ingestion_phrasing_classified_child_end_to_end(assistant: Assistant) -> None:
+    # FIX-13 review fix: "my son ..." is a common child-ingestion phrasing that carried
+    # no child keyword before this fix (and could not naively get one -- "son" is a
+    # substring of "poison"). It must classify as child exposure end to end while the
+    # rendered card stays gated off by default.
+    ans = assistant.answer("my son chewed on a pothos leaf, is that poisonous?")
+    assert ans.is_safety_query
+    assert ans.exposure_type == "child"
+    notice = ans.safety_notice or ""
+    assert "888-426-4435" in notice  # animal card unchanged while gated off
+    assert "1-800-222-1222" not in notice  # human card requires clinician sign-off
+
+
+def test_animal_exposure_type_never_shows_human_card_even_if_reviewed() -> None:
+    # A pure animal query must never surface the human card, even in the hypothetical
+    # post-review state -- the human card is additive for a child/human audience only.
+    cfg = Config()
+    reviewed = cfg.prompts.model_copy(update={"human_card_reviewed": True})
+    directive = reviewed.safety_directive_for("en", "animal")
+    assert "1-800-222-1222" not in directive
 
 
 def test_spanish_answer_in_spanish(assistant: Assistant) -> None:
