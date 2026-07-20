@@ -432,6 +432,38 @@ def ci_parity_check(
         raise typer.Exit(1)
 
 
+@app.command("gate-inventory")
+def gate_inventory(
+    roadmap: Annotated[str, typer.Option("--roadmap")] = "docs/ROADMAP.md",
+    out: Annotated[str, typer.Option("--out")] = "docs/audits",
+    gate: Annotated[bool, typer.Option("--gate")] = True,
+) -> None:
+    """Regenerate the gate-inventory audit: every ledger AUTO row -> its enforcement mechanism.
+
+    Fails (exit 1) by default when any ``AUTO`` row in ``docs/ROADMAP.md`` cannot be
+    mechanically resolved to a real Makefile target, CI step, or repo file — the FIX-02
+    "mechanical spine" that catches a ledger claiming enforcement nothing wires. Pass
+    ``--no-gate`` to just regenerate the report without failing.
+    """
+    from .gate_inventory import build_inventory, render_markdown, unresolved_auto_rows
+
+    resolutions = build_inventory(Path(roadmap), Path("."))
+    out_dir = Path(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report = render_markdown(resolutions)
+    (out_dir / "gate-inventory.md").write_text(report, encoding="utf-8")
+    unresolved = unresolved_auto_rows(resolutions)
+    typer.echo(report)
+    if unresolved:
+        typer.echo(
+            f"\n{len(unresolved)} declared-but-unenforced AUTO row(s):",
+            err=True,
+        )
+        for r in unresolved:
+            typer.echo(f"  - {r.row.metric}: {r.detail}", err=True)
+    raise typer.Exit(1 if gate and unresolved else 0)
+
+
 @app.command()
 def identify(
     image: Annotated[str, typer.Argument(help="Path to a plant photo (jpg/png).")],
