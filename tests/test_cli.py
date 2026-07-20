@@ -124,6 +124,35 @@ def test_ingest_ask_demo(tmp_path: Path) -> None:
     assert ">" in demo.stdout
 
 
+def test_ask_season_light_flags_echo_context_and_never_break_answering(tmp_path: Path) -> None:
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+
+    ask = runner.invoke(
+        app,
+        [
+            "ask",
+            "why are my monstera leaves yellowing?",
+            "--config",
+            str(cfg),
+            "--season",
+            "winter",
+            "--light",
+            "north window",
+        ],
+    )
+    assert ask.exit_code == 0
+    assert "overwatering" in ask.stdout.lower()
+    # Echoed as user-provided context, not folded into the cited answer prose.
+    assert "As you stated (winter, north window)" in ask.stdout
+    assert "not a cited fact" in ask.stdout.lower()
+
+    unset = runner.invoke(
+        app, ["ask", "why are my monstera leaves yellowing?", "--config", str(cfg)]
+    )
+    assert "As you stated" not in unset.stdout
+
+
 def test_ask_without_index_fails_gracefully(tmp_path: Path) -> None:
     cfg = tmp_path / "c.yaml"
     cfg.write_text(yaml.safe_dump({"store": {"path": str(tmp_path / "missing.json")}}), "utf-8")

@@ -40,6 +40,22 @@ from sprout.store import VectorStore
 from sprout.text import extract_cadences, extract_facets, has_negation
 
 
+def _chunk(chunk_id: str, source: str, title: str, text: str, topic: str) -> Chunk:
+    return Chunk(
+        chunk_id=chunk_id,
+        doc_id=source.split(".")[0],
+        title=title,
+        source=source,
+        text=text,
+        language="en",
+        topic=topic,
+        source_name="Synthetic Plant-Care Notes",
+        url=f"https://example.invalid/{source}",
+        license="CC0-1.0",
+        fetch_date="2026-05-01",
+    )
+
+
 # --- lexical ---------------------------------------------------------------------
 def test_bm25_ranks_matching_doc_first() -> None:
     idx = BM25Index(["yellow leaves indicate overwatering", "bright indirect light near a window"])
@@ -925,3 +941,84 @@ def test_extractive_generator_single_facet_unchanged_by_diversity_selection() ->
         "How often should I water my fern?", [RetrievedChunk(chunk=chunk, score=0.9)], 3
     )
     assert len(plain_scored) == 3
+
+
+# --- season/light context qualifiers (EXP-05) -------------------------------------
+_FERN_WATERING = _chunk(
+    "fern-water",
+    "boston-fern.md",
+    "Boston fern care",
+    "Water the Boston fern every seven days in the growing season. "
+    "In winter, water the Boston fern only every twenty-one days.",
+    "watering",
+)
+_FERN_LIGHT = _chunk(
+    "fern-light",
+    "boston-fern.md",
+    "Boston fern care",
+    "The Boston fern grows best in bright indirect light. "
+    "The Boston fern also tolerates low light conditions.",
+    "light",
+)
+
+
+def test_season_selector_selects_the_matching_sentence(
+    config: Config, assistant_factory: Callable[..., Assistant]
+) -> None:
+    a = assistant_factory(config, [_FERN_WATERING])
+    q = "How much water does my Boston fern need?"
+    base = a.answer(q)
+    winter = a.answer(q, season="winter")
+    # Same question, same corpus, same citation guard — only the selector differs, and
+    # only the selected (governing) sentence changes, exactly as EXP-05 specifies.
+    assert base.sentences[0].text.startswith("Water the Boston fern every seven")
+    assert winter.sentences[0].text.startswith("In winter")
+    assert winter.citation_coverage == 1.0
+
+
+def test_light_selector_selects_the_matching_sentence(
+    config: Config, assistant_factory: Callable[..., Assistant]
+) -> None:
+    a = assistant_factory(config, [_FERN_LIGHT])
+    q = "What light does my Boston fern need?"
+    base = a.answer(q)
+    low = a.answer(q, light="low light")
+    assert base.sentences[0].text.startswith("The Boston fern grows best in bright")
+    assert low.sentences[0].text.startswith("The Boston fern also tolerates low light")
+
+
+def test_context_qualifiers_echoed_never_cited_never_persisted(
+    config: Config, assistant_factory: Callable[..., Assistant]
+) -> None:
+    a = assistant_factory(config, [_FERN_WATERING])
+    q = "How much water does my Boston fern need?"
+    ans = a.answer(q, season="winter", light="north window")
+    # Echoed back exactly as given.
+    assert ans.season == "winter"
+    assert ans.light == "north window"
+    assert ans.context_note is not None
+    assert "winter" in ans.context_note and "north window" in ans.context_note
+    # Never a citation and never counted among the cited sentences/provenance.
+    assert all(s.provenance == "corpus" for s in ans.sentences)
+    assert "winter" not in {c.title.lower() for c in ans.citations}
+    # A request without a selector carries none — nothing lingers between calls (no
+    # server-side session, no field on Answer persisted anywhere by the engine).
+    unset = a.answer(q)
+    assert unset.season is None
+    assert unset.light is None
+    assert unset.context_note is None
+
+
+def test_unrecognized_selector_word_never_blocks_an_answer(assistant: Assistant) -> None:
+    # A selector word absent from the corpus's own vocabulary contributes no boost — it
+    # can only fail to help, never filter out a governing passage the corpus has.
+    ans = assistant.answer("why are my monstera leaves yellowing", season="monsoon season")
+    assert not ans.refused
+    assert ans.season == "monsoon season"
+
+
+def test_season_selector_on_refusal_still_echoes_context(assistant: Assistant) -> None:
+    ans = assistant.answer("how do I patch a flat bicycle tire", season="winter")
+    assert ans.refused
+    assert ans.season == "winter"
+    assert ans.context_note is not None

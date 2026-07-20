@@ -273,12 +273,16 @@ class _BudgetedGenerator:
         return estimate
 
     def generate(
-        self, query: str, context: list[RetrievedChunk], max_sentences: int
+        self,
+        query: str,
+        context: list[RetrievedChunk],
+        max_sentences: int,
+        boost_terms: frozenset[str] = frozenset(),
     ) -> list[tuple[str, str]]:
         if self._estimate(query, context) > self._max_cost_usd:
             return []
         # The behavior-bearing provider receives the original arguments byte-for-byte.
-        return self._provider.generate(query, context, max_sentences)
+        return self._provider.generate(query, context, max_sentences, boost_terms)
 
     def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float:
         return self._estimate(query, context)

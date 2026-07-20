@@ -92,9 +92,24 @@ def _sse_events(answer: Answer) -> Iterator[dict[str, str]]:
                 "language": answer.language,
                 "as_of": answer.as_of,
                 "disclosure": answer.disclosure,
+                "context_note": answer.context_note,
             }
         ),
     }
+
+
+# Season/light qualifiers are short selector words ("winter", "low light"), never prose;
+# cap them well below the question cap so an oversized qualifier can't become a cheap
+# tokenization amplifier on either the JSON or the GET path.
+_MAX_CONTEXT_QUALIFIER_CHARS = 50
+
+
+def _optional_str(value: Any) -> str | None:
+    """Coerce and bound an untyped season/light qualifier to ``str | None`` (EXP-05)."""
+    if value is None:
+        return None
+    text = str(value).strip()[:_MAX_CONTEXT_QUALIFIER_CHARS]
+    return text or None
 
 
 def _register_health(app: FastAPI, engine: Assistant) -> None:
@@ -233,8 +248,13 @@ def create_app(
     if handles is not None:
         app.add_middleware(REDMiddleware, handles=handles)
 
-    def _resolve(question: str, language: str | None) -> Answer:
-        answer = engine.answer(question, language)
+    def _resolve(
+        question: str,
+        language: str | None,
+        season: str | None = None,
+        light: str | None = None,
+    ) -> Answer:
+        answer = engine.answer(question, language, season=season, light=light)
         log.event(
             "answer",
             language=answer.language,
@@ -259,20 +279,30 @@ def create_app(
         if error is not None:
             log.event("request_rejected")
             return JSONResponse({"error": error}, status_code=400)
-        answer = _resolve(question, payload.get("language"))
+        answer = _resolve(
+            question,
+            payload.get("language"),
+            _optional_str(payload.get("season")),
+            _optional_str(payload.get("light")),
+        )
         data = answer.model_dump()
         data["display_text"] = answer.display_text
         data["citations"] = [c.model_dump() for c in answer.citations]
         return JSONResponse(data)
 
     @app.get("/api/chat/stream")
-    def chat_stream(q: str, language: str | None = None) -> Any:
+    def chat_stream(
+        q: str, language: str | None = None, season: str | None = None, light: str | None = None
+    ) -> Any:
         from sse_starlette.sse import EventSourceResponse
 
         error = _question_error(q.strip(), config)
         if error is not None:
             return JSONResponse({"error": error}, status_code=400)
-        return EventSourceResponse(_sse_events(_resolve(q.strip(), language)))
+        # Normalize + bound the GET qualifiers exactly like the JSON path does.
+        return EventSourceResponse(
+            _sse_events(_resolve(q.strip(), language, _optional_str(season), _optional_str(light)))
+        )
 
     _register_identify(app, engine, config, log, identifier)
     _register_reminders(app, config, log)
