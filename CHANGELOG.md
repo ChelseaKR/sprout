@@ -195,6 +195,15 @@ the public evaluation harness as the headline artifact.
   ever wired — each now names its real, resolvable mechanism, including a new
   `tests/test_i18n_parity.py` that actually implements the previously-nonexistent EN/ES
   key-and-placeholder-parity diff.
+- **Retrieval scale architecture (FIX-07).** `BM25Index` is now an inverted-postings structure
+  (`term -> {doc_index: term_freq}`, `lexical.py`) built **once per corpus** instead of being
+  retokenised on every query: `ingest.py` builds it over every chunk and `store.py` persists it in
+  `index.json` (format version bumped to 2; a v1 file now fails to load with a message pointing at
+  `sprout ingest`). `VectorStore.search` accepts a `candidate_ids` filter and selects with
+  `heapq.nlargest` instead of a full sort, so a species-scoped query's dense scan and BM25 scoring
+  are both bounded by that species' chunk-id group rather than the whole corpus, and an unfiltered
+  query no longer requests `top_k=len(store)`. See `docs/ideation/02-large-scale-fixes.md` (FIX-07)
+  and `tests/test_retrieval_scale.py`.
 
 ### Security
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the

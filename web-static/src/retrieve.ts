@@ -64,17 +64,32 @@ function slugTokens(source: string): string[] {
     .filter((t) => t.length > 0);
 }
 
+// Dense-scan bound for unfiltered queries — mirrors `retrieve.py`'s `_DENSE_FANOUT` /
+// `_DENSE_MIN_CANDIDATES` (FIX-07): request max(top_k * fanout, floor), capped at store size.
+const DENSE_FANOUT = 20;
+const DENSE_MIN_CANDIDATES = 200;
+
 export class Retriever {
   private readonly config: RetrievalConfig;
   private readonly store: VectorStore;
   private readonly embedder: HashingEmbedding;
   private readonly chunks: Chunk[];
+  // BM25 over the *full* corpus, built once per Retriever — from the postings `sprout
+  // ingest` persisted in the bundle when present, else rebuilt here (FIX-07 mirror).
+  private readonly bm25: BM25Index;
 
   constructor(config: RetrievalConfig, store: VectorStore, embedder: HashingEmbedding) {
     this.config = config;
     this.store = store;
     this.embedder = embedder;
     this.chunks = store.allChunks();
+    this.bm25 = store.bm25State
+      ? BM25Index.fromState(store.bm25State)
+      : BM25Index.build(
+          this.chunks.map((c) => c.text),
+          config.bm25_k1,
+          config.bm25_b,
+        );
   }
 
   private namedSpecies(query: string): Set<string> {
@@ -129,25 +144,35 @@ export class Retriever {
       return [];
     }
 
+    const candidateIds = new Set(candidates.map((c) => c.chunk_id));
+    const topicScoped = candidates.length < this.chunks.length;
+
     const qvec = this.embedder.embed(query);
-    const dense = this.store.search(qvec, this.store.length);
+    let dense: RetrievedChunk[];
+    if (topicScoped) {
+      // Bounded to exactly the named species' chunks — the common case at scale.
+      dense = this.store.search(qvec, candidates.length, candidateIds);
+    } else {
+      const bound = Math.min(
+        this.store.length,
+        Math.max(rcfg.top_k * DENSE_FANOUT, DENSE_MIN_CANDIDATES),
+      );
+      dense = this.store.search(qvec, bound);
+    }
     const cosine = new Map<string, number>();
     for (const rc of dense) {
       cosine.set(rc.chunk.chunk_id, rc.score);
     }
-    const candidateIds = new Set(candidates.map((c) => c.chunk_id));
     const denseRanking = dense
       .filter((rc) => candidateIds.has(rc.chunk.chunk_id))
       .map((rc) => rc.chunk.chunk_id);
 
     const rankings: string[][] = [denseRanking];
     if (rcfg.hybrid) {
-      const bm25 = new BM25Index(
-        candidates.map((c) => c.text),
-        rcfg.bm25_k1,
-        rcfg.bm25_b,
-      );
-      const bm25Ranking = bm25.ranking(query).map((i) => (candidates[i] as Chunk).chunk_id);
+      const bm25Ranking = this.bm25
+        .ranking(query)
+        .map((i) => (this.chunks[i] as Chunk).chunk_id)
+        .filter((cid) => candidateIds.has(cid));
       rankings.push(bm25Ranking);
     }
 
