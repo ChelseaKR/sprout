@@ -67,7 +67,7 @@ class RetrievalConfig(_Model):
 
 
 class NLIVerifierConfig(_Model):
-    """Cross-encoder NLI entailment verifier (ADR-0013), cloud-path only.
+    """Cross-encoder NLI entailment verifier (ADR-0018), cloud-path only.
 
     ``model_id``/``revision``/``onnx_filename`` identify the artifact on the Hugging Face
     Hub; ``model_sha256`` pins it the same way the eval judge config is hashed into the run
@@ -98,7 +98,7 @@ class GenerationConfig(_Model):
     max_cost_usd: float = Field(default=0.05, ge=0.0)
     redact_query_pii: bool = False
     # EXP-04: an NLI-grade entailment verifier behind the citation guard, applied only on
-    # the cloud (non-deterministic) generation path — see docs/adr/0013 and
+    # the cloud (non-deterministic) generation path — see docs/adr/0018 and
     # docs/ideation/03-expansions.md. The offline path keeps its by-construction
     # groundedness guarantee and zero-dependency install untouched.
     support_verifier: Literal["lexical", "nli"] = "lexical"

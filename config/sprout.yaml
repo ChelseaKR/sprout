@@ -59,7 +59,7 @@ generation:
   region: us-west-2
   max_cost_usd: 0.05             # per-answer preflight ceiling; unpriced models refuse
   redact_query_pii: false         # redact PII before sending to a network provider
-  # EXP-04 (docs/adr/0013): an additional cross-encoder NLI entailment gate behind the
+  # EXP-04 (docs/adr/0018): an additional cross-encoder NLI entailment gate behind the
   # citation guard, for the cloud path only — provider must not be "deterministic" and
   # nli.model_sha256 must be pinned, enforced at config load (fail closed).
   support_verifier: lexical       # lexical (default, zero-dependency) | nli
