@@ -8,9 +8,9 @@ CONFIG ?= config/sprout.yaml
 RELEASE_TAG ?=
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        smoke a11y claims calibrate gate-inventory slo freshness audits docs workflow-lint \
-        ci-parity-check demo verify clean web-static-bundle web-static-fixtures \
-        web-static-test web-static-build
+        smoke a11y claims calibrate gate-inventory slo corpus-report freshness audits docs \
+        workflow-lint ci-parity-check demo verify clean web-static-bundle \
+        web-static-fixtures web-static-test web-static-build
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -60,6 +60,9 @@ freshness: ## Fail on citations past their configured freshness SLA (offline, de
 smoke: ingest ## Phase 1 CI smoke suite: corpus-derived questions, no hand-authored YAML
 	$(PY) sprout smoke --config $(CONFIG) --out docs/audits
 
+corpus-report: ## Species x topic x language completeness, EN/ES parity diff, chunk lint (EXP-12)
+	$(PY) sprout corpus-report --config $(CONFIG) --out docs/audits
+
 a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gate)
 	$(PY) sprout a11y-check web/dist/index.html
 	$(PY) sprout a11y-check docs/audits/eval-report.html
@@ -73,7 +76,10 @@ gate-inventory: ## FIX-02: fail if any ledger AUTO row has no real enforcement m
 slo: ## Schema-check the Tier-A SLO + burn-rate-alert files
 	$(PY) sprout slo-check
 
-audits: eval calibrate gate-inventory ## Regenerate the committed eval + calibration + gate-inventory audit artifacts
+corpus-report: ## EXP-12: regenerate the corpus workbench report (advisory; --gate to enforce)
+	$(PY) sprout corpus-report --out docs/audits
+
+audits: eval calibrate gate-inventory corpus-report ## Regenerate the committed eval + calibration + gate-inventory + corpus audit artifacts
 
 docs: ## Build the docs site strictly (mirrors the CI docs gate)
 	uv sync --group docs
@@ -100,7 +106,7 @@ web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conf
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
 	cd web-static && npm ci && npm run build:site
 
-verify: lint type test security eval smoke a11y claims calibrate gate-inventory slo docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
+verify: lint type test security eval smoke a11y claims calibrate gate-inventory slo corpus-report docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts
