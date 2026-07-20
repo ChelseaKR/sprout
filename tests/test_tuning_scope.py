@@ -141,7 +141,10 @@ def repo(tmp_path: Path) -> Path:
         "    relevance_floor = 0.30\n"
         "\n"
         "class ServerConfig:\n"
-        "    port = 8000\n",
+        "    port = 8000\n"
+        "\n"
+        "class Config:\n"
+        "    generation: GenerationConfig\n",
         encoding="utf-8",
     )
     (root / "config" / "sprout.yaml").write_text(
@@ -245,10 +248,32 @@ def test_server_config_only_module_change_passes_without_trailer(repo: Path) -> 
         "class ServerConfig:\n"
         "    port = 8000\n"
         "    max_body_bytes = 12_000_000\n"
-        "    rate_limit_requests = 60\n",
+        "    rate_limit_requests = 60\n"
+        "\n"
+        "class Config:\n"
+        "    generation: GenerationConfig\n",
         encoding="utf-8",
     )
     _git(["commit", "-q", "-am", "feat(server): add hardening knobs"], repo)
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+def test_new_exempt_config_class_with_config_field_passes(repo: Path) -> None:
+    # Adding an eval-invisible config class AND its wiring field on Config is operational;
+    # the field line's only content is the exempt class itself.
+    (repo / "src" / "sprout" / "config.py").write_text(
+        "class GenerationConfig:\n"
+        "    relevance_floor = 0.30\n"
+        "\n"
+        "class ServerConfig:\n"
+        "    port = 8000\n"
+        "\n"
+        "class Config:\n"
+        "    generation: GenerationConfig\n"
+        "    server: ServerConfig\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(server): wire ServerConfig onto Config"], repo)
     assert check_tuning_scope(base_ref="main", repo_root=repo) == []
 
 
@@ -261,7 +286,10 @@ def test_mixed_config_module_change_fails_closed(repo: Path) -> None:
         "\n"
         "class ServerConfig:\n"
         "    port = 8000\n"
-        "    max_body_bytes = 12_000_000\n",
+        "    max_body_bytes = 12_000_000\n"
+        "\n"
+        "class Config:\n"
+        "    generation: GenerationConfig\n",
         encoding="utf-8",
     )
     _git(["commit", "-q", "-am", "feat(server): knobs plus a sneaky floor change"], repo)
@@ -289,7 +317,11 @@ def test_eval_visible_modules_never_read_exempt_config() -> None:
     for module in eval_visible:
         tree = _ast.parse(module.read_text(encoding="utf-8"))
         for node in _ast.walk(tree):
-            if isinstance(node, _ast.Attribute) and node.attr in {"server", "observability"}:
+            if isinstance(node, _ast.Attribute) and node.attr in {
+                "server",
+                "observability",
+                "review",
+            }:
                 offenders.append(f"{module}:{node.lineno}")
     assert not offenders, f"eval-visible module(s) read `.server`: {offenders}"
 

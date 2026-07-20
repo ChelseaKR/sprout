@@ -3,7 +3,8 @@
 Instantiates `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`.
 Last regenerated: **2026-06-22** (photo-ID + reminders DPIA/non-goal reconciliation
 **2026-06-30**, per ADR-0010/ADR-0011; conversation-memory data-inventory row added
-**2026-07-08**, per EXP-07). Author: Chelsea Kelly-Reif.
+**2026-07-08**, per EXP-07; review-console DPIA delta **2026-07-08**, per
+ADR-0020). Author: Chelsea Kelly-Reif.
 
 This document supplies the *frame* (what could go wrong, who is hurt, what we commit to)
 and the AI-governance scaffolding. It does **not** restate numeric thresholds: every gate
@@ -184,6 +185,7 @@ no personal data to protect**, by design.
 | Operational logs | health/debugging | stderr / log sink | per deployment | operator |
 | Photo bytes (photo-ID, opt-in) | *select* a candidate species to route to the corpus (ADR-0010) | **not persisted**; the offline default does no I/O; the `plantnet` provider streams the image once to the allowlisted Pl@ntNet endpoint and retains nothing | duration of the request | the process; Pl@ntNet **only if** the `plantnet` provider is enabled |
 | Care reminders (opt-in) | user-set watering/fertilizing schedule the user asked Sprout to remember (ADR-0011) | **one local JSON file** (`var/reminders.json`) on the user's own device; created lazily on first use | until the user deletes it; **never uploaded**, no sync, no push | the local process only |
+| Review queue (opt-in, **off by default**) | maintainer-side labeling of flagged/refused traces feeding the judge probe set, confidence re-fit, and draft eval cases (ADR-0020, EXP-17) | **one local JSON file** (`var/review/queue.json`) on the maintainer's own machine; written only when `review.enabled: true`; created lazily on first capture | until the maintainer deletes it; **never uploaded**, no sync, no push; exports go to `var/review/*.yaml` (also local, never auto-merged into a committed file) | the local maintainer process only |
 | API keys (cloud + Pl@ntNet seams) | auth to Bedrock/Anthropic; `PLANTNET_API_KEY` for the photo seam | **env vars only**, never config/repo | n/a | operator |
 | Conversation turn selector (opt-in, EXP-07) | resolve which species/topic a follow-up question is about | **in-memory only** (`conversation.SessionMemory`), keyed by a caller-supplied opaque session id; holds only `{species_slug, topic, language}` per turn — **never** question or answer text | last `ConversationConfig.session_memory` turns (default 4) per session, cleared on process restart | the process |
 
@@ -229,6 +231,19 @@ no personal data to protect**, by design.
   lazily on first use; nothing is uploaded, there is no sync and no push delivery, and
   reminder *content* (plant labels, notes) never reaches the logs — only event names and
   counts pass the whitelist logger, preserving the Tier-C PII-free posture.
+- **The review console is opt-in, OFF BY DEFAULT, and stores question text (DPIA delta for
+  ADR-0020, EXP-17).** `Answer.low_confidence`/`Answer.refused` traces are queued for
+  maintainer labeling only when a maintainer sets `review.enabled: true`; the shipped default
+  is `false`, so out of the box nothing changes and no file is created. This is the one
+  opt-in seam that deliberately captures the thing the rest of this document treats as
+  radioactive — the user's question text — so its controls are stricter than the other opt-in
+  seams above: local-only (one JSON file, `var/review/queue.json`, on the *maintainer's* own
+  machine, never the end user's), no network call anywhere in `review.py`, and the three
+  exporters (`sprout review export`) never auto-merge into a committed, gate-backing file —
+  they write to `var/review/*.yaml` for a maintainer to review and hand-merge, so a single
+  reviewer's judgment cannot silently become part of the judge-calibration or eval-suite
+  record. `capture()` does not consult config itself; the CLI caller is the single place that
+  gates on `review.enabled`, so there is one code path to audit, not several.
 
 ### Data-flow (default offline)
 

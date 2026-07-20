@@ -122,19 +122,52 @@ def _print_answer_obj(answer: Answer) -> None:
     )
 
 
+def _maybe_capture_review(cfg: Config, trace: Any) -> None:
+    """Queue ``trace`` for the local review console, if opted in (EXP-17).
+
+    Off by default (``ReviewConfig.enabled``); a maintainer must set it in
+    ``config/sprout.yaml`` first. See ``docs/RESPONSIBLE-TECH-AUDITS.md`` §C and
+    ``docs/adr/0020-local-review-console-for-flagged-answers.md`` before enabling --
+    the queue stores question text locally, unlike the rest of Sprout's logging.
+
+    Refusals are checked *first*: every refusal also carries ``low_confidence=True``
+    (see ``Assistant._refuse``), so testing the low-confidence opt-out before the
+    refusal opt-in would make ``capture_on_refusal: true`` unreachable whenever
+    ``capture_on_low_confidence`` is false — the same precedence ``ReviewQueue.capture``
+    uses.
+    """
+    if not cfg.review.enabled:
+        return
+    answer = trace.answer
+    if answer.refused:
+        if not cfg.review.capture_on_refusal:
+            return
+    elif answer.low_confidence and not cfg.review.capture_on_low_confidence:
+        return
+    from .review import ReviewQueue
+
+    ReviewQueue(cfg.review.path, max_items=cfg.review.max_items).capture(trace)
+
+
 def _print_answer(
     assistant: Assistant,
     question: str,
     language: str | None,
     debug: bool,
+    cfg: Config | None = None,
     *,
     season: str | None = None,
     light: str | None = None,
 ) -> None:
     answer = assistant.answer(question, language, season=season, light=light)
     _print_answer_obj(answer)
-    if debug:
-        trace = assistant.trace(question, language, season=season, light=light)
+    want_trace = debug or (
+        cfg is not None and cfg.review.enabled and (answer.low_confidence or answer.refused)
+    )
+    trace = assistant.trace(question, language, season=season, light=light) if want_trace else None
+    if cfg is not None and trace is not None:
+        _maybe_capture_review(cfg, trace)
+    if debug and trace is not None:
         typer.echo("\n--- trace ---")
         typer.echo(
             f"language={trace.language} safety={trace.is_safety_query} "
@@ -179,7 +212,7 @@ def ask(
     except FileNotFoundError as exc:
         typer.echo(f"{exc}", err=True)
         raise typer.Exit(2) from exc
-    _print_answer(assistant, question, language, debug, season=season, light=light)
+    _print_answer(assistant, question, language, debug, cfg, season=season, light=light)
 
 
 @app.command()
@@ -881,6 +914,169 @@ def remind_export(
         typer.echo(f"Wrote {len(reminders)} reminder(s) to {out}.")
     else:
         typer.echo(text, nl=False)
+
+
+review_app = typer.Typer(
+    add_completion=False,
+    help=(
+        "Local, opt-in review console for flagged/refused traces (EXP-17). Off by "
+        "default -- see docs/RESPONSIBLE-TECH-AUDITS.md §C before enabling "
+        "`review.enabled` in config."
+    ),
+)
+app.add_typer(review_app, name="review")
+
+_EXPORT_TARGETS = ("judge-probes", "confidence-fit", "eval-drafts")
+
+
+def _review_queue(config: ConfigOpt) -> Any:
+    from .review import ReviewQueue
+
+    cfg = _load(config)
+    return ReviewQueue(cfg.review.path, max_items=cfg.review.max_items)
+
+
+def _print_review_item(item: Any) -> None:
+    typer.echo(
+        f"\n[{item.item_id}] reason={item.reason} confidence={item.confidence:.2f} "
+        f"language={item.language}"
+    )
+    typer.echo(f"  Q: {item.question}")
+    typer.echo(f"  A: {item.answer_text or '(refused, no answer text)'}")
+    if item.citations:
+        typer.echo("  Sources:")
+        for c in item.citations:
+            typer.echo(f"    - {c.label}: {c.quote}")
+
+
+@review_app.command("queue")
+def review_queue_cmd(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    show_all: Annotated[bool, typer.Option("--all", help="Include already-labeled items.")] = False,
+) -> None:
+    """List queued review items (unlabeled by default)."""
+    queue = _review_queue(config)
+    items = queue.all_items() if show_all else queue.unlabeled()
+    if not items:
+        typer.echo("Nothing queued." if show_all else "No unlabeled items.")
+        return
+    for item in items:
+        status = f"labeled={item.label}" if item.label else "unlabeled"
+        typer.echo(
+            f"  {item.item_id}  {item.reason:<14}  conf={item.confidence:.2f}  "
+            f"{status:<24}  {item.question[:60]}"
+        )
+
+
+@review_app.command("show")
+def review_show(
+    item_id: Annotated[str, typer.Argument()],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Print one queued item's full trace summary."""
+    from .review import ReviewError
+
+    queue = _review_queue(config)
+    try:
+        item = queue.get(item_id)
+    except ReviewError as exc:
+        typer.echo(f"{exc}", err=True)
+        raise typer.Exit(1) from exc
+    _print_review_item(item)
+
+
+@review_app.command("label")
+def review_label(
+    item_id: Annotated[str, typer.Argument()],
+    label: Annotated[
+        str, typer.Argument(help="correct | incomplete | wrong-plant | should-have-refused")
+    ],
+    note: Annotated[str, typer.Option("--note")] = "",
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Label a queued item."""
+    from .review import ReviewError
+
+    queue = _review_queue(config)
+    try:
+        updated = queue.label(item_id, label, note=note)
+    except ReviewError as exc:
+        typer.echo(f"{exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Labeled {updated.item_id} as {updated.label}.")
+
+
+@review_app.command("run")
+def review_run(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
+    """Interactive console: walk unlabeled items one at a time and prompt for a label."""
+    from .review import LABELS, ReviewError
+
+    queue = _review_queue(config)
+    pending = queue.unlabeled()
+    if not pending:
+        typer.echo("No unlabeled items.")
+        return
+    typer.echo(
+        f"{len(pending)} unlabeled item(s). Labels: {', '.join(LABELS)}. "
+        "Enter 's' to skip, 'q' to quit."
+    )
+    for item in pending:
+        _print_review_item(item)
+        choice = typer.prompt("  Label", default="s")
+        if choice == "q":
+            break
+        if choice in ("s", ""):
+            continue
+        try:
+            queue.label(item.item_id, choice)
+            typer.echo(f"  -> labeled {choice}")
+        except ReviewError as exc:
+            typer.echo(f"  {exc}", err=True)
+
+
+@review_app.callback(invoke_without_command=True)
+def review_default(ctx: typer.Context, config: ConfigOpt = _DEFAULT_CONFIG) -> None:
+    """Bare `sprout review` launches the interactive console."""
+    if ctx.invoked_subcommand is None:
+        review_run(config)
+
+
+@review_app.command("export")
+def review_export(
+    target: Annotated[str, typer.Argument(help=f"one of: {', '.join(_EXPORT_TARGETS)}")],
+    out: Annotated[str | None, typer.Option("--out", help="Defaults under var/review/.")] = None,
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Export labeled items into the judge probes / confidence-fit / eval-draft shapes.
+
+    Always writes a standalone file for a maintainer to review and hand-merge into the
+    committed, authoritative file (``eval/judge_probes.yaml`` / ``eval/suites/*.yaml``) --
+    this never mutates those files itself, so nothing here silently backs a gate.
+    """
+    from .review import (
+        export_confidence_fit_cases,
+        export_eval_case_drafts,
+        export_judge_probes,
+        write_yaml,
+    )
+
+    if target not in _EXPORT_TARGETS:
+        typer.echo(f"unknown export target {target!r}; choose from {_EXPORT_TARGETS}", err=True)
+        raise typer.Exit(2)
+    queue = _review_queue(config)
+    items = queue.labeled()
+    if not items:
+        typer.echo("No labeled items to export yet -- run `sprout review label` first.", err=True)
+        raise typer.Exit(1)
+    exporters = {
+        "judge-probes": ("var/review/export-judge-probes.yaml", export_judge_probes),
+        "confidence-fit": ("var/review/export-confidence-fit.yaml", export_confidence_fit_cases),
+        "eval-drafts": ("var/review/export-eval-drafts.yaml", export_eval_case_drafts),
+    }
+    default_out, exporter = exporters[target]
+    out_path = out or default_out
+    n = write_yaml(exporter(items), out_path)
+    typer.echo(f"Wrote {n} {target} record(s) to {out_path}. Review before merging.")
 
 
 @app.command()

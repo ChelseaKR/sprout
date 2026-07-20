@@ -135,6 +135,17 @@ the public evaluation harness as the headline artifact.
   [ADR-0017](docs/adr/0017-offline-static-vector-semantic-embedding-provider.md) for the
   measured eval delta (refusal 0.9118 → 0.9412, over-refusal 10% → 0%, groundedness
   unchanged at 1.000) and why it doesn't yet clear the 0.95 excellence bar.
+- **Local review console for flagged/refused answers** (`review.py`, EXP-17). An opt-in,
+  **off-by-default** queue that captures `Answer.low_confidence`/`Answer.refused` traces for
+  maintainer labeling ({correct, incomplete, wrong-plant, should-have-refused}), plus three
+  exporters that turn labeled traces into `eval/judge_probes.yaml`-shaped judge probes, a
+  confidence re-fit dataset (feeds FIX-08), and draft eval cases for `eval/suites/` curation —
+  never written directly, always a standalone file for a maintainer to review and hand-merge.
+  New `sprout review` sub-commands (`queue`/`show`/`label`/`run`/`export`), wired into `sprout
+  ask` behind `ReviewConfig.enabled` (`config.py`). Stores question text locally on the
+  maintainer's own machine only; see its own DPIA delta in
+  [`RESPONSIBLE-TECH-AUDITS.md`](docs/RESPONSIBLE-TECH-AUDITS.md) §C and
+  [ADR-0020](docs/adr/0020-local-review-console-for-flagged-answers.md).
 - **Grounded extractive assistant.** Retrieval-mandatory pipeline
   (`guards(input) → retrieve → extractive generate → guards(output) → confidence/abstention`)
   that answers only from the cited corpus, with an inline citation to the governing passage and its
