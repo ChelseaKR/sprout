@@ -7,7 +7,8 @@ regenerate the committed report), ``a11y-check`` (structural WCAG gate on render
 (offline citation-freshness check, opt-in link-liveness), ``claims-check`` (doc claims vs
 their code/config source of truth), ``smoke`` (the Phase 1 CI smoke suite of corpus-derived
 questions), ``check-tuning-scope`` (fail-closed gate for tunable-surface changes),
-``calibrate`` (judge agreement + kappa),
+``calibrate`` (judge agreement + kappa), ``fit-confidence`` (re-fit the confidence logistic
+on a held-out train split),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
 (a scripted session). Everything runs offline by default.
 """
@@ -139,7 +140,12 @@ def evaluate(
     erosion beyond tolerance); any issue — including a stale baseline whose fingerprint no
     longer matches this run's dataset/judge/target — fails the command even if every suite
     individually passed its own threshold.
+
+    Also fails closed (FIX-08 / ADR-0016) if ``confidence.fit`` is recorded but no longer
+    matches the live ``retrieval:`` config — a retrieval change since the fit invalidates
+    its evidence scale; re-run ``sprout fit-confidence`` before trusting it again.
     """
+    from .confidence import fit_drift_warning
     from .eval.dataset import load_suite_dir, write_sidecar
     from .eval.judge import build_judge
     from .eval.record import record
@@ -149,6 +155,10 @@ def evaluate(
     from .eval.suites.refusal import threshold_for as refusal_threshold_for
 
     cfg = _load(config)
+    drift = fit_drift_warning(cfg.confidence, cfg.retrieval)
+    if drift:
+        typer.echo(drift, err=True)
+        raise typer.Exit(1)
     assistant = Assistant.from_config(cfg)
     dataset = load_suite_dir(suite_dir, verify_hash=not update_baseline)
     if update_baseline:
@@ -462,6 +472,49 @@ def gate_inventory(
         for r in unresolved:
             typer.echo(f"  - {r.row.metric}: {r.detail}", err=True)
     raise typer.Exit(1 if gate and unresolved else 0)
+
+
+@app.command("fit-confidence")
+def fit_confidence_cmd(
+    train: Annotated[
+        str, typer.Option("--train", help="Held-out train split (never eval/suites/).")
+    ] = "eval/train/calibration_train.yaml",
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Fit ``confidence.fit``'s midpoint/steepness/margin_bonus on a held-out train split.
+
+    Replays the live engine over ``--train`` (default ``eval/train/calibration_train.yaml``
+    -- deliberately never a file under ``eval/suites/``: fitting against the eval set would
+    make the calibration suite's ECE gate a check of nothing) and grid-fits the same
+    3-parameter logistic ``confidence.py`` already uses. Writes the fitted constants plus
+    provenance (train-dataset hash, retrieval-config hash, item count, date) into
+    ``confidence.fit`` in ``--config``, so the next ``sprout eval`` run uses them (FIX-08,
+    ADR-0016). The write is a targeted text edit that preserves every other line of the
+    config file, including its hand-written comments.
+    """
+    from .fit_confidence import fit_confidence as run_fit_confidence
+
+    config_path = Path(config)
+    if not config_path.exists():
+        typer.echo(
+            f"config not found: {config_path} -- fit-confidence writes into an existing "
+            "config file; pass --config to point at one.",
+            err=True,
+        )
+        raise typer.Exit(2)
+    cfg = load_config(config_path)
+    try:
+        assistant = Assistant.from_config(cfg)
+    except FileNotFoundError as exc:
+        typer.echo(f"{exc} (run `sprout ingest` first)", err=True)
+        raise typer.Exit(2) from exc
+    fit = run_fit_confidence(assistant, cfg, train, config_path)
+    typer.echo(
+        f"Fitted midpoint={fit.midpoint} steepness={fit.steepness} "
+        f"margin_bonus={fit.margin_bonus} on {fit.n_items} train items "
+        f"(dataset {fit.train_dataset_hash[:12]}, retrieval {fit.retrieval_config_hash[:12]})."
+    )
+    typer.echo(f"Wrote confidence.fit to {config_path}.")
 
 
 @app.command()

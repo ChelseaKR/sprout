@@ -78,6 +78,26 @@ class GenerationConfig(_Model):
     redact_query_pii: bool = False
 
 
+class ConfidenceFit(_Model):
+    """A fitted, provenance-stamped logistic, written by ``sprout fit-confidence``
+    (ADR-0016). Answers "fitted on what, when, against which retrieval config" so a
+    committed fit is auditable rather than a bare set of numbers.
+
+    Fitted on a **train split** (``eval/train/``) of generated calibration questions,
+    never on ``eval/suites/`` -- the anti-tuning-to-test discipline the calibration eval
+    depends on to be a meaningful, un-gamed check.
+    """
+
+    midpoint: float = Field(ge=0.0, le=1.0)
+    steepness: float = Field(ge=0.1, le=100.0)
+    margin_bonus: float = Field(ge=0.0, le=1.0)
+    train_dataset_hash: str
+    train_path: str
+    retrieval_config_hash: str
+    n_items: int = Field(ge=1)
+    fitted_at: str  # ISO-8601 date
+
+
 class ConfidenceConfig(_Model):
     """Two thresholds over a computed [0,1] confidence drive abstention/handoff.
 
@@ -88,6 +108,9 @@ class ConfidenceConfig(_Model):
     abstain_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
     low_confidence_threshold: float = Field(default=0.50, ge=0.0, le=1.0)
     reliability_bins: int = Field(default=10, ge=2, le=50)
+    # Absent until `sprout fit-confidence` has been run at least once; see ConfidenceFit
+    # and confidence.py's module docstring for the ADR-0012 fallback used until then.
+    fit: ConfidenceFit | None = None
 
 
 class GuardsConfig(_Model):
