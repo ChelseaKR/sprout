@@ -19,7 +19,7 @@ reviewer needs to actually see what was asked. It is:
 - **local-only** (one JSON file on the maintainer's own machine; this module makes no
   network call, ever),
 - **documented** with its own DPIA delta in ``docs/RESPONSIBLE-TECH-AUDITS.md`` (§C)
-  and ``docs/adr/0014-local-review-console-for-flagged-answers.md``, the same discipline
+  and ``docs/adr/0020-local-review-console-for-flagged-answers.md``, the same discipline
   already applied to the photo-ID and reminders opt-in seams (ADR-0010, ADR-0011).
 
 Exporters never write to the committed, authoritative files (``eval/judge_probes.yaml``,
@@ -139,6 +139,9 @@ class ReviewQueue:
         self._path.write_text(
             json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8"
         )
+        # The queue is the one Sprout file that stores question text (see ADR-0020);
+        # keep it owner-readable only rather than default umask.
+        self._path.chmod(0o600)
 
     def __len__(self) -> int:
         return len(self._items)

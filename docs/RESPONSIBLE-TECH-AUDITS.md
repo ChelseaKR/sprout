@@ -232,7 +232,7 @@ no personal data to protect**, by design.
   reminder *content* (plant labels, notes) never reaches the logs — only event names and
   counts pass the whitelist logger, preserving the Tier-C PII-free posture.
 - **The review console is opt-in, OFF BY DEFAULT, and stores question text (DPIA delta for
-  ADR-0014, EXP-17).** `Answer.low_confidence`/`Answer.refused` traces are queued for
+  ADR-0020, EXP-17).** `Answer.low_confidence`/`Answer.refused` traces are queued for
   maintainer labeling only when a maintainer sets `review.enabled: true`; the shipped default
   is `false`, so out of the box nothing changes and no file is created. This is the one
   opt-in seam that deliberately captures the thing the rest of this document treats as

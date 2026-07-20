@@ -145,7 +145,7 @@ the public evaluation harness as the headline artifact.
   ask` behind `ReviewConfig.enabled` (`config.py`). Stores question text locally on the
   maintainer's own machine only; see its own DPIA delta in
   [`RESPONSIBLE-TECH-AUDITS.md`](docs/RESPONSIBLE-TECH-AUDITS.md) §C and
-  [ADR-0014](docs/adr/0014-local-review-console-for-flagged-answers.md).
+  [ADR-0020](docs/adr/0020-local-review-console-for-flagged-answers.md).
 - **Grounded extractive assistant.** Retrieval-mandatory pipeline
   (`guards(input) → retrieve → extractive generate → guards(output) → confidence/abstention`)
   that answers only from the cited corpus, with an inline citation to the governing passage and its
