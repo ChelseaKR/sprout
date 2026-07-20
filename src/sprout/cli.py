@@ -9,6 +9,8 @@ their code/config source of truth), ``smoke`` (the Phase 1 CI smoke suite of cor
 questions), ``check-tuning-scope`` (fail-closed gate for tunable-surface changes),
 ``calibrate`` (judge agreement + kappa), ``fit-confidence`` (re-fit the confidence logistic
 on a held-out train split),
+``toxicity coverage``/``toxicity check`` (the structured
+per-row-cited toxicity table — coverage report and table-vs-prose consistency gate),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
 (a scripted session). Everything runs offline by default.
 """
@@ -578,6 +580,61 @@ def identify(
     typer.echo(result.label or "")
     typer.echo("")
     _print_answer_obj(result.answer)
+
+
+# EXP-09: the table is audit tooling, deliberately not a runtime Config field — the
+# answer path never reads it, and keeping it off `config.py` keeps it outside the
+# tuning-scope gate's tunable surface, which is accurate: it cannot tune anything.
+_DEFAULT_TOXICITY_TABLE = "corpus/toxicity.yaml"
+
+toxicity_app = typer.Typer(
+    add_completion=False, help="The structured, per-row-cited toxicity table (EXP-09)."
+)
+app.add_typer(toxicity_app, name="toxicity")
+
+
+@toxicity_app.command("coverage")
+def toxicity_coverage(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    table: Annotated[str, typer.Option("--table")] = _DEFAULT_TOXICITY_TABLE,
+) -> None:
+    """Print every species x animal pair the toxicity table covers, with its citation."""
+    from .toxicity import coverage_report, load_configured_toxicity_table
+
+    rows = load_configured_toxicity_table(table)
+    report = coverage_report(rows)
+    for species in sorted(report):
+        typer.echo(species)
+        for animal in sorted(report[species]):
+            row = report[species][animal]
+            status = "toxic" if row.toxic else "not listed as toxic"
+            synthetic = " [synthetic]" if row.synthetic else ""
+            typer.echo(
+                f"  {animal:<6} {status:<18} {row.severity_class:<14} "
+                f"— {row.source_name} (as of {row.fetch_date}){synthetic}"
+            )
+    typer.echo(f"\n{len(report)} species, {sum(len(a) for a in report.values())} pairs covered.")
+
+
+@toxicity_app.command("check")
+def toxicity_check(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    table: Annotated[str, typer.Option("--table")] = _DEFAULT_TOXICITY_TABLE,
+) -> None:
+    """Fail if any toxicity-table row contradicts its document's prose (EXP-09 gate)."""
+    from .ingest import load_corpus
+    from .toxicity import check_consistency, load_configured_toxicity_table
+
+    cfg = _load(config)
+    rows = load_configured_toxicity_table(table)
+    documents = load_corpus(cfg)
+    problems = check_consistency(rows, documents)
+    if problems:
+        typer.echo("Table-vs-prose contradictions found:", err=True)
+        for p in problems:
+            typer.echo(f"  - {p}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{len(rows)} rows checked against corpus prose: no contradictions.")
 
 
 remind_app = typer.Typer(
