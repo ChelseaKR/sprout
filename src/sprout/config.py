@@ -384,6 +384,16 @@ class PromptConfig(_Model):
     photo_identified_by_lang: dict[str, str] = Field(
         default_factory=lambda: locales.by_lang("prompts", "photo_identified", _DEFAULT_LANGUAGES)
     )
+    # EXP-02 (docs/ideation/03-expansions.md): rendered when the pairwise numeric-cadence
+    # probe finds two retrieved sources stating a different cadence for the same care
+    # action. Carries both mentions and both source labels — never resolved to a single
+    # "right" answer, so the user sees the disagreement instead of a silently picked one.
+    disagreement_notice_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": "Sources differ on this point: {mention_a} ({source_a}) vs. {mention_b} ({source_b}).",  # noqa: E501
+            "es": "Las fuentes difieren en este punto: {mention_a} ({source_a}) frente a {mention_b} ({source_b}).",  # noqa: E501
+        }
+    )
 
     def refusal_for(self, language: str) -> str:
         return self.refusal_by_lang.get(language, self.refusal_by_lang["en"])
@@ -416,6 +426,16 @@ class PromptConfig(_Model):
     def human_escalation_card_for(self, language: str) -> str:
         return self.human_escalation_card_by_lang.get(
             language, self.human_escalation_card_by_lang["en"]
+        )
+
+    def disagreement_notice_for(
+        self, language: str, mention_a: str, source_a: str, mention_b: str, source_b: str
+    ) -> str:
+        template = self.disagreement_notice_by_lang.get(
+            language, self.disagreement_notice_by_lang["en"]
+        )
+        return template.format(
+            mention_a=mention_a, source_a=source_a, mention_b=mention_b, source_b=source_b
         )
 
     def safety_directive_for(self, language: str, exposure_type: str | None = None) -> str:

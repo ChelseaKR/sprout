@@ -19,6 +19,7 @@ from sprout.confidence import (
     should_abstain,
 )
 from sprout.config import ConfidenceFit, Config
+from sprout.disagreement import numeric_cadence_conflicts
 from sprout.guards import (
     asserts_safety,
     citation_guard,
@@ -31,7 +32,7 @@ from sprout.lexical import BM25Index
 from sprout.models import AnswerSentence, Chunk, Citation, RetrievedChunk
 from sprout.providers.deterministic import HashingEmbedding
 from sprout.store import VectorStore
-from sprout.text import has_negation
+from sprout.text import extract_cadences, has_negation
 
 
 # --- lexical ---------------------------------------------------------------------
@@ -451,6 +452,87 @@ def test_safety_filter_drops_certifications(tiny_chunks: list[Chunk]) -> None:
     assert all("perfectly fine" not in s.text for s in filtered)
 
 
+# --- numeric-cadence disagreement probe (EXP-02) ----------------------------------
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Water your Monstera every 7 days once soil is dry.", [("water", 7.0, "every 7 days")]),
+        ("Riega cada 14 días en invierno.", [("water", 14.0, "cada 14 días")]),
+        # weeks normalise to days, so a 2-week cadence compares equal to a 14-day one
+        ("Fertilize every 2 weeks during spring.", [("fertilize", 14.0, "every 2 weeks")]),
+        # no anchoring action word nearby -> conservatively skipped, not a false conflict
+        ("Check the soil every 3 days.", []),
+        ("Every 7 days, water your Monstera.", [("water", 7.0, "Every 7 days")]),
+    ],
+)
+def test_extract_cadences(text: str, expected: list[tuple[str, float, str]]) -> None:
+    assert extract_cadences(text) == expected
+
+
+def _cadence_chunk(chunk_id: str, text: str, topic: str = "watering") -> Chunk:
+    return Chunk(
+        chunk_id=chunk_id,
+        doc_id="monstera",
+        title="Monstera care",
+        source="monstera.md",
+        text=text,
+        language="en",
+        topic=topic,
+        source_name="Synthetic",
+        url=f"https://example.invalid/{chunk_id}",
+        license="CC0-1.0",
+        fetch_date="2026-05-01",
+    )
+
+
+def _cadence_sentence(chunk: Chunk) -> AnswerSentence:
+    return AnswerSentence(
+        text=chunk.text,
+        chunk_id=chunk.chunk_id,
+        citation=Citation(
+            chunk_id=chunk.chunk_id,
+            doc_id=chunk.doc_id,
+            title=chunk.title,
+            source=chunk.source,
+            quote=chunk.text,
+            license=chunk.license,
+            fetch_date=chunk.fetch_date,
+            url=chunk.url,
+        ),
+    )
+
+
+def test_numeric_cadence_conflicts_surfaces_both_citations() -> None:
+    a = _cadence_chunk("water-a", "Water your Monstera every 7 days once soil is dry.")
+    b = _cadence_chunk("water-b", "Water your Monstera every 14 days in winter.")
+    retrieved = [RetrievedChunk(chunk=a, score=0.6), RetrievedChunk(chunk=b, score=0.5)]
+    conflicts = numeric_cadence_conflicts([_cadence_sentence(a)], retrieved)
+    assert len(conflicts) == 1
+    d = conflicts[0]
+    assert d.action == "water"
+    assert {d.citation_a.chunk_id, d.citation_b.chunk_id} == {"water-a", "water-b"}
+    assert d.mention_a == "every 7 days"
+    assert d.mention_b == "every 14 days"
+
+
+def test_numeric_cadence_conflicts_none_when_values_agree() -> None:
+    a = _cadence_chunk("water-a", "Water your Monstera every 7 days once soil is dry.")
+    b = _cadence_chunk("water-c", "Water your Monstera every 7 days year-round.")
+    retrieved = [RetrievedChunk(chunk=a, score=0.6), RetrievedChunk(chunk=b, score=0.5)]
+    assert numeric_cadence_conflicts([_cadence_sentence(a)], retrieved) == ()
+
+
+def test_numeric_cadence_conflicts_ignores_other_topics() -> None:
+    a = _cadence_chunk("water-a", "Water your Monstera every 7 days once soil is dry.")
+    fert = _cadence_chunk(
+        "fert-a", "Fertilize your Monstera every 14 days during spring.", topic="fertilizing"
+    )
+    retrieved = [RetrievedChunk(chunk=a, score=0.6), RetrievedChunk(chunk=fert, score=0.5)]
+    # Different topics never compared, even though the actions themselves also differ.
+    assert numeric_cadence_conflicts([_cadence_sentence(a)], retrieved) == ()
+
+
+# --- pipeline --------------------------------------------------------------------
 def test_grounded_answer_is_cited(assistant: Assistant) -> None:
     ans = assistant.answer("why are my monstera leaves yellowing")
     assert not ans.refused
@@ -459,6 +541,36 @@ def test_grounded_answer_is_cited(assistant: Assistant) -> None:
     assert ans.as_of == "2026-05-01"
     assert "overwatering" in ans.text.lower()
     assert ans.confidence > 0.0
+    # No cadence conflict in this corpus -- the probe must not over-fire.
+    assert ans.disagreements == ()
+
+
+def test_conflicting_sources_surface_both_citations_not_top_ranked(
+    assistant_factory: Callable[..., Assistant],
+) -> None:
+    water_a = _cadence_chunk(
+        "monstera-water-a", "Water your Monstera every 7 days once the top inch of soil is dry."
+    )
+    water_b = _cadence_chunk(
+        "monstera-water-b",
+        "Water your Monstera every 14 days during the dormant winter season.",
+    )
+    assistant = assistant_factory(Config(), [water_a, water_b])
+    ans = assistant.answer("how often should I water my monstera")
+
+    assert not ans.refused
+    assert len(ans.disagreements) == 1
+    d = ans.disagreements[0]
+    assert d.action == "water"
+    assert {d.citation_a.chunk_id, d.citation_b.chunk_id} == {
+        "monstera-water-a",
+        "monstera-water-b",
+    }
+    # The disagreement is disclosed in the rendered text, not silently resolved to
+    # whichever chunk happened to rank first.
+    assert "sources differ" in ans.display_text.lower()
+    assert "every 7 days" in ans.display_text
+    assert "every 14 days" in ans.display_text
 
 
 def test_out_of_scope_refuses(assistant: Assistant) -> None:

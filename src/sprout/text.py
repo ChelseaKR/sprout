@@ -381,3 +381,83 @@ def normalize(text: str) -> str:
 def contains_phrase(haystack: str, phrase: str) -> bool:
     """Case-insensitive, whitespace-insensitive substring test."""
     return normalize(phrase) in normalize(haystack)
+
+
+# --- numeric-cadence extraction (source-disagreement probe, EXP-02) --------------
+#
+# Bilingual "every N day(s)/week(s)" / "cada N día(s)/semana(s)" cadence mentions,
+# anchored to a small, explicit care-action vocabulary so a cadence is only ever
+# compared against another cadence about the *same* action. This is deliberately
+# narrower than a general contradiction probe: the ideation note for this feature
+# (EXP-02, docs/ideation/03-expansions.md) calls out that naive polarity/number
+# checks over-fire on legitimate seasonal or per-action variation, so extraction
+# starts and stays scoped to numeric-cadence conflicts only.
+_CADENCE_RE = re.compile(
+    r"(?:every|cada)\s+(\d+(?:\.\d+)?)\s*-?\s*"
+    r"(days?|weeks?|d[ií]as?|semanas?)\b",
+    re.IGNORECASE,
+)
+
+_CADENCE_UNIT_DAYS: dict[str, float] = {
+    "day": 1.0,
+    "days": 1.0,
+    "dia": 1.0,
+    "dias": 1.0,
+    "week": 7.0,
+    "weeks": 7.0,
+    "semana": 7.0,
+    "semanas": 7.0,
+}
+
+# Small, explicit bilingual care-action vocabulary. Each key is the normalised action
+# name a cadence mention is reported under, so an English chunk and a Spanish chunk
+# that disagree about the same action still compare equal.
+_CARE_ACTIONS: dict[str, frozenset[str]] = {
+    "water": frozenset({"water", "watering", "watered", "riega", "riego", "regar", "regando"}),
+    "fertilize": frozenset(
+        {
+            "fertilize",
+            "fertilizing",
+            "fertilized",
+            "feed",
+            "feeding",
+            "fertiliza",
+            "fertilizar",
+            "fertilizando",
+            "abona",
+            "abonar",
+        }
+    ),
+    "mist": frozenset({"mist", "misting", "misted", "rocia", "rociar", "rociando"}),
+    "repot": frozenset({"repot", "repotting", "repotted", "trasplanta", "trasplantar"}),
+}
+
+# How far (in characters) around a cadence mention to look for an anchoring action
+# word. Bounded and symmetric so "Water ... every 7 days" and "Every 7 days, water
+# ..." both anchor, while a cadence with no nearby action word (e.g. "check the soil
+# every 3 days") is conservatively left unanchored and skipped.
+_ACTION_WINDOW_CHARS = 40
+
+
+def extract_cadences(text: str) -> list[tuple[str, float, str]]:
+    """Bilingual 'every N day(s)/week(s)' mentions anchored to a known care action.
+
+    Returns one ``(action, days, mention)`` tuple per anchored match, e.g.
+    ``[("water", 7.0, "every 7 days")]``. Weeks normalise to days so "every 2 weeks"
+    and "every 14 days" compare equal instead of registering as a false conflict. A
+    cadence with no recognised action word in its surrounding window is dropped —
+    unanchored numbers are exactly the over-firing risk this stays conservative about.
+    """
+    out: list[tuple[str, float, str]] = []
+    for m in _CADENCE_RE.finditer(text):
+        value = float(m.group(1))
+        unit = strip_accents(m.group(2).lower())
+        days = value * _CADENCE_UNIT_DAYS.get(unit, 1.0)
+        window_start = max(0, m.start() - _ACTION_WINDOW_CHARS)
+        window_end = min(len(text), m.end() + _ACTION_WINDOW_CHARS)
+        window_tokens = set(tokenize(text[window_start:window_end]))
+        for action, markers in _CARE_ACTIONS.items():
+            if window_tokens & markers:
+                out.append((action, days, m.group(0)))
+                break
+    return out
