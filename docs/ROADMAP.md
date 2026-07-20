@@ -45,7 +45,7 @@ command that reproduces the whole set locally is `make verify`
 | Lint | zero findings | `ruff format --check` + `ruff check src tests` | AUTO |
 | Type safety | zero errors, strict | `mypy` (strict; `py.typed` shipped) | AUTO |
 | Branch coverage | **≥ 90%** (published-library floor) | `pytest --cov=sprout --cov-fail-under=90` | AUTO |
-| Layout | `src/` layout, importable as `sprout` | packaging test + import | AUTO |
+| Layout | `src/` layout, importable as `sprout` | `uv build` (packaging regression check, CQ-10) + `tests/test_resources.py` import | AUTO |
 
 ### AI evaluation suites — `AI-EVALUATION-STANDARD`
 
@@ -62,9 +62,9 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 | **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | **0.90 offline / ≥ 0.95 portfolio**<!-- claim:roadmap-refusal-target --> — `sprout eval` now auto-selects the gate from `retrieval.embedding_provider` (`refusal.threshold_for`): the offline hashing embedder keeps its documented 0.90 floor (per the suite's own docstring — it cannot fully separate every unknown-species/jailbreak phrasing from in-scope), and the run auto-raises the gate to the ≥ 0.95 portfolio target the moment `embedding_provider: bedrock` (Titan) is configured. CI still exercises the offline default only, so 0.90 remains what's actually measured today — corrected 2026-07-08, was a hardcoded 0.90 with no enforcement path to 0.95 at all | `eval/suites/refusal` | AUTO |
 | **multilingual** (ES preserves the facts + citations of its EN mirror) | **≥ 0.85** | `eval/suites/multilingual` + judge equivalence | AUTO |
 | **calibration** (stated confidence tracks correctness) | **ECE ≤ 0.15** | `eval/suites/calibration` (reliability diagram + ECE) | AUTO |
-| Abstention enforced below threshold | answered cases below 0.25<!-- claim:roadmap-abstention-enforced --> confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | calibration suite invariant | AUTO |
-| EN/ES pass-rate parity | **\|EN − ES\| ≤ 5 pp** | bilingual benchmark slice | AUTO |
-| Hallucination rate | 0% by construction (extractive + citation guard) | citation guard unit tests + groundedness suite | AUTO |
+| Abstention enforced below threshold | answered cases below 0.25<!-- claim:roadmap-abstention-enforced --> confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | `eval/suites/calibration` invariant | AUTO |
+| EN/ES pass-rate parity | **\|EN − ES\| ≤ 5 pp** | `eval/suites/multilingual` bilingual slice | AUTO |
+| Hallucination rate | 0% by construction (extractive + citation guard) | `tests/test_rag.py` citation-guard tests + `eval/suites/groundedness` | AUTO |
 | Judge ↔ human agreement (deterministic judge, CI floor) | ≥ 0.80 raw · Cohen’s κ ≥ 0.60 | `sprout calibrate --gate` on the dated probe set | **AUTO (gated 2026-07-08, P0-4) — probe set expanded 12 → 66 (within the 50–100 target) across all 16 corpus species, and the judge’s negation-only polarity guard gained `has_antonym_conflict` for antonym flips carrying no negation marker ("safe" vs "toxic"); measured on the combined set: agreement 0.955, κ 0.906, both clear threshold; the CI/`make verify` step passes `--gate` and fails the build on regression. This gates the reproducible offline judge as a coverage/polarity smoke-floor only — morphological synonyms and low-overlap paraphrase remain documented blind spots (3 known disagreements are committed, not hidden). See `docs/audits/judge-calibration.md`.** |
 | Judge ↔ human agreement (LLM judge, production gate) | ≥ 0.80 raw · Cohen’s κ ≥ 0.60 | `sprout calibrate --judge llm` | **not yet done — the LLM judge needs a live Anthropic credential and is deliberately never invoked in CI (see `eval/llm_judge.py`); calibrating and gating it (`--judge llm --gate`) before it backs any production judging decision is a separate, still-outstanding step, tracked here rather than conflated with the deterministic-judge CI floor above.** |
 | Judge-calibration freshness | probe set re-labeled within 30 days | `labeled_date` on `eval/judge_probes.yaml`, checked by `sprout calibrate` | **warn-only (wired 2026-07-05, P1-19) — re-labeled 2026-07-08 alongside the 12→66 expansion; `sprout calibrate` prints a warning past 30 days but does not yet fail the command (ties to P0-4: flips to a hard failure once the LLM judge is calibrated and `--gate` is enabled)** |
@@ -109,9 +109,9 @@ honest measured distribution before there is production traffic.
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
-| Conformance level | **WCAG 2.2 AA** | axe + pa11y (merge-blocking) and Lighthouse accessibility (merge-blocking, threshold 0.95) on the reference question UI + HTML eval report; transcript view not yet built (see row below) | AUTO |
+| Conformance level | **WCAG 2.2 AA** | `.github/workflows/ci.yml` `pa11y` + `lighthouse` jobs (both `ci-gate` dependencies): axe + pa11y (merge-blocking) and Lighthouse accessibility (merge-blocking, threshold 0.95) on the reference question UI + HTML eval report; transcript view not yet built (see row below) | AUTO |
 | Structural a11y check | zero violations | `sprout a11y-check` on `web/dist/index.html` + `docs/audits/eval-report.html` | AUTO |
-| Non-chat alternate view | static, paginated Q/A/citations renders | transcript-view check | AUTO |
+| Non-chat alternate view | static, paginated Q/A/citations renders | `tests/test_a11y_and_judge.py` (`render_transcript`) | AUTO |
 | Color independence | severity + provenance never color-only | manual SR review (NVDA, VoiceOver) | REVIEW |
 | ACR (VPAT 2.5 Rev 508) | committed, regenerated on release | `docs/accessibility/ACR.md` | REVIEW |
 
@@ -122,26 +122,26 @@ honest measured distribution before there is production traffic.
 | App-security level | **OWASP ASVS L1** (offline mode; no auth, no persistence, no network) | review-gate checklist | REVIEW |
 | Dependency audit | zero unresolved advisories | `pip-audit` (blocking in CI; **never** `\|\| true`) | AUTO |
 | Secret scanning | zero leaks | `gitleaks` | AUTO |
-| Static analysis | zero high findings | Semgrep / CodeQL | AUTO |
-| Actions pinning | SHA-pinned, least-privilege tokens | CI policy lint | AUTO |
-| SBOM | emitted on release | release workflow | AUTO |
+| Static analysis | zero high findings | `semgrep` + `.github/workflows/codeql.yml` | AUTO |
+| Actions pinning | SHA-pinned, least-privilege tokens | `zizmor` workflow-SAST scan (`.github/workflows/ci.yml`) | AUTO |
+| SBOM | emitted on release | `.github/workflows/release.yml` (Generate SBOM step; never `\|\| true`) | AUTO |
 | PII in logs | **zero** — logger whitelists low-cardinality fields only, never question text | `obs.py` `_ALLOWED_FIELDS` + Semgrep/bandit | AUTO (never N/A) |
 
 ### Internationalization — `INTERNATIONALIZATION-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
-| EN/ES key + placeholder parity | complete, no orphan keys | per-language bundle diff | AUTO |
-| EN/ES eval pass-rate parity | **\|EN − ES\| ≤ 5 pp** | multilingual suite (also in the AI ledger above) | AUTO |
+| EN/ES key + placeholder parity | complete, no orphan keys | `tests/test_i18n_parity.py` | AUTO (wired 2026-07-08 — see FIX-02; previously declared AUTO with no such diff implemented) |
+| EN/ES eval pass-rate parity | **\|EN − ES\| ≤ 5 pp** | `eval/suites/multilingual` (also in the AI ledger above) | AUTO |
 
 ### Quality, release, CI/CD — `QUALITY-AND-METRICS` · `RELEASE-AND-VERSIONING` · `CI-CD-STANDARD`
 
 | Metric | Target | Measured by | Gate |
 |---|---|---|---|
 | First-token latency (offline) | p95 < 200 ms | `tests/test_latency.py` | AUTO (wired 2026-07-05 — previously declared AUTO with no test; see P1-10) |
-| Reproducibility | byte-identical report from identical inputs | run fingerprint excludes wall-clock | AUTO |
-| Versioning | SemVer; Keep-a-Changelog; signed tags on first release | release workflow | AUTO (mechanism wired; **never yet exercised** — no tag has ever been cut, corrected 2026-07-05; see CHANGELOG.md) |
-| Publish | PyPI Trusted Publishing (OIDC) | release workflow | AUTO (wired; unexercised — same caveat) |
+| Reproducibility | byte-identical report from identical inputs | `tests/test_eval_suites.py` (`test_run_is_byte_identical`) | AUTO |
+| Versioning | SemVer; Keep-a-Changelog; signed tags on first release | `.github/workflows/release.yml` | AUTO (mechanism wired; **never yet exercised** — no tag has ever been cut, corrected 2026-07-05; see CHANGELOG.md) |
+| Publish | PyPI Trusted Publishing (OIDC) | `.github/workflows/release.yml` | AUTO (wired; unexercised — same caveat) |
 | CI parity | `make verify` uses the same tools/thresholds as the required `ci-gate` checks | `sprout ci-parity-check` (`src/sprout/ci_parity.py`, `tests/test_ci_parity.py`) mechanically diffs `.github/workflows/ci.yml`'s required jobs against their `Makefile` target(s); run via `make ci-parity-check` (also a `make verify` prerequisite) and the `ci-parity` CI job (a `ci-gate` dependency) | AUTO (wired 2026-07-08, closing `ci-parity-no-mechanical-diff`; the checker's first run also surfaced two real gaps — `docs` and the `zizmor` workflow-SAST scan were required by `ci-gate` but absent from `make verify` — now closed via new `docs`/`workflow-lint` prerequisites) |
 
 ---
