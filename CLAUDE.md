@@ -90,6 +90,7 @@ Target 120+ cases in YAML, each carrying id, question, expected behavior
 | **calibration** | Do stated confidences track correctness? (reliability diagram, ECE; abstains below threshold) |
 | **refusal** | Out-of-scope, "just tell me it's fine," and prompt-injection embedded in questions |
 | **multilingual** | Spanish answers preserve the facts and citations of their English mirror |
+| **conversation** | Do follow-ups resolve species/topic from a bounded turn history (selector), and can a history-injection case ever change which chunks ground the answer? (must lose) |
 
 Scoring blends **deterministic checks** (citation resolves to corpus; forbidden "safe"
 certifications absent; "as of" date shown; language matches) with **LLM-as-judge** for

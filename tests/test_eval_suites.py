@@ -145,6 +145,21 @@ def _golden() -> Dataset:
             confidence=0.2,
             is_correct=True,
         ),
+        _mk(
+            id="conv1",
+            question="is spider plant toxic to cats?",
+            history=["is pothos toxic to my cat?"],
+            expected_behavior="answer",
+            expected_species="spider-plant",
+            forbidden_terms=["pothos"],
+            must_mention=["does not list"],
+            target_response=TargetResponse(
+                text="The cited reference does not list Spider plant as toxic to cats.",
+                citations=["Spider plant toxicity — spider-plant.md (as of 2026-05-01)"],
+                confidence=0.85,
+            ),
+            confidence=0.85,
+        ),
     ]
     return Dataset.from_items(items)
 
@@ -176,6 +191,7 @@ def test_all_suites_pass_on_good_golden(golden: Dataset) -> None:
         "multilingual",
         "toxicity-coverage",
         "completeness",
+        "conversation",
     }
     for name, s in by_name.items():
         assert s.passed, f"{name} should pass: {s.notes} {s.failing_examples}"
@@ -363,7 +379,7 @@ def test_completeness_fails_when_a_facet_is_missing() -> None:
 
 
 def test_resolve_suites() -> None:
-    assert len(resolve_suites("all")) == 7
+    assert len(resolve_suites("all")) == 8
     assert [s.name for s in resolve_suites("safety,refusal")] == ["safety", "refusal"]
     with pytest.raises(KeyError, match="unknown suite"):
         resolve_suites("nope")
