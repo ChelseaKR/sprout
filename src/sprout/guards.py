@@ -42,6 +42,61 @@ def is_safety_query(query: str, language: str, cfg: GuardsConfig) -> bool:
     return False
 
 
+def _matches_any(
+    query: str, q_tokens: set[str], language: str, keywords: dict[str, list[str]]
+) -> bool:
+    """Exact-token (or exact-phrase) match against an audience keyword list.
+
+    Deliberately stricter than ``is_safety_query``'s substring pass: substring matching
+    is a safe over-trigger for *whether* something is a safety query, but for *audience
+    routing* it misclassifies -- "cat" is inside "identification", "pet" inside "petal",
+    "kid" inside "kidney", and "son" (a keyword we need) inside "poison". Exposure
+    keyword lists therefore carry their inflected forms explicitly and match whole
+    tokens only; ``tokenize`` has already lower-cased and accent-folded the query, and
+    single-word keywords are folded here so accented list entries compare equal.
+    """
+    for lang in {language, "en"}:
+        for kw in keywords.get(lang, []):
+            if " " in kw:
+                if contains_phrase(query, kw):
+                    return True
+            elif strip_accents(kw.lower()) in q_tokens:
+                return True
+    return False
+
+
+def detect_exposure_type(query: str, language: str, cfg: GuardsConfig) -> str:
+    """Classify a safety query's exposure audience (research item FIX-13).
+
+    Splits the audience terms into a child/human subset
+    (``GuardsConfig.child_exposure_keywords``) and an animal subset
+    (``GuardsConfig.animal_exposure_keywords``) so the escalation card can be routed to
+    the audience the query actually names, instead of always defaulting to the animal
+    lines. Matching is exact-token/exact-phrase (see ``_matches_any``), not the
+    substring pass ``is_safety_query`` uses, so audience routing never keys off word
+    fragments. Deterministic and eval-gated -- it never infers an audience the query
+    did not name.
+
+    Returns one of:
+      - ``"child"``: only child/human terms matched ("my toddler chewed a leaf").
+      - ``"animal"``: only animal terms matched ("is this toxic to my cat?").
+      - ``"both"``: both matched (ambiguous household query, e.g. "toxic to kids or
+        pets?").
+      - ``"unspecified"``: a safety/toxicity term matched but no audience was named
+        ("is this plant poisonous?").
+    """
+    q_tokens = set(tokenize(query))
+    is_child = _matches_any(query, q_tokens, language, cfg.child_exposure_keywords)
+    is_animal = _matches_any(query, q_tokens, language, cfg.animal_exposure_keywords)
+    if is_child and is_animal:
+        return "both"
+    if is_child:
+        return "child"
+    if is_animal:
+        return "animal"
+    return "unspecified"
+
+
 _INJECTION_PATTERNS: dict[str, re.Pattern[str]] = {
     "instruction_override": re.compile(
         r"\b(ignore|disregard|forget)\b.{0,30}\b(previous|above|prior|instructions?|rules?)\b",

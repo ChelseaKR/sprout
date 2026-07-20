@@ -110,6 +110,100 @@ class GuardsConfig(_Model):
     route_terms: dict[str, list[str]] = Field(
         default_factory=lambda: locales.by_lang("guards", "route_terms", _DEFAULT_LANGUAGES)
     )
+    # Exposure-type routing (FIX-13): audience terms that name a human (vs. animal)
+    # exposure, so the classifier can tell "my toddler ate a leaf" from "my cat ate a
+    # leaf". Unlike ``toxicity_keywords`` these match whole tokens only (see
+    # ``guards._matches_any``) -- substring matching misroutes the audience ("cat" in
+    # "identification", "son" in "poison") -- so every inflected form is listed
+    # explicitly. ``tokenize`` accent-folds (strip_accents); accented ES forms are
+    # listed alongside their folded equivalents for auditability, the folded form is
+    # the one that matches.
+    child_exposure_keywords: dict[str, list[str]] = Field(
+        default_factory=lambda: {
+            "en": [
+                "child",
+                "children",
+                "baby",
+                "babies",
+                "toddler",
+                "toddlers",
+                "kid",
+                "kids",
+                "kiddo",
+                "infant",
+                "infants",
+                "son",
+                "sons",
+                "daughter",
+                "daughters",
+                "grandchild",
+                "grandchildren",
+                "grandson",
+                "grandsons",
+                "granddaughter",
+                "granddaughters",
+            ],
+            "es": [
+                "niño",
+                "nino",
+                "niños",
+                "ninos",
+                "niña",
+                "nina",
+                "niñas",
+                "ninas",
+                "bebé",
+                "bebe",
+                "bebés",
+                "bebes",
+                "infante",
+                "infantes",
+                "hijo",
+                "hijos",
+                "hija",
+                "hijas",
+                "nieto",
+                "nietos",
+                "nieta",
+                "nietas",
+            ],
+        }
+    )
+    animal_exposure_keywords: dict[str, list[str]] = Field(
+        default_factory=lambda: {
+            "en": [
+                "cat",
+                "cats",
+                "dog",
+                "dogs",
+                "pet",
+                "pets",
+                "kitten",
+                "kittens",
+                "kitty",
+                "puppy",
+                "puppies",
+            ],
+            "es": [
+                "gato",
+                "gatos",
+                "gata",
+                "gatas",
+                "gatito",
+                "gatitos",
+                "perro",
+                "perros",
+                "perra",
+                "perras",
+                "perrito",
+                "perritos",
+                "cachorro",
+                "cachorros",
+                "mascota",
+                "mascotas",
+            ],
+        }
+    )
 
 
 class IdentificationConfig(_Model):
@@ -218,6 +312,44 @@ class PromptConfig(_Model):
         default_factory=lambda: locales.by_lang("prompts", "escalation_card", _DEFAULT_LANGUAGES)
     )
 
+    # Human-poison-control card variant (FIX-13). The shipped E9 card above names only
+    # the two animal lines (ASPCA APCC, Pet Poison Helpline); ``GuardsConfig`` already
+    # detects child/human ingestion terms (child/children/baby/toddler, EN;
+    # niño/niña/bebé, ES) via ``child_exposure_keywords``, but until this variant existed
+    # a child-ingestion question got only the animal card back -- confusing at best, a
+    # delay at worst. Shown *alongside*, never instead of, the existing urgent-call
+    # framing and escalation card; ambiguous (child + animal both named) queries get both
+    # cards.
+    #
+    # HARD GATE, unchanged from the ideation item (docs/ideation/02-large-scale-fixes.md
+    # FIX-13): the numbers, the phrasing, and the decision to show them at all belong to
+    # a poison-control clinician / medical toxicologist, not to this codebase. This card
+    # is wired up end to end (detection -> selection -> render) but
+    # ``human_card_reviewed`` defaults to False, so it never reaches a user until that
+    # flag is flipped to True by hand after a dated sign-off is committed under
+    # docs/audits/ (see docs/audits/human-poison-control-card-review.md, currently a
+    # pending stub, not a real review). Non-US numbers are out of scope until a locale
+    # story exists for this card, same as the animal card.
+    human_card_reviewed: bool = False
+    human_escalation_card_by_lang: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": (
+                "If a child may have eaten part of this plant: Poison Control, "
+                "1-800-222-1222 (https://www.poison.org/), free and available 24/7, or "
+                "use webPOISONCONTROL (https://triage.webpoisoncontrol.org/) for online "
+                "guidance. What to tell them: the plant (species if known), how much was "
+                "eaten, and when."
+            ),
+            "es": (
+                "Si un niño pudo haber comido parte de esta planta: Control de "
+                "Envenenamientos, 1-800-222-1222 (https://www.poison.org/), gratuito y "
+                "disponible las 24 horas, o usa webPOISONCONTROL "
+                "(https://triage.webpoisoncontrol.org/) para orientación en línea. Qué "
+                "informar: la planta (especie si la conoces), cuánto comió y cuándo."
+            ),
+        }
+    )
+
     photo_fallback_by_lang: dict[str, str] = Field(
         default_factory=lambda: locales.by_lang("prompts", "photo_fallback", _DEFAULT_LANGUAGES)
     )
@@ -258,7 +390,12 @@ class PromptConfig(_Model):
     def escalation_card_for(self, language: str) -> str:
         return self.escalation_card_by_lang.get(language, self.escalation_card_by_lang["en"])
 
-    def safety_directive_for(self, language: str) -> str:
+    def human_escalation_card_for(self, language: str) -> str:
+        return self.human_escalation_card_by_lang.get(
+            language, self.human_escalation_card_by_lang["en"]
+        )
+
+    def safety_directive_for(self, language: str, exposure_type: str | None = None) -> str:
         """The full safety message shown on every toxicity answer/refusal.
 
         Three research-backed parts, in urgency order: the time-critical routing line
@@ -266,14 +403,22 @@ class PromptConfig(_Model):
         vet/poison-control escalation card (E9). It never certifies a plant safe, and
         because the caveat is source-attributed the never-certify-safe guard keeps it
         intact.
+
+        ``exposure_type`` (FIX-13, from ``guards.detect_exposure_type``) is one of
+        "child", "animal", "both", "unspecified", or None. When it names a child/human
+        audience ("child" or "both") *and* ``human_card_reviewed`` is True, the
+        human-poison-control card is appended alongside -- never instead of -- the
+        animal card above. Until a clinician sign-off flips that flag, this branch is
+        inert by construction and behavior is unchanged from before FIX-13.
         """
-        return " ".join(
-            (
-                self.safety_route_for(language),
-                self.nontoxic_caveat_for(language),
-                self.escalation_card_for(language),
-            )
-        )
+        parts = [
+            self.safety_route_for(language),
+            self.nontoxic_caveat_for(language),
+            self.escalation_card_for(language),
+        ]
+        if self.human_card_reviewed and exposure_type in {"child", "both"}:
+            parts.append(self.human_escalation_card_for(language))
+        return " ".join(parts)
 
 
 class ServerConfig(_Model):

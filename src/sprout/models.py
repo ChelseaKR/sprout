@@ -105,6 +105,10 @@ class Answer(_Frozen):
     refusal_reason: str | None = None
     refusal_text: str | None = None
     is_safety_query: bool = False
+    # FIX-13: "child", "animal", "both", or "unspecified" -- the exposure audience the
+    # safety classifier detected, used to select which escalation card(s) render. None
+    # when the answer/refusal was not a safety query at all.
+    exposure_type: str | None = None
     safety_notice: str | None = None
     confidence: float = 0.0
     low_confidence: bool = False
