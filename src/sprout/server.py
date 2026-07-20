@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import base64
 import binascii
+import contextlib
 import json
 import os
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,7 @@ from .integrations import (
 )
 from .models import Answer
 from .obs import Logger
+from .otel import REDMiddleware, configure_observability
 from .reminders import Reminder, ReminderError, ReminderStore
 
 _FALLBACK_HTML = (
@@ -209,8 +211,25 @@ def create_app(
 ) -> FastAPI:
     engine = assistant or Assistant.from_config(config)
     log = Logger(config.observability)
-    app = FastAPI(title="Sprout", version="0.1.0")
+
+    # Tier A only (observability.tier: "A"): OTel traces + RED metrics per endpoint,
+    # STANDARDS/OBSERVABILITY-STANDARD.md §§1-2. `configure_observability` returns None
+    # (no middleware added, zero overhead) for Tier B/C or if the `observability` extra
+    # isn't installed — see src/sprout/otel.py. Built *before* the FastAPI app so its
+    # shutdown can be wired into the app's lifespan (Starlette dropped `add_event_handler`
+    # in favor of the lifespan context manager).
+    handles = configure_observability(config.observability)
+
+    @contextlib.asynccontextmanager
+    async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
+        yield
+        if handles is not None:
+            handles.shutdown()
+
+    app = FastAPI(title="Sprout", version="0.1.0", lifespan=_lifespan)
     _register_hardening(app, config)
+    if handles is not None:
+        app.add_middleware(REDMiddleware, handles=handles)
 
     def _resolve(question: str, language: str | None) -> Answer:
         answer = engine.answer(question, language)

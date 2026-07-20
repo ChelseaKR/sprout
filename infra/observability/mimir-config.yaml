@@ -1,0 +1,48 @@
+# Minimal single-process Mimir config for local dev (filesystem storage, no object store,
+# no multi-tenant auth — not a production Mimir deployment).
+multitenancy_enabled: false
+
+server:
+  http_listen_port: 9009
+
+ingester:
+  ring:
+    # Mimir's default replication factor is 3, which fails all writes ("at least 2 live
+    # replicas required") against the single ingester this single-process/single-container
+    # dev setup runs — replication only makes sense across multiple ingesters.
+    replication_factor: 1
+
+common:
+  storage:
+    backend: filesystem
+    filesystem:
+      dir: /tmp/mimir/data
+
+blocks_storage:
+  backend: filesystem
+  filesystem:
+    dir: /tmp/mimir/blocks
+  bucket_store:
+    sync_dir: /tmp/mimir/tsdb-sync
+  tsdb:
+    dir: /tmp/mimir/tsdb
+
+compactor:
+  data_dir: /tmp/mimir/compactor
+
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /tmp/mimir/ruler
+
+alertmanager_storage:
+  backend: filesystem
+  filesystem:
+    dir: /tmp/mimir/alertmanager
+
+limits:
+  # This is a single-user local box, not a shared multi-tenant cluster — the whole point
+  # of raising these is that a laptop-scale dev loop should never hit Mimir's
+  # production-cluster ingestion caps while poking at a handful of RED metrics.
+  ingestion_rate: 100000
+  ingestion_burst_size: 200000
