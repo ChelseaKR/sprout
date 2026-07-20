@@ -1,4 +1,4 @@
-"""Coverage for the static-vector semantic embedding provider (EXP-03, ADR-0013)."""
+"""Coverage for the static-vector semantic embedding provider (EXP-03, ADR-0017)."""
 
 from __future__ import annotations
 
@@ -74,3 +74,33 @@ def test_custom_table_path(tmp_path: object) -> None:
     emb = StaticEmbedding(table_path=p)
     assert emb.dim == 4
     assert emb.embed("agua") == [1.0, 0.0, 0.0, 0.0]
+
+
+def test_store_search_fails_closed_on_embedding_dim_mismatch() -> None:
+    # EXP-03 makes a second offline embedding dimension reachable for the first time:
+    # flipping `retrieval.embedding_provider` without re-running `sprout ingest` must
+    # raise, not silently truncate every dot product to the shorter vector.
+    import pytest
+
+    from sprout.models import Chunk
+    from sprout.providers.deterministic import HashingEmbedding
+    from sprout.store import VectorStore
+
+    chunk = Chunk(
+        chunk_id="c1",
+        doc_id="monstera",
+        title="Monstera care",
+        source="monstera.md",
+        text="bright indirect light for monstera",
+        language="en",
+        topic="light",
+        source_name="Synthetic",
+        url="https://example.invalid/c1",
+        license="CC0-1.0",
+        fetch_date="2026-05-01",
+    )
+    emb512 = HashingEmbedding(dim=512)
+    store = VectorStore()
+    store.add(chunk, emb512.embed("light"))
+    with pytest.raises(ValueError, match="sprout ingest"):
+        store.search(StaticEmbedding().embed("light for my monstera"), top_k=1)

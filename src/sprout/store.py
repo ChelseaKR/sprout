@@ -76,7 +76,18 @@ class VectorStore:
         query costs proportional to the named species' chunk count, not the corpus size.
         Selection uses a bounded ``heapq.nlargest`` (O(n log top_k)) rather than a full
         sort, so even an unfiltered query does not pay for ordering the entire store.
+
+        Fails closed on an embedding-dimension mismatch: switching
+        ``retrieval.embedding_provider`` (e.g. hashing 512-d -> static 64-d, EXP-03)
+        without re-running ``sprout ingest`` would otherwise silently truncate every dot
+        product to the shorter vector and quietly wreck ranking quality.
         """
+        if self._vectors and len(query_vector) != len(self._vectors[0]):
+            raise ValueError(
+                f"query embedding dimension {len(query_vector)} does not match the index's "
+                f"{len(self._vectors[0])} — the index was built with a different embedding "
+                "provider/dimension; run `sprout ingest` to rebuild it."
+            )
         if candidate_ids is None:
             indices: Iterable[int] = range(len(self._vectors))
         else:

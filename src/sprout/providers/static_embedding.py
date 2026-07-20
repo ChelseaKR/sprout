@@ -14,7 +14,7 @@ and paraphrases of the same care concept — to nearby vectors. A token not in t
 signed token-hashing projection ``HashingEmbedding`` uses, so coverage is total: nothing is
 ever dropped or zeroed out just because it is outside the curated vocabulary.
 
-See ADR-0013 for the measured eval delta against the hashing baseline; this provider is
+See ADR-0017 for the measured eval delta against the hashing baseline; this provider is
 opt-in (``retrieval.embedding_provider: static``), not the offline default.
 """
 

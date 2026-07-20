@@ -1,4 +1,4 @@
-# Static-vector semantic clusters (EXP-03, ADR-0013).
+# Static-vector semantic clusters (EXP-03, ADR-0017).
 #
 # Each cluster groups English and Spanish synonyms/paraphrases of one plant-care concept.
 # `scripts/generate_static_vectors.py` turns this file into `static_vectors.json`: every

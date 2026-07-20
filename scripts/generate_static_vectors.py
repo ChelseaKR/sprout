@@ -1,4 +1,4 @@
-"""Regenerate ``static_vectors.json`` from ``clusters.yaml`` (EXP-03, ADR-0013).
+"""Regenerate ``static_vectors.json`` from ``clusters.yaml`` (EXP-03, ADR-0017).
 
 Deterministic, offline, dependency-free. Every cluster in ``clusters.yaml`` groups
 English and Spanish synonyms/paraphrases of one plant-care concept; this script:

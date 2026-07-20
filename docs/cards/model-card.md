@@ -148,13 +148,13 @@ guard → confidence/abstention → answer-or-refuse`.
 - **Embedding:** `StaticEmbedding` — a curated, precomputed lookup table (EN+ES plant-care
   vocabulary clusters, `data/embeddings/`) with a hashing fallback for any token outside the
   table, so coverage is total. Same determinism guarantee as `HashingEmbedding`: no network, no
-  training, byte-identical output for identical input. See ADR-0013.
+  training, byte-identical output for identical input. See ADR-0017.
 - **Generator and everything else unchanged** — this only swaps the embedder; `generation.provider`
   stays `deterministic` (or any other value) independently.
 - **Why it exists:** it closes part of the offline recall gap `HashingEmbedding` has by
   construction (see "Offline retrieval is a baseline" below) without giving up any offline
   guarantee. It is not the default because it does not yet clear the suite's 0.95 excellence bar
-  on its own — see ADR-0013's measured delta and honest analysis of what it does and does not fix.
+  on its own — see ADR-0017's measured delta and honest analysis of what it does and does not fix.
 
 ### Claude-on-Bedrock production seam (`provider: bedrock`) and native Anthropic (`provider: anthropic`)
 
@@ -319,7 +319,7 @@ case set — are authoritative in the committed report, not here.
   paraphrased or synonym-heavy questions may under-retrieve and refuse where a semantic embedder
   would answer. This trades recall for zero-dependency reproducibility. An opt-in offline
   alternative, `StaticEmbedding` (`embedding_provider: static`), closes part of that gap with a
-  curated EN/ES vocabulary table while staying fully offline and deterministic — see ADR-0013 for
+  curated EN/ES vocabulary table while staying fully offline and deterministic — see ADR-0017 for
   the measured eval delta (refusal 0.9118 → 0.9412, groundedness unchanged) and its remaining
   limits (unknown-species and persona-override cases are not recall problems it can fix). It is
   not yet the default; `Titan`/`Bedrock` remains the path for maximum recall when a network and
