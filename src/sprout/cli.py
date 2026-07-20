@@ -582,6 +582,11 @@ def identify(
     _print_answer_obj(result.answer)
 
 
+# EXP-09: the table is audit tooling, deliberately not a runtime Config field — the
+# answer path never reads it, and keeping it off `config.py` keeps it outside the
+# tuning-scope gate's tunable surface, which is accurate: it cannot tune anything.
+_DEFAULT_TOXICITY_TABLE = "corpus/toxicity.yaml"
+
 toxicity_app = typer.Typer(
     add_completion=False, help="The structured, per-row-cited toxicity table (EXP-09)."
 )
@@ -589,12 +594,14 @@ app.add_typer(toxicity_app, name="toxicity")
 
 
 @toxicity_app.command("coverage")
-def toxicity_coverage(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
+def toxicity_coverage(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    table: Annotated[str, typer.Option("--table")] = _DEFAULT_TOXICITY_TABLE,
+) -> None:
     """Print every species x animal pair the toxicity table covers, with its citation."""
     from .toxicity import coverage_report, load_configured_toxicity_table
 
-    cfg = _load(config)
-    rows = load_configured_toxicity_table(cfg.corpus.toxicity_table)
+    rows = load_configured_toxicity_table(table)
     report = coverage_report(rows)
     for species in sorted(report):
         typer.echo(species)
@@ -610,13 +617,16 @@ def toxicity_coverage(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
 
 
 @toxicity_app.command("check")
-def toxicity_check(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
+def toxicity_check(
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    table: Annotated[str, typer.Option("--table")] = _DEFAULT_TOXICITY_TABLE,
+) -> None:
     """Fail if any toxicity-table row contradicts its document's prose (EXP-09 gate)."""
     from .ingest import load_corpus
     from .toxicity import check_consistency, load_configured_toxicity_table
 
     cfg = _load(config)
-    rows = load_configured_toxicity_table(cfg.corpus.toxicity_table)
+    rows = load_configured_toxicity_table(table)
     documents = load_corpus(cfg)
     problems = check_consistency(rows, documents)
     if problems:
