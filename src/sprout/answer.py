@@ -39,10 +39,11 @@ from .guards import (
 )
 from .lang import detect_language
 from .models import Answer, AnswerSentence, ConfidenceEvidence, RetrievedChunk
-from .providers import build_embedding, build_generator
+from .providers import build_embedding, build_entailment_verifier, build_generator
 from .providers.base import EmbeddingProvider, GenerationProvider
 from .retrieve import Retriever
 from .store import VectorStore
+from .verifiers import EntailmentVerifier
 
 
 class Assistant:
@@ -54,15 +55,26 @@ class Assistant:
         store: VectorStore,
         embedder: EmbeddingProvider,
         generator: GenerationProvider,
+        entailment_verifier: EntailmentVerifier | None = None,
     ) -> None:
         self._config = config
         self._store = store
         self._generator = generator
+        # EXP-04: only set when `generation.support_verifier: nli` is configured, which
+        # config validation already restricts to the cloud (non-deterministic) path — see
+        # `providers.build_entailment_verifier`.
+        self._entailment_verifier = entailment_verifier
         self._retriever = Retriever(config, store, embedder)
 
     @classmethod
     def from_store(cls, config: Config, store: VectorStore) -> Assistant:
-        return cls(config, store, build_embedding(config), build_generator(config))
+        return cls(
+            config,
+            store,
+            build_embedding(config),
+            build_generator(config),
+            build_entailment_verifier(config),
+        )
 
     @classmethod
     def from_config(cls, config: Config) -> Assistant:
@@ -95,7 +107,12 @@ class Assistant:
         candidates = self._generator.generate(
             model_query, retrieved, self._config.generation.max_sentences
         )
-        sentences = citation_guard(candidates, retrieved, self._config.generation.support_overlap)
+        sentences = citation_guard(
+            candidates,
+            retrieved,
+            self._config.generation.support_overlap,
+            self._entailment_verifier,
+        )
         sentences = safety_filter(sentences, lang, self._config.guards)
         return retrieved, sentences, True
 

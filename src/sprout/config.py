@@ -66,6 +66,27 @@ class RetrievalConfig(_Model):
     species_aliases: dict[str, str] = Field(default_factory=dict)
 
 
+class NLIVerifierConfig(_Model):
+    """Cross-encoder NLI entailment verifier (ADR-0018), cloud-path only.
+
+    ``model_id``/``revision``/``onnx_filename`` identify the artifact on the Hugging Face
+    Hub; ``model_sha256`` pins it the same way the eval judge config is hashed into the run
+    identity (``determinism.sha256_of_file``) — a mismatch on download refuses to load
+    rather than silently running unpinned weights. ``entailment_label_index`` documents
+    the model's label ordering (NLI checkpoints vary: some are
+    contradiction/entailment/neutral, others entailment/neutral/contradiction) since
+    getting this wrong would silently invert the gate.
+    """
+
+    model_id: str = "cross-encoder/nli-deberta-v3-xsmall"
+    revision: str = "main"
+    onnx_filename: str = "onnx/model.onnx"
+    tokenizer_filename: str = "tokenizer.json"
+    model_sha256: str | None = None
+    entail_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    entailment_label_index: int = Field(default=1, ge=0, le=2)
+
+
 class GenerationConfig(_Model):
     provider: Literal["deterministic", "bedrock", "anthropic"] = "deterministic"
     max_sentences: int = Field(default=3, ge=1, le=10)
@@ -76,6 +97,28 @@ class GenerationConfig(_Model):
     max_retries: int = Field(default=2, ge=0, le=10)
     max_cost_usd: float = Field(default=0.05, ge=0.0)
     redact_query_pii: bool = False
+    # EXP-04: an NLI-grade entailment verifier behind the citation guard, applied only on
+    # the cloud (non-deterministic) generation path — see docs/adr/0018 and
+    # docs/ideation/03-expansions.md. The offline path keeps its by-construction
+    # groundedness guarantee and zero-dependency install untouched.
+    support_verifier: Literal["lexical", "nli"] = "lexical"
+    nli: NLIVerifierConfig = Field(default_factory=NLIVerifierConfig)
+
+    @model_validator(mode="after")
+    def _nli_only_on_cloud_path_and_pinned(self) -> GenerationConfig:
+        if self.support_verifier == "nli":
+            if self.provider == "deterministic":
+                raise ValueError(
+                    "generation.support_verifier: 'nli' requires generation.provider != "
+                    "'deterministic' — the offline extractive path is grounded by "
+                    "construction and does not need (or support) the cloud-path verifier"
+                )
+            if not self.nli.model_sha256:
+                raise ValueError(
+                    "generation.support_verifier: 'nli' requires generation.nli.model_sha256 "
+                    "to be pinned (fail closed: never load unpinned model weights)"
+                )
+        return self
 
 
 class ConfidenceFit(_Model):
