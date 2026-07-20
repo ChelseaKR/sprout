@@ -136,6 +136,14 @@ def repo(tmp_path: Path) -> Path:
         "DENIED = {'unsafe'}  # guards v1\n", encoding="utf-8"
     )
     (root / "src" / "sprout" / "server.py").write_text("# server\n", encoding="utf-8")
+    (root / "src" / "sprout" / "config.py").write_text(
+        "class GenerationConfig:\n"
+        "    relevance_floor = 0.30\n"
+        "\n"
+        "class ServerConfig:\n"
+        "    port = 8000\n",
+        encoding="utf-8",
+    )
     (root / "config" / "sprout.yaml").write_text(
         "generation:\n  relevance_floor: 0.30  # baseline comment\n", encoding="utf-8"
     )
@@ -201,6 +209,65 @@ def test_invalid_python_change_fails_closed(repo: Path) -> None:
     issues = check_tuning_scope(base_ref="main", repo_root=repo)
     assert len(issues) == 1
     assert "src/sprout/guards.py" in issues[0]
+
+
+def test_server_config_only_module_change_passes_without_trailer(repo: Path) -> None:
+    # A config.py delta confined to the eval-invisible ServerConfig body is operational:
+    # the eval harness drives Assistant directly and nothing eval-visible reads it.
+    (repo / "src" / "sprout" / "config.py").write_text(
+        "class GenerationConfig:\n"
+        "    relevance_floor = 0.30\n"
+        "\n"
+        "class ServerConfig:\n"
+        "    port = 8000\n"
+        "    max_body_bytes = 12_000_000\n"
+        "    rate_limit_requests = 60\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(server): add hardening knobs"], repo)
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+def test_mixed_config_module_change_fails_closed(repo: Path) -> None:
+    # ServerConfig cover must not smuggle a tunable edit through: touching anything
+    # outside the exempt class bodies still requires a Tunes-Against citation.
+    (repo / "src" / "sprout" / "config.py").write_text(
+        "class GenerationConfig:\n"
+        "    relevance_floor = 0.35\n"
+        "\n"
+        "class ServerConfig:\n"
+        "    port = 8000\n"
+        "    max_body_bytes = 12_000_000\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "feat(server): knobs plus a sneaky floor change"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/config.py" in issues[0]
+
+
+def test_eval_visible_modules_never_read_exempt_config() -> None:
+    # The invariant that keeps the ServerConfig exemption sound: no eval-visible module
+    # ever reads `<anything>.server`. If one starts to, this fails and the class must be
+    # removed from _EVAL_INVISIBLE_CONFIG_CLASSES before the change can proceed.
+    import ast as _ast
+
+    eval_visible = [
+        Path("src/sprout/answer.py"),
+        Path("src/sprout/retrieve.py"),
+        Path("src/sprout/guards.py"),
+        Path("src/sprout/confidence.py"),
+        Path("src/sprout/lexical.py"),
+        *sorted(Path("src/sprout/providers").glob("*.py")),
+        *sorted(p for p in Path("src/sprout/eval").glob("*.py") if p.name != "tuning_scope.py"),
+    ]
+    offenders = []
+    for module in eval_visible:
+        tree = _ast.parse(module.read_text(encoding="utf-8"))
+        for node in _ast.walk(tree):
+            if isinstance(node, _ast.Attribute) and node.attr == "server":
+                offenders.append(f"{module}:{node.lineno}")
+    assert not offenders, f"eval-visible module(s) read `.server`: {offenders}"
 
 
 def test_semantic_config_change_still_requires_real_case(repo: Path) -> None:

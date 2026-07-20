@@ -4,8 +4,14 @@ Endpoints: ``/livez`` (liveness, no deps), ``/readyz`` (index loaded), ``/health
 size), ``/api/disclosure``, ``POST /api/chat`` (JSON), and ``GET /api/chat/stream`` (SSE).
 The SSE stream is sentence-grained on purpose: each ``sentence`` event is already
 citation-verified, so the live region never announces ungrounded text and then retracts it.
-Handlers are sync ``def`` so FastAPI runs the synchronous pipeline in its threadpool;
-rate-limiting/CORS/auth are left to the proxy layer.
+Handlers are sync ``def`` so FastAPI runs the synchronous pipeline in its threadpool.
+
+CORS/TLS termination/proxy-level rate limiting are still expected from the deploy target's
+reverse proxy, but per FIX-10 (``docs/ideation/02-large-scale-fixes.md``) the controls that
+must hold even if that proxy is misconfigured or absent — security headers, a request-size
+cap, per-IP rate limits, and a concurrency bound on the heaviest route — are app-level, wired
+below via ``sprout.hardening``. See ``docs/audits/asvs-l2-delta.md`` for the ASVS L2 delta
+this closes.
 """
 
 from __future__ import annotations
@@ -25,6 +31,12 @@ from pydantic import ValidationError
 
 from .answer import Assistant
 from .config import Config
+from .hardening import (
+    ConcurrencyLimiter,
+    RateLimitMiddleware,
+    RequestSizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 from .identify import PhotoCareService, PlantIdentifier, build_identifier
 from .integrations import (
     FamilyGreenhouseRequest,
@@ -86,15 +98,40 @@ def _register_health(app: FastAPI, engine: Assistant) -> None:
 
     @app.get("/readyz")
     def readyz() -> JSONResponse:
-        ready = len(engine._store) > 0
+        size = len(engine._store)
+        ready = size > 0
         return JSONResponse(
-            {"status": "ok" if ready else "no_index", "index_size": len(engine._store)},
+            {"status": "ok" if ready else "no_index", "index_size": size},
             status_code=200 if ready else 503,
         )
 
     @app.get("/health")
     def health() -> dict[str, Any]:
         return {"status": "ok", "index_size": len(engine._store)}
+
+
+def _register_hardening(app: FastAPI, config: Config) -> None:
+    """Wire the FIX-10 app-level guards; see ``sprout.hardening`` for what each one does.
+
+    Middleware is added innermost-first (Starlette wraps the *last*-added instance
+    outermost), so security headers land on every response — including ones rejected by
+    the size/rate-limit layers beneath them.
+    """
+    server = config.server
+    app.add_middleware(
+        RateLimitMiddleware,
+        capacity=server.identify_rate_limit_requests,
+        window_s=server.identify_rate_limit_window_s,
+        path_prefix="/api/identify",
+    )
+    app.add_middleware(
+        RateLimitMiddleware,
+        capacity=server.rate_limit_requests,
+        window_s=server.rate_limit_window_s,
+        path_prefix="/api/",
+    )
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=server.max_body_bytes)
+    app.add_middleware(SecurityHeadersMiddleware)
 
 
 def _register_family_greenhouse(app: FastAPI, engine: Assistant, log: Logger) -> None:
@@ -171,6 +208,7 @@ def create_app(
     engine = assistant or Assistant.from_config(config)
     log = Logger(config.observability)
     app = FastAPI(title="Sprout", version="0.1.0")
+    _register_hardening(app, config)
 
     def _resolve(question: str, language: str | None) -> Answer:
         answer = engine.answer(question, language)
@@ -227,50 +265,63 @@ def _register_identify(
     identifier: PlantIdentifier | None = None,
 ) -> None:
     service = PhotoCareService(engine, identifier or build_identifier(config), config)
+    concurrency = ConcurrencyLimiter(config.server.identify_max_concurrency)
 
     @app.post("/api/identify")
     def identify(payload: dict[str, Any]) -> JSONResponse:
-        raw = str(payload.get("image_b64", ""))
-        if not raw:
-            return JSONResponse({"error": "image_b64 is required"}, status_code=400)
+        # Bounded worker concurrency (FIX-10): this route decodes and runs a vision call
+        # over a large photo payload, so an unbounded burst can starve the threadpool the
+        # rest of the API shares. Reject fast rather than queue behind a full pool.
+        if not concurrency.try_acquire():
+            return JSONResponse(
+                {"error": "identify is at capacity, try again shortly"},
+                status_code=503,
+                headers={"Retry-After": "1"},
+            )
         try:
-            image = base64.b64decode(raw, validate=True)
-        except (binascii.Error, ValueError):
-            return JSONResponse({"error": "image_b64 is not valid base64"}, status_code=400)
-        raw_question = payload.get("question")
-        # Coerce like /api/chat does: a non-string ``question`` (e.g. a number) must not
-        # crash the language/answer pipeline with an unhandled 500.
-        question = str(raw_question) if raw_question is not None else None
-        result = service.identify_and_answer(
-            image, question=question, language=payload.get("language")
-        )
-        log.event(
-            "identify",
-            status="identified" if result.identified else "fallback",
-            refused=result.answer.refused if result.answer else None,
-        )
-        data: dict[str, Any] = {
-            "identified": result.identified,
-            "species_slug": result.species_slug,
-            "display_name": result.display_name,
-            "label": result.label,
-            "message": result.message,
-        }
-        if result.identification is not None:
-            data["identification"] = result.identification.model_dump()
-        if result.answer is not None:
-            ans = result.answer
-            data["answer"] = {
-                "display_text": ans.display_text,
-                "citations": [c.model_dump() for c in ans.citations],
-                "safety_notice": ans.safety_notice,
-                "confidence": ans.confidence,
-                "low_confidence": ans.low_confidence,
-                "as_of": ans.as_of,
-                "disclosure": ans.disclosure,
-                "language": ans.language,
+            raw = str(payload.get("image_b64", ""))
+            if not raw:
+                return JSONResponse({"error": "image_b64 is required"}, status_code=400)
+            try:
+                image = base64.b64decode(raw, validate=True)
+            except (binascii.Error, ValueError):
+                return JSONResponse({"error": "image_b64 is not valid base64"}, status_code=400)
+            raw_question = payload.get("question")
+            # Coerce like /api/chat does: a non-string ``question`` (e.g. a number) must not
+            # crash the language/answer pipeline with an unhandled 500.
+            question = str(raw_question) if raw_question is not None else None
+            result = service.identify_and_answer(
+                image, question=question, language=payload.get("language")
+            )
+            log.event(
+                "identify",
+                status="identified" if result.identified else "fallback",
+                refused=result.answer.refused if result.answer else None,
+            )
+            data: dict[str, Any] = {
+                "identified": result.identified,
+                "species_slug": result.species_slug,
+                "display_name": result.display_name,
+                "label": result.label,
+                "message": result.message,
             }
-        return JSONResponse(data)
+            if result.identification is not None:
+                data["identification"] = result.identification.model_dump()
+            if result.answer is not None:
+                ans = result.answer
+                data["answer"] = {
+                    "display_text": ans.display_text,
+                    "citations": [c.model_dump() for c in ans.citations],
+                    "safety_notice": ans.safety_notice,
+                    "confidence": ans.confidence,
+                    "low_confidence": ans.low_confidence,
+                    "as_of": ans.as_of,
+                    "disclosure": ans.disclosure,
+                    "language": ans.language,
+                }
+            return JSONResponse(data)
+        finally:
+            concurrency.release()
 
 
 def _reminder_dump(r: Reminder) -> dict[str, Any]:

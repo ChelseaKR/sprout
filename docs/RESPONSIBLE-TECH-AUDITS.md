@@ -381,6 +381,12 @@ not assumed. The moment the externally-exposed surface grows — the serverless 
 Family Greenhouse household-data path — the target **steps up to L2** (README: "household-data
 path, ASVS L2"). The scoped review is committed at
 [`docs/audits/asvs-l2-review-2026-07-12.md`](audits/asvs-l2-review-2026-07-12.md).
+The `serve` HTTP surface (`sprout.server`) is the first piece of that step: it is
+unauthenticated and public once deployed, so the L2-facing *application-layer* controls
+(rate limiting, security headers, a request-size cap, a concurrency bound) are implemented
+app-side per FIX-10 and committed as a delta checklist against the deployed surface —
+`docs/audits/asvs-l2-delta.md` — ahead of the full personalization-triggered L2
+declaration, which still waits on the Family Greenhouse household-data path per ADR-0008.
 
 **STRIDE highlights.**
 - **Tampering (corpus integrity).** The corpus is content-hashed and the manifest carries
@@ -450,6 +456,7 @@ dated artifacts; regenerated on release.
 | **EU AI Act risk classification** | EU AI Act Annex III + GPAI | **minimal-risk, not Annex III.** Rationale: a houseplant-care information assistant is not a listed high-risk use; no biometric, no employment/credit/essential-service decisioning; not a GPAI model (it *uses* a model). Decision committed, re-run on material change. | `docs/audits/eu-ai-act-classification.md` |
 | **Conformity-assessment package** | EU AI Act Art. 17/18/47 | **N/A** — not high-risk per the classification above | n/a |
 | **Red-team report** | OWASP LLM Top 10 v2.0; PyRIT/Garak | the refusal/adversarial eval suite is the standing red-team (injection, "just tell me it's fine," out-of-scope); a focused report is authored before any cloud-seam major-model release | `docs/audits/red-team-2026-06-22.md` |
+| **ASVS L2 delta (deployed HTTP surface)** | OWASP ASVS 5.0 | item-by-item delta the public `serve` API adds over the declared offline L1 (ADR-0008): rate limiting, security headers, request-size cap, concurrency bound, each mapped to code + test | `docs/audits/asvs-l2-delta.md` |
 | **Environmental footprint** | NIST AI 600-1 Risk 5; EU AI Act GPAI | offline default: **no inference cost, no training** — negligible. Cloud seam: per-call estimate surfaced via `estimated_cost_usd`; recorded in the model-card CO2 row | model-card CO2 row |
 
 **Framework versions confirmed at build time (2026-06-22):** NIST AI RMF 1.0 + GenAI Profile
