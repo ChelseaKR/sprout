@@ -94,9 +94,16 @@ def load_history(path: str | Path) -> list[HistoryEntry]:
 
 
 def append_history_entry(path: str | Path, entry: HistoryEntry) -> None:
-    """Append one entry as a single JSON line. Never rewrites or reorders prior entries."""
+    """Append one entry as a single JSON line. Never rewrites or reorders prior entries.
+
+    Idempotent per release id: re-running a failed or repeated release build must not
+    dilute the "k consecutive releases" window with duplicate lines for the same tag,
+    so an entry whose ``release`` already exists in the ledger is skipped.
+    """
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
+    if p.exists() and any(e.release == entry.release for e in load_history(p)):
+        return
     with p.open("a", encoding="utf-8") as handle:
         handle.write(entry.model_dump_json() + "\n")
 

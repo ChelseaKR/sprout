@@ -46,7 +46,7 @@ ingest: ## Build the index from the bundled corpus (prereq for eval/a11y)
 	$(PY) sprout ingest --config $(CONFIG)
 
 eval: ingest ## Record the live engine, run the suites, regenerate the committed report
-	$(PY) sprout eval --config $(CONFIG) --out docs/audits $(if $(RELEASE_TAG),--release $(RELEASE_TAG))
+	$(PY) sprout eval --config $(CONFIG) --out docs/audits $(if $(RELEASE_TAG),--release '$(RELEASE_TAG)')
 
 eval-baseline: ingest ## Regenerate the eval report AND refresh the committed baseline
 	$(PY) sprout eval --config $(CONFIG) --out docs/audits --update-baseline
