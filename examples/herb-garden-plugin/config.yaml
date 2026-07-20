@@ -1,0 +1,16 @@
+# Config for the EXP-14 worked example (ADR-0019): the same sprout.eval runner, pointed
+# at a different corpus and a different domain, with zero code changes to sprout itself.
+# Every key not listed here keeps the built-in default from src/sprout/config.py — only
+# the corpus location and the artifact paths (kept inside this example directory) differ.
+
+corpus:
+  path: corpus/processed
+  glob: "**/*.md"
+  manifest: corpus/manifest.yaml
+  default_language: en
+
+languages:
+  supported: [en]
+
+store:
+  path: var/index.json
