@@ -30,6 +30,7 @@ import ast
 import hashlib
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
@@ -53,6 +54,15 @@ TUNABLE_SURFACE: tuple[str, ...] = (
 
 _TRAILER_RE = re.compile(r"(?im)^Tunes-Against:\s*(.+)\s*$")
 _SEMANTIC_YAML_PATHS = frozenset({"config/sprout.yaml"})
+_CONFIG_MODULE_PATH = "src/sprout/config.py"
+# Config classes that no eval-visible code path reads: the eval harness drives
+# ``Assistant`` directly, and ``Assistant``/retrieval/guards/confidence/providers never
+# consult these classes (transport-level knobs consumed only by ``sprout.server`` /
+# ``sprout.cli``). A ``config.py`` delta confined to these class bodies therefore cannot
+# change any behavior the eval suites measure. The invariant that keeps this exemption
+# sound — no eval-visible module ever grows a read of ``config.server`` — is pinned by
+# ``tests/test_tuning_scope.py::test_eval_visible_modules_never_read_exempt_config``.
+_EVAL_INVISIBLE_CONFIG_CLASSES = frozenset({"ServerConfig"})
 _PROVIDER_FACTORY_PATH = "src/sprout/providers/__init__.py"
 _PROVIDER_LIFECYCLE_PATH = "src/sprout/provider_lifecycle.py"
 # One-time bootstrap: origin/main predates the operational lifecycle seam, so the exact
@@ -128,6 +138,25 @@ def _provider_factory_fingerprint(source: str) -> str:
     return ast.dump(normalized, include_attributes=False)
 
 
+class _DropEvalInvisibleConfigClasses(ast.NodeTransformer):
+    """Erase only the class bodies named in ``_EVAL_INVISIBLE_CONFIG_CLASSES``.
+
+    Everything else in ``config.py`` — retrieval, generation, guards, prompts,
+    confidence — stays in the tree, so a mixed change still fails closed.
+    """
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> ast.AST | None:
+        if node.name in _EVAL_INVISIBLE_CONFIG_CLASSES:
+            return None
+        return self.generic_visit(node)
+
+
+def _config_without_eval_invisible_classes(source: str) -> str:
+    tree = _DropEvalInvisibleConfigClasses().visit(ast.parse(source))
+    ast.fix_missing_locations(tree)
+    return ast.dump(tree, include_attributes=False)
+
+
 def _python_fingerprint(source: str) -> str:
     """Return a formatting- and comment-insensitive Python syntax fingerprint."""
 
@@ -164,19 +193,25 @@ def _operational_only_change(
             return bool(yaml.safe_load(base_source) == yaml.safe_load(head_source))
         except yaml.YAMLError:
             return False
-    if path == _PROVIDER_FACTORY_PATH:
-        try:
-            return _provider_factory_fingerprint(base_source) == _provider_factory_fingerprint(
-                head_source
-            )
-        except SyntaxError:
-            return False
-    if path.endswith(".py"):
-        try:
-            return _python_fingerprint(base_source) == _python_fingerprint(head_source)
-        except SyntaxError:
-            return False
-    return False
+    fingerprint = _FINGERPRINT_BY_PATH.get(
+        path, _python_fingerprint if path.endswith(".py") else None
+    )
+    if fingerprint is None:
+        return False
+    try:
+        return fingerprint(base_source) == fingerprint(head_source)
+    except SyntaxError:
+        return False
+
+
+# Per-path source fingerprints for the equivalence check above. `config.py` exempts only a
+# delta confined to eval-invisible config class bodies — outside them the two trees must be
+# syntactically identical, so a change that also touches retrieval/generation/guard/prompt
+# config still fails closed.
+_FINGERPRINT_BY_PATH: dict[str, Callable[[str], str]] = {
+    _CONFIG_MODULE_PATH: _config_without_eval_invisible_classes,
+    _PROVIDER_FACTORY_PATH: _provider_factory_fingerprint,
+}
 
 
 def effective_tunable_paths(

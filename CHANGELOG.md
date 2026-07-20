@@ -10,6 +10,12 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+### Added
+- Deploy-grade app-level server hardening (FIX-10): security headers (CSP, HSTS,
+  anti-framing/sniffing), a streaming-safe request-size cap, per-client-IP token-bucket rate
+  limits (with a stricter bucket and a concurrency bound on `/api/identify`), all pure-stdlib
+  and independent of any reverse proxy — delta checklist at `docs/audits/asvs-l2-delta.md`.
+
 ### Fixed
 - Re-armed CodeQL on pull requests, pushes to `main`, and a weekly schedule; corrected the
   Standards Conformance label consumed by the portfolio checker; and assigned the homoglyph
