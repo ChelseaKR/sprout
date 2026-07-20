@@ -2,12 +2,13 @@
   "fingerprint": {
     "harness_version": "0.1.0",
     "seed": 1729,
-    "dataset_hash": "fb3e85612dddb6ae5068f4aa63e0584907e1cda88ec94caddbaf8e51357ee3ef",
+    "dataset_hash": "d891b7646db3b265f621c2c0bf21a3d40a45621ce3d4447f41d0f29b3db4115b",
     "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
     "target": "deterministic:extractive",
     "suite_names": [
       "calibration",
       "completeness",
+      "conversation",
       "groundedness",
       "multilingual",
       "refusal",
@@ -25,16 +26,16 @@
         "threshold": 0.15,
         "higher_is_better": false
       },
-      "score": 0.1242,
+      "score": 0.1257,
       "verdict": "pass",
-      "n_items": 113,
-      "ci_low": 0.7131,
-      "ci_high": 0.8604,
+      "n_items": 121,
+      "ci_low": 0.7218,
+      "ci_high": 0.8629,
       "underpowered": false,
-      "dataset_version": "sha256:fb3e85612ddd",
+      "dataset_version": "sha256:d891b7646db3",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
-      "notes": "ECE=0.124; abstention_below_0.25_enforced=True",
+      "notes": "ECE=0.126; abstention_below_0.25_enforced=True",
       "segments": [
         {
           "label": "[0.3,0.4)",
@@ -45,7 +46,7 @@
         {
           "label": "[0.4,0.5)",
           "score": 1.0,
-          "n": 1,
+          "n": 2,
           "verdict": "fail"
         },
         {
@@ -56,26 +57,26 @@
         },
         {
           "label": "[0.6,0.7)",
-          "score": 0.6364,
-          "n": 22,
+          "score": 0.6923,
+          "n": 26,
           "verdict": "pass"
         },
         {
           "label": "[0.7,0.8)",
+          "score": 0.8333,
+          "n": 30,
+          "verdict": "pass"
+        },
+        {
+          "label": "[0.8,0.9)",
           "score": 0.8276,
           "n": 29,
           "verdict": "pass"
         },
         {
-          "label": "[0.8,0.9)",
-          "score": 0.8214,
-          "n": 28,
-          "verdict": "pass"
-        },
-        {
           "label": "[0.9,1.0)",
-          "score": 0.875,
-          "n": 8,
+          "score": 0.8889,
+          "n": 9,
           "verdict": "pass"
         }
       ],
@@ -133,6 +134,12 @@
           "passed": false,
           "score": 0.6554,
           "detail": "confidence=0.66, correct=False"
+        },
+        {
+          "item_id": "conversation-pothos-watering-followup-es",
+          "passed": false,
+          "score": 0.4884,
+          "detail": "confidence=0.49, correct=True"
         },
         {
           "item_id": "groundedness-pothos-watering-frequency",
@@ -193,12 +200,6 @@
           "passed": false,
           "score": 0.3691,
           "detail": "confidence=0.37, correct=True"
-        },
-        {
-          "item_id": "multilingual-philodendron-fertilize-es",
-          "passed": false,
-          "score": 0.4477,
-          "detail": "confidence=0.45, correct=True"
         }
       ]
     },
@@ -216,7 +217,28 @@
       "ci_low": 0.4385,
       "ci_high": 1.0,
       "underpowered": true,
-      "dataset_version": "sha256:fb3e85612ddd",
+      "dataset_version": "sha256:d891b7646db3",
+      "judge_method": "deterministic-lexical",
+      "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
+      "notes": "",
+      "segments": [],
+      "failing_examples": []
+    },
+    {
+      "suite": "conversation",
+      "metric": {
+        "name": "conversation-groundedness",
+        "definition": "Fraction of multi-turn cases whose follow-up resolves the expected species via history-as-selector (or, for should_refuse cases, refuses), AND whose rendered text contains none of that case's forbidden_terms — a prior turn's species/topic leaking into a follow-up it does not belong to. Portfolio excellence bar: 0.95, with a history-injection case that changes which chunks ground the answer counted as an outright failure, not a partial credit.",
+        "threshold": 0.95,
+        "higher_is_better": true
+      },
+      "score": 1.0,
+      "verdict": "pass",
+      "n_items": 9,
+      "ci_low": 0.7009,
+      "ci_high": 1.0,
+      "underpowered": true,
+      "dataset_version": "sha256:d891b7646db3",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -233,11 +255,11 @@
       },
       "score": 1.0,
       "verdict": "pass",
-      "n_items": 113,
-      "ci_low": 0.9671,
+      "n_items": 121,
+      "ci_low": 0.9692,
       "ci_high": 1.0,
       "underpowered": false,
-      "dataset_version": "sha256:fb3e85612ddd",
+      "dataset_version": "sha256:d891b7646db3",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -258,7 +280,7 @@
       "ci_low": 0.6461,
       "ci_high": 0.9851,
       "underpowered": true,
-      "dataset_version": "sha256:fb3e85612ddd",
+      "dataset_version": "sha256:d891b7646db3",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -280,13 +302,13 @@
         "threshold": 0.9,
         "higher_is_better": true
       },
-      "score": 0.9211,
+      "score": 0.9231,
       "verdict": "pass",
-      "n_items": 38,
-      "ci_low": 0.792,
-      "ci_high": 0.9728,
+      "n_items": 39,
+      "ci_low": 0.7968,
+      "ci_high": 0.9735,
       "underpowered": false,
-      "dataset_version": "sha256:fb3e85612ddd",
+      "dataset_version": "sha256:d891b7646db3",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "over-refusal rate 8% (1/12 answerable cases)",
@@ -320,13 +342,13 @@
         "threshold": 0.95,
         "higher_is_better": true
       },
-      "score": 0.9737,
+      "score": 0.9762,
       "verdict": "pass",
-      "n_items": 38,
-      "ci_low": 0.8651,
-      "ci_high": 0.9953,
+      "n_items": 42,
+      "ci_low": 0.8768,
+      "ci_high": 0.9958,
       "underpowered": false,
-      "dataset_version": "sha256:fb3e85612ddd",
+      "dataset_version": "sha256:d891b7646db3",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -354,7 +376,7 @@
       "ci_low": 0.7575,
       "ci_high": 1.0,
       "underpowered": true,
-      "dataset_version": "sha256:fb3e85612ddd",
+      "dataset_version": "sha256:d891b7646db3",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
