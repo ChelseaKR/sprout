@@ -15,6 +15,13 @@
               }
             },
             {
+              "id": "sprout-eval/completeness",
+              "name": "completeness",
+              "shortDescription": {
+                "text": "Fraction of a multi-facet case's authored expected_facts (cases with >=2) found present in the rendered answer; an item passes at >=90% facet coverage. Single-fact cases are out of scope (see groundedness)."
+              }
+            },
+            {
               "id": "sprout-eval/groundedness",
               "name": "groundedness",
               "shortDescription": {

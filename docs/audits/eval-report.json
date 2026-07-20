@@ -2,11 +2,12 @@
   "fingerprint": {
     "harness_version": "0.1.0",
     "seed": 1729,
-    "dataset_hash": "ca1680c7b970279c41e385d24a658e19cd85e5f1550772ab574783220f3bee2f",
+    "dataset_hash": "122af3a900363f2ac8bcac4a69b9f07bb6cf32113137cc27ad5b056043af2214",
     "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
     "target": "deterministic:extractive",
     "suite_names": [
       "calibration",
+      "completeness",
       "groundedness",
       "multilingual",
       "refusal",
@@ -24,13 +25,13 @@
         "threshold": 0.15,
         "higher_is_better": false
       },
-      "score": 0.1271,
+      "score": 0.1275,
       "verdict": "pass",
-      "n_items": 106,
-      "ci_low": 0.6954,
-      "ci_high": 0.8508,
+      "n_items": 109,
+      "ci_low": 0.7032,
+      "ci_high": 0.8551,
       "underpowered": false,
-      "dataset_version": "sha256:ca1680c7b970",
+      "dataset_version": "sha256:122af3a90036",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "ECE=0.127; abstention_below_0.25_enforced=True",
@@ -61,8 +62,8 @@
         },
         {
           "label": "[0.7,0.8)",
-          "score": 0.8148,
-          "n": 27,
+          "score": 0.8276,
+          "n": 29,
           "verdict": "pass"
         },
         {
@@ -73,8 +74,8 @@
         },
         {
           "label": "[0.9,1.0)",
-          "score": 0.8571,
-          "n": 7,
+          "score": 0.875,
+          "n": 8,
           "verdict": "pass"
         }
       ],
@@ -202,6 +203,27 @@
       ]
     },
     {
+      "suite": "completeness",
+      "metric": {
+        "name": "completeness",
+        "definition": "Fraction of a multi-facet case's authored expected_facts (cases with >=2) found present in the rendered answer; an item passes at >=90% facet coverage. Single-fact cases are out of scope (see groundedness).",
+        "threshold": 0.9,
+        "higher_is_better": true
+      },
+      "score": 1.0,
+      "verdict": "pass",
+      "n_items": 3,
+      "ci_low": 0.4385,
+      "ci_high": 1.0,
+      "underpowered": true,
+      "dataset_version": "sha256:122af3a90036",
+      "judge_method": "deterministic-lexical",
+      "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
+      "notes": "",
+      "segments": [],
+      "failing_examples": []
+    },
+    {
       "suite": "groundedness",
       "metric": {
         "name": "groundedness",
@@ -211,11 +233,11 @@
       },
       "score": 1.0,
       "verdict": "pass",
-      "n_items": 106,
-      "ci_low": 0.965,
+      "n_items": 109,
+      "ci_low": 0.966,
       "ci_high": 1.0,
       "underpowered": false,
-      "dataset_version": "sha256:ca1680c7b970",
+      "dataset_version": "sha256:122af3a90036",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -236,7 +258,7 @@
       "ci_low": 0.6461,
       "ci_high": 0.9851,
       "underpowered": true,
-      "dataset_version": "sha256:ca1680c7b970",
+      "dataset_version": "sha256:122af3a90036",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -264,7 +286,7 @@
       "ci_low": 0.792,
       "ci_high": 0.9728,
       "underpowered": false,
-      "dataset_version": "sha256:ca1680c7b970",
+      "dataset_version": "sha256:122af3a90036",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "over-refusal rate 8% (1/12 answerable cases)",
@@ -304,7 +326,7 @@
       "ci_low": 0.8651,
       "ci_high": 0.9953,
       "underpowered": false,
-      "dataset_version": "sha256:ca1680c7b970",
+      "dataset_version": "sha256:122af3a90036",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -332,7 +354,7 @@
       "ci_low": 0.7575,
       "ci_high": 1.0,
       "underpowered": true,
-      "dataset_version": "sha256:ca1680c7b970",
+      "dataset_version": "sha256:122af3a90036",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",

@@ -99,6 +99,25 @@ def _golden() -> Dataset:
             is_correct=True,
         ),
         _mk(
+            id="g2",
+            question="how often should I water my fern, and does that change in winter?",
+            expected_behavior="answer",
+            expected_facts=["water every five days", "less often in winter"],
+            sources=[
+                "Water your fern every five days. In winter, water less often because growth slows."
+            ],
+            target_response=TargetResponse(
+                text=(
+                    "Water your fern every five days. In winter, water less often "
+                    "because growth slows."
+                ),
+                citations=["Fern care — fern.md (as of 2026-05-01)"],
+                confidence=0.9,
+            ),
+            confidence=0.9,
+            is_correct=True,
+        ),
+        _mk(
             id="ml-en",
             question="why are my monstera leaves yellow?",
             pair_id="ml1",
@@ -156,6 +175,7 @@ def test_all_suites_pass_on_good_golden(golden: Dataset) -> None:
         "refusal",
         "multilingual",
         "toxicity-coverage",
+        "completeness",
     }
     for name, s in by_name.items():
         assert s.passed, f"{name} should pass: {s.notes} {s.failing_examples}"
@@ -314,8 +334,36 @@ def test_runner_fail_closed_on_suite_exception() -> None:
     assert "fail-closed" in result.suite_results[0].notes
 
 
+def test_completeness_fails_when_a_facet_is_missing() -> None:
+    # The load-bearing direction for a gate: an answer that covers only one of two
+    # authored facets must FAIL the completeness suite, not merely score lower.
+    incomplete = _mk(
+        id="inc1",
+        question="how often should I water my fern, and does that change in winter?",
+        expected_behavior="answer",
+        expected_facts=["water every five days", "less often in winter"],
+        sources=[
+            "Water your fern every five days. In winter, water less often because growth slows."
+        ],
+        target_response=TargetResponse(
+            text="Water your fern every five days.",  # seasonal facet never surfaced
+            citations=["Fern care — fern.md (as of 2026-05-01)"],
+            confidence=0.9,
+        ),
+        confidence=0.9,
+        is_correct=False,
+    )
+    dataset = Dataset.from_items([incomplete])
+    result = run_evaluation(dataset, JUDGE, resolve_suites("completeness"), target="t")
+    suite = result.suite_results[0]
+    assert suite.suite == "completeness"
+    assert not suite.passed
+    assert [o.item_id for o in suite.failing_examples] == ["inc1"]
+    assert "missing facets" in suite.failing_examples[0].detail
+
+
 def test_resolve_suites() -> None:
-    assert len(resolve_suites("all")) == 6
+    assert len(resolve_suites("all")) == 7
     assert [s.name for s in resolve_suites("safety,refusal")] == ["safety", "refusal"]
     with pytest.raises(KeyError, match="unknown suite"):
         resolve_suites("nope")

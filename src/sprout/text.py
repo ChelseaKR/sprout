@@ -199,6 +199,15 @@ _TOKEN_RE = re.compile(r"[0-9]+(?:\.[0-9]+)?|[^\W\d_]+", re.UNICODE)
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 _NEG_NT_RE = re.compile(r"\b\w+n't\b", re.IGNORECASE)
 
+# Splits a query into clauses on coordinating conjunctions and clause punctuation, in
+# both languages. Deliberately conservative (a fixed conjunction list, not an NLP parser)
+# so clause boundaries stay auditable: "How often should I water, and does that change in
+# winter?" splits into two clauses; "How often should I water my pothos?" stays one.
+_FACET_SPLIT_RE = re.compile(
+    r"\s*(?:[,;?]+|(?<=\w)\s+(?:and|but|or|as well as|y|pero|o)\s+(?=\w))\s*",
+    re.IGNORECASE,
+)
+
 
 def strip_accents(token: str) -> str:
     """Fold accents so 'también' and 'tambien' tokenise identically."""
@@ -270,6 +279,22 @@ def content_tokens(text: str) -> list[str]:
 def token_set(text: str) -> frozenset[str]:
     """Unique content tokens of ``text``."""
     return frozenset(content_tokens(text))
+
+
+def extract_facets(query: str) -> list[frozenset[str]]:
+    """Split a query into per-clause content-token sets ("facets").
+
+    A single-part question ("How often should I water my pothos?") yields one facet —
+    its whole content-token set — so single-part behaviour is unchanged downstream. A
+    multi-part question ("How often should I water, and does that change in winter?")
+    yields one facet per clause, so a caller can require each clause's topic to surface
+    in the answer instead of ranking every candidate against one pooled bag of tokens
+    (which lets the dominant clause crowd out the others). Empty/stop-word-only clauses
+    are dropped; a query with no content tokens at all yields an empty list.
+    """
+    clauses = [c for c in _FACET_SPLIT_RE.split(query.strip()) if c.strip()]
+    facets = [toks for c in clauses if (toks := token_set(c))]
+    return facets
 
 
 def has_negation(text: str) -> bool:
