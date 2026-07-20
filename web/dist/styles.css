@@ -209,6 +209,18 @@ button:hover {
 
 .text-link { font-weight: 700; text-underline-offset: 0.25rem; }
 
+/* EXP-02: two sources give a different numeric cadence — show both, resolve neither. */
+.disagreement {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  background: var(--blue-soft);
+  border: 2px solid var(--blue);
+  border-radius: var(--radius);
+  color: var(--blue);
+}
+.disagreement p { margin: 0.3rem 0; }
+.disagreement p::before { content: "⚖ Sources differ: "; font-weight: 700; }
+
 .claim-chain {
   padding: 1.25rem 1.25rem 1rem;
   background: var(--surface);
