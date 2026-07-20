@@ -98,11 +98,17 @@ def _sse_events(answer: Answer) -> Iterator[dict[str, str]]:
     }
 
 
+# Season/light qualifiers are short selector words ("winter", "low light"), never prose;
+# cap them well below the question cap so an oversized qualifier can't become a cheap
+# tokenization amplifier on either the JSON or the GET path.
+_MAX_CONTEXT_QUALIFIER_CHARS = 50
+
+
 def _optional_str(value: Any) -> str | None:
-    """Coerce an untyped JSON payload field to ``str | None`` (EXP-05 season/light)."""
+    """Coerce and bound an untyped season/light qualifier to ``str | None`` (EXP-05)."""
     if value is None:
         return None
-    text = str(value).strip()
+    text = str(value).strip()[:_MAX_CONTEXT_QUALIFIER_CHARS]
     return text or None
 
 
@@ -293,7 +299,10 @@ def create_app(
         error = _question_error(q.strip(), config)
         if error is not None:
             return JSONResponse({"error": error}, status_code=400)
-        return EventSourceResponse(_sse_events(_resolve(q.strip(), language, season, light)))
+        # Normalize + bound the GET qualifiers exactly like the JSON path does.
+        return EventSourceResponse(
+            _sse_events(_resolve(q.strip(), language, _optional_str(season), _optional_str(light)))
+        )
 
     _register_identify(app, engine, config, log, identifier)
     _register_reminders(app, config, log)

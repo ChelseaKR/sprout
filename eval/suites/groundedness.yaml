@@ -321,6 +321,10 @@ cases:
   rationale: EXP-01 facet-coverage case — a two-part question must surface both the
     baseline watering cadence and the seasonal change, not just whichever ranks first
     (docs/ideation/03-expansions.md). Feeds the completeness suite (>=2 expected_facts).
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
 - id: groundedness-calathea-watering-no-selector
   question: How much water does my Calathea need?
   expected_behavior: answer
@@ -343,6 +347,10 @@ cases:
   language: en
   rationale: EXP-01 facet-coverage case — checks both the ZZ plant's normal watering
     cadence and its winter reduction surface in the same answer, not a repeated fact.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
 - id: groundedness-calathea-watering-winter-selector
   question: How much water does my Calathea need?
   season: winter
@@ -369,6 +377,10 @@ cases:
   language: en
   rationale: EXP-01 facet-coverage case — checks both the orchid's normal watering
     cadence and its winter reduction surface in the same answer, not a repeated fact.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
 - id: groundedness-pothos-light-no-selector
   question: What kind of light does my Pothos need?
   expected_behavior: answer

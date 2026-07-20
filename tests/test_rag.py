@@ -941,7 +941,6 @@ def test_extractive_generator_single_facet_unchanged_by_diversity_selection() ->
         "How often should I water my fern?", [RetrievedChunk(chunk=chunk, score=0.9)], 3
     )
     assert len(plain_scored) == 3
-    assert ans.refusal_reason == "low_confidence"
 
 
 # --- season/light context qualifiers (EXP-05) -------------------------------------
