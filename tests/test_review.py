@@ -278,3 +278,33 @@ def test_exporters_skip_unlabeled_items(tmp_path: Path) -> None:
     queue.capture(_low_confidence_trace())
     assert export_confidence_fit_cases(queue.all_items())["cases"] == []
     assert export_eval_case_drafts(queue.all_items())["cases"] == []
+
+
+def test_cli_capture_precedence_refusal_wins_over_low_confidence(tmp_path: Path) -> None:
+    # Every refusal also carries low_confidence=True, so the refusal opt-in must be
+    # checked first: capture_on_low_confidence=false + capture_on_refusal=true still
+    # captures refusals (the bug the review found made this combination capture nothing).
+    from sprout.cli import _maybe_capture_review
+    from sprout.config import Config
+
+    cfg = Config.model_validate(
+        {
+            "review": {
+                "enabled": True,
+                "path": str(tmp_path / "queue.json"),
+                "capture_on_low_confidence": False,
+                "capture_on_refusal": True,
+            }
+        }
+    )
+    base = _refused_trace()
+    # Real refusals always carry low_confidence=True (Assistant._refuse); mirror that
+    # here so the test exercises exactly the combination the bug made unreachable.
+    trace = base.model_copy(
+        update={"answer": base.answer.model_copy(update={"low_confidence": True})}
+    )
+    assert trace.answer.refused and trace.answer.low_confidence
+    _maybe_capture_review(cfg, trace)
+    queue = ReviewQueue(cfg.review.path)
+    assert len(queue) == 1
+    assert queue.all_items()[0].reason == "refused"

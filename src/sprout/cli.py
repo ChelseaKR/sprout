@@ -149,7 +149,6 @@ def _maybe_capture_review(cfg: Config, trace: Any) -> None:
     ReviewQueue(cfg.review.path, max_items=cfg.review.max_items).capture(trace)
 
 
-
 def _print_answer(
     assistant: Assistant,
     question: str,

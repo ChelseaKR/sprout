@@ -745,6 +745,8 @@ def test_check_tuning_scope_cli_smoke(tmp_path: Path, monkeypatch: pytest.Monkey
 
     missing_ref = runner.invoke(app, ["check-tuning-scope", "--base", "does-not-exist"])
     assert missing_ref.exit_code == 2
+
+
 def _project_with_review_enabled(tmp_path: Path) -> Path:
     """``_project`` plus ``review.enabled: true`` pointed at a scratch queue file."""
     cfg = _project(tmp_path)

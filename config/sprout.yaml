@@ -97,7 +97,7 @@ confidence:
   reliability_bins: 10
 
 review:                           # local review console (EXP-17): OFF by default -- see
-  enabled: false                  # docs/RESPONSIBLE-TECH-AUDITS.md section C and ADR-0014 before
+  enabled: false                  # docs/RESPONSIBLE-TECH-AUDITS.md section C and ADR-0020 before
   path: var/review/queue.json     # enabling. Stores question text on this machine only;
   max_items: 500                  # nothing is uploaded. A maintainer opts in with `enabled:
   capture_on_low_confidence: true # true` to queue flagged/refused traces for `sprout review`.
