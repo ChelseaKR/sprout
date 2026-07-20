@@ -452,8 +452,6 @@ def test_safety_filter_drops_certifications(tiny_chunks: list[Chunk]) -> None:
     assert all("perfectly fine" not in s.text for s in filtered)
 
 
-<<<<<<< HEAD
-=======
 # --- numeric-cadence disagreement probe (EXP-02) ----------------------------------
 @pytest.mark.parametrize(
     ("text", "expected"),
@@ -535,7 +533,6 @@ def test_numeric_cadence_conflicts_ignores_other_topics() -> None:
 
 
 # --- pipeline --------------------------------------------------------------------
->>>>>>> 6800fdf (feat(answer): surface source disagreement instead of picking top-ranked chunk (EXP-02))
 def test_grounded_answer_is_cited(assistant: Assistant) -> None:
     ans = assistant.answer("why are my monstera leaves yellowing")
     assert not ans.refused
