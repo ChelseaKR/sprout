@@ -13,12 +13,18 @@ from sprout.lang import _langdetect_fallback, detect_language
 from sprout.providers import build_embedding, build_generator
 from sprout.providers.bedrock import TitanEmbedding
 from sprout.providers.deterministic import ExtractiveGenerator, HashingEmbedding
+from sprout.providers.static_embedding import StaticEmbedding
 
 
 def test_factory_deterministic_default() -> None:
     cfg = Config()
     assert isinstance(build_embedding(cfg), HashingEmbedding)
     assert isinstance(build_generator(cfg), ExtractiveGenerator)
+
+
+def test_factory_static() -> None:
+    cfg = Config.model_validate({"retrieval": {"embedding_provider": "static"}})
+    assert isinstance(build_embedding(cfg), StaticEmbedding)
 
 
 def test_factory_bedrock() -> None:
