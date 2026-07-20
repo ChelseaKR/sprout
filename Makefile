@@ -1,6 +1,11 @@
 .DEFAULT_GOAL := help
 PY := uv run
 CONFIG ?= config/sprout.yaml
+# Set only by the release workflow (e.g. `make verify RELEASE_TAG=v1.2.3`): when non-empty,
+# `eval` appends this run's scores to docs/audits/eval-history.jsonl and runs the
+# consecutive-decline drift gate (EXP-13). Left unset for CI's per-PR `make verify`/`eval`
+# runs so the ledger only ever grows one entry per release, never per PR.
+RELEASE_TAG ?=
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
         smoke a11y claims calibrate gate-inventory slo freshness audits docs workflow-lint \
@@ -41,7 +46,7 @@ ingest: ## Build the index from the bundled corpus (prereq for eval/a11y)
 	$(PY) sprout ingest --config $(CONFIG)
 
 eval: ingest ## Record the live engine, run the suites, regenerate the committed report
-	$(PY) sprout eval --config $(CONFIG) --out docs/audits
+	$(PY) sprout eval --config $(CONFIG) --out docs/audits $(if $(RELEASE_TAG),--release '$(RELEASE_TAG)')
 
 eval-baseline: ingest ## Regenerate the eval report AND refresh the committed baseline
 	$(PY) sprout eval --config $(CONFIG) --out docs/audits --update-baseline

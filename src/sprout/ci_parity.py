@@ -133,6 +133,11 @@ def _normalize(cmd: str, make_vars: dict[str, str] | None = None) -> str:
         # Makefile default; see `test_cli_default_config_matches_makefile_default`), so a run
         # with the explicit default flag reads the same as a run without it.
         text = re.sub(rf"\s+--config\s+{re.escape(make_vars['CONFIG'])}\b", "", text)
+        # The release-only trend-ledger flag (EXP-13) is appended through a make
+        # conditional that expands to *nothing* unless RELEASE_TAG is set, and only the
+        # release workflow sets it. Parity compares the per-PR/per-push invocation, where
+        # both sides run without the flag, so the unexpanded conditional is erased here.
+        text = text.replace("$(if $(RELEASE_TAG),--release '$(RELEASE_TAG)')", "")
     return re.sub(r"\s+", " ", text).strip()
 
 
