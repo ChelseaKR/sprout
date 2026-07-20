@@ -9,10 +9,10 @@ import pytest
 
 from sprout.answer import Assistant
 from sprout.confidence import (
-    best_and_margin,
     BAND_INSUFFICIENT_EVIDENCE,
     BAND_PARTIALLY_SUPPORTED,
     BAND_WELL_SUPPORTED,
+    best_and_margin,
     confidence_band,
     derive_band_cutoff,
     expected_calibration_error,
@@ -851,6 +851,8 @@ def test_abstains_below_threshold(assistant_factory: Callable[..., Assistant]) -
     ans = a.answer("why are my monstera leaves yellowing")
     assert ans.abstained
     assert ans.refused
+    assert ans.refusal_reason == "low_confidence"
+    assert ans.confidence_band == BAND_INSUFFICIENT_EVIDENCE
 
 
 # --- facet-coverage answer planner (EXP-01) ---------------------------------------
@@ -923,5 +925,3 @@ def test_extractive_generator_single_facet_unchanged_by_diversity_selection() ->
         "How often should I water my fern?", [RetrievedChunk(chunk=chunk, score=0.9)], 3
     )
     assert len(plain_scored) == 3
-    assert ans.refusal_reason == "low_confidence"
-    assert ans.confidence_band == BAND_INSUFFICIENT_EVIDENCE
