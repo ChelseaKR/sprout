@@ -153,6 +153,13 @@ class Answer(_Frozen):
     as_of: str | None = None
     disagreements: tuple[SourceDisagreement, ...] = Field(default_factory=tuple)
     disagreement_notices: tuple[str, ...] = Field(default_factory=tuple)
+    # Verbalized, screen-reader-first confidence band (EXP-06): calibrated language
+    # derived from the reliability diagram, shown alongside — never instead of —
+    # ``confidence``. ``confidence_band`` is the stable machine key (aria/CSS hooks,
+    # eval assertions); ``confidence_band_label`` is the localized string a screen
+    # reader announces.
+    confidence_band: str = "insufficient_evidence"
+    confidence_band_label: str = ""
 
     @property
     def text(self) -> str:

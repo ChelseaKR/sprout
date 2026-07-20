@@ -75,7 +75,13 @@ def _print_answer_obj(answer: Answer) -> None:
     if answer.as_of:
         typer.echo(f"\nBased on references as of {answer.as_of}.")
     flag = " (low confidence)" if answer.low_confidence and not answer.refused else ""
-    typer.echo(f"[confidence {answer.confidence:.2f}{flag} · {answer.disclosure}]")
+    # The band word leads, the number follows — never the reverse — so a screen reader
+    # or a terminal read top-to-bottom announces the calibrated language first and the
+    # raw float is still there, right after it, for anyone who wants the number (EXP-06).
+    typer.echo(
+        f"[confidence: {answer.confidence_band_label} ({answer.confidence:.2f}){flag} · "
+        f"{answer.disclosure}]"
+    )
 
 
 def _print_answer(assistant: Assistant, question: str, language: str | None, debug: bool) -> None:

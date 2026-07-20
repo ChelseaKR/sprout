@@ -117,7 +117,14 @@
       const data = JSON.parse(event.data);
       const details = [];
       if (typeof data.confidence === "number") {
-        details.push("Confidence " + data.confidence.toFixed(2) +
+        // The verbalized band leads, the raw number follows in parentheses — never the
+        // reverse, and never the band alone — so a screen reader announces the
+        // calibrated language first while the number stays available to anyone who
+        // wants it (EXP-06). Bands come from confidence.py, derived from the
+        // committed reliability diagram, not invented client-side.
+        const bandLabel = data.confidence_band_label || null;
+        details.push("Confidence: " + (bandLabel ? bandLabel + " " : "") +
+          "(" + data.confidence.toFixed(2) + ")" +
           (data.low_confidence && !data.refused ? " — low; check another source" : ""));
       }
       if (data.as_of) details.push("References current to " + data.as_of);

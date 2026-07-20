@@ -87,6 +87,8 @@ def _sse_events(answer: Answer) -> Iterator[dict[str, str]]:
                 "refused": answer.refused,
                 "low_confidence": answer.low_confidence,
                 "confidence": answer.confidence,
+                "confidence_band": answer.confidence_band,
+                "confidence_band_label": answer.confidence_band_label,
                 "language": answer.language,
                 "as_of": answer.as_of,
                 "disclosure": answer.disclosure,
@@ -339,6 +341,8 @@ def _register_identify(
                     "as_of": ans.as_of,
                     "disclosure": ans.disclosure,
                     "language": ans.language,
+                    "confidence_band": ans.confidence_band,
+                    "confidence_band_label": ans.confidence_band_label,
                     "disagreements": [d.model_dump() for d in ans.disagreements],
                 }
             return JSONResponse(data)
