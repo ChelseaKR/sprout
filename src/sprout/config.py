@@ -80,7 +80,7 @@ class GenerationConfig(_Model):
 
 class ConfidenceFit(_Model):
     """A fitted, provenance-stamped logistic, written by ``sprout fit-confidence``
-    (ADR-0013). Answers "fitted on what, when, against which retrieval config" so a
+    (ADR-0016). Answers "fitted on what, when, against which retrieval config" so a
     committed fit is auditable rather than a bare set of numbers.
 
     Fitted on a **train split** (``eval/train/``) of generated calibration questions,

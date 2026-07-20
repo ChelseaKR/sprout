@@ -28,7 +28,7 @@ from .models import RetrievedChunk
 # ADR's numbers fail the ECE gate (0.184 > 0.15) while these pass it (0.108) -- see
 # ADR-0012 for the full evidence).
 #
-# Once a fit exists (ADR-0013, ``sprout fit-confidence``), ``score_confidence`` reads
+# Once a fit exists (ADR-0016, ``sprout fit-confidence``), ``score_confidence`` reads
 # ``config.confidence.fit.{midpoint,steepness,margin_bonus}`` instead of these globals --
 # they remain only as the documented, evidence-backed default for a fresh install.
 _MIDPOINT = 0.30
@@ -149,7 +149,7 @@ def retrieval_config_fingerprint(cfg: RetrievalConfig) -> str:
 def fit_drift_warning(cfg: ConfidenceConfig, retrieval: RetrievalConfig) -> str | None:
     """``None`` if there is no fit, or the fit still matches the live retrieval config;
     otherwise a message explaining that retrieval changed since the fit and it should be
-    redone (FIX-08 / ADR-0013's drift check)."""
+    redone (FIX-08 / ADR-0016's drift check)."""
     if cfg.fit is None:
         return None
     live = retrieval_config_fingerprint(retrieval)

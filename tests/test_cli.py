@@ -313,7 +313,7 @@ def test_fit_confidence_cmd_missing_config_fails(tmp_path: Path) -> None:
 def test_eval_fails_closed_on_stale_confidence_fit(tmp_path: Path) -> None:
     """A `confidence.fit.retrieval_config_hash` that no longer matches the live
     retrieval config must fail `sprout eval` before it even records the engine (FIX-08 /
-    ADR-0013's drift check)."""
+    ADR-0016's drift check)."""
     cfg = _project(tmp_path)
     assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
     raw = yaml.safe_load(cfg.read_text(encoding="utf-8"))
