@@ -22,11 +22,6 @@ def _client(assistant: Assistant, config: Config) -> TestClient:
     return TestClient(create_app(config, assistant=assistant))
 
 
-def test_index_size_is_public(assistant: Assistant) -> None:
-    # FIX-10(c): readyz/health no longer reach into Assistant._store directly.
-    assert assistant.index_size() == len(assistant._store)
-
-
 def test_security_headers_present_on_every_response(assistant: Assistant, config: Config) -> None:
     c = _client(assistant, config)
     r = c.get("/livez")

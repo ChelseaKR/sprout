@@ -98,7 +98,7 @@ def _register_health(app: FastAPI, engine: Assistant) -> None:
 
     @app.get("/readyz")
     def readyz() -> JSONResponse:
-        size = engine.index_size()
+        size = len(engine._store)
         ready = size > 0
         return JSONResponse(
             {"status": "ok" if ready else "no_index", "index_size": size},
@@ -107,7 +107,7 @@ def _register_health(app: FastAPI, engine: Assistant) -> None:
 
     @app.get("/health")
     def health() -> dict[str, Any]:
-        return {"status": "ok", "index_size": engine.index_size()}
+        return {"status": "ok", "index_size": len(engine._store)}
 
 
 def _register_hardening(app: FastAPI, config: Config) -> None:
