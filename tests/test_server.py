@@ -147,6 +147,8 @@ def test_family_greenhouse_integration_rejects_blank_control_and_oversized_paylo
             headers={"Content-Type": "application/json"},
         )
     assert oversized.status_code == 413
+
+
 def test_chat_json_echoes_season_light_context_never_as_citation(
     assistant: Assistant, config: Config
 ) -> None:
@@ -418,3 +420,17 @@ def test_json_logs_are_valid_json_and_pii_free_end_to_end(
         assert not extra, f"log line carries non-whitelisted field(s) {extra}: {line}"
         assert sentinel not in line
         assert "monstera" not in line  # the raw question text never appears at all
+
+
+def test_stream_and_chat_bound_context_qualifiers(assistant: Assistant, config: Config) -> None:
+    # EXP-05 review fix: an oversized qualifier is truncated on both paths, never
+    # flowing unbounded into tokenization; the answer itself still succeeds.
+    c = _client(assistant, config)
+    huge = "winter " * 300
+    r = c.post("/api/chat", json={"question": "How often should I water?", "season": huge})
+    assert r.status_code == 200
+    assert r.json()["season"] is not None
+    assert len(r.json()["season"]) <= 50
+
+    r2 = c.get("/api/chat/stream", params={"q": "How often should I water?", "season": huge})
+    assert r2.status_code == 200

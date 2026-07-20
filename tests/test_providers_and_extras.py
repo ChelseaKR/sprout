@@ -11,10 +11,8 @@ from sprout.chunk import _windows
 from sprout.config import Config
 from sprout.lang import _langdetect_fallback, detect_language
 from sprout.providers import build_embedding, build_generator
-from sprout.providers.bedrock import TitanEmbedding
-from sprout.providers.anthropic_native import AnthropicGenerator
 from sprout.providers.base import context_hint
-from sprout.providers.bedrock import BedrockGenerator, TitanEmbedding
+from sprout.providers.bedrock import TitanEmbedding
 from sprout.providers.deterministic import ExtractiveGenerator, HashingEmbedding
 from sprout.providers.static_embedding import StaticEmbedding
 

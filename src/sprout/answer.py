@@ -50,8 +50,8 @@ from .providers import build_embedding, build_entailment_verifier, build_generat
 from .providers.base import EmbeddingProvider, GenerationProvider
 from .retrieve import Retriever
 from .store import VectorStore
-from .verifiers import EntailmentVerifier
 from .text import token_set
+from .verifiers import EntailmentVerifier
 
 
 class Assistant:
