@@ -6,6 +6,12 @@ ungrounded sentence is *structurally impossible* to render, not merely discourag
 safety-assertion guard drops any sentence that certifies a plant "safe"/"non-toxic" in
 either language. Scope is enforced upstream by the retrieval threshold; PII redaction and
 injection detection guard the (optional) network path and the logs.
+
+On the cloud (non-deterministic) generation path, ``citation_guard`` can additionally take
+an ``entailment_verifier`` (EXP-04, ``verifiers.py``) — a cross-encoder NLI model that must
+also agree the cited chunk entails the sentence. It is a strictly *additional* gate applied
+after the lexical check below, never a replacement for it. The offline extractive path
+never passes one, so its by-construction groundedness guarantee is unchanged (ADR-0018).
 """
 
 from __future__ import annotations
@@ -25,6 +31,7 @@ from .text import (
     token_set,
     tokenize,
 )
+from .verifiers import EntailmentVerifier
 
 # --- input classification --------------------------------------------------------
 
@@ -232,12 +239,15 @@ def citation_guard(
     candidates: list[tuple[str, str]],
     retrieved: list[RetrievedChunk],
     support_overlap: float,
+    entailment_verifier: EntailmentVerifier | None = None,
 ) -> list[AnswerSentence]:
     """Re-verify each candidate sentence against its cited chunk; drop the unsupported.
 
     This is why ungrounded generation is structurally impossible. A candidate survives
-    only if (a) its ``chunk_id`` was actually retrieved and (b) the chunk's text supports
-    the sentence. Survivors become :class:`AnswerSentence` objects tagged ``corpus``.
+    only if (a) its ``chunk_id`` was actually retrieved, (b) the chunk's text supports the
+    sentence lexically, and (c) — when ``entailment_verifier`` is configured (cloud path
+    only, EXP-04) — the verifier also agrees the chunk entails the sentence. Survivors
+    become :class:`AnswerSentence` objects tagged ``corpus``.
     """
     by_id = {rc.chunk.chunk_id: rc.chunk for rc in retrieved}
     out: list[AnswerSentence] = []
@@ -247,6 +257,9 @@ def citation_guard(
         if chunk is None:
             continue
         if not _supported_by(text, chunk.text, support_overlap):
+            continue
+        entailed = entailment_verifier is None or entailment_verifier.entails(chunk.text, text)
+        if not entailed:
             continue
         key = normalize(text)
         if key in seen:

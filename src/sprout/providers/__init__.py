@@ -2,23 +2,28 @@
 
 Lazy imports keep the offline default free of heavy dependencies — ``boto3`` is only
 imported when ``provider: bedrock`` is actually selected, so ``pip install sprout`` with
-no extras still runs end to end.
+no extras still runs end to end. ``build_entailment_verifier`` follows the identical
+pattern for the ``sprout[nli]`` extra (EXP-04): ``onnxruntime``/``tokenizers`` are only
+imported when ``generation.support_verifier: nli`` is actually configured.
 """
 
 from __future__ import annotations
 
 from ..config import Config
+from ..verifiers import EntailmentVerifier
 from .base import EmbeddingProvider, GenerationProvider
 from .deterministic import ExtractiveGenerator, HashingEmbedding
 from .static_embedding import StaticEmbedding
 
 __all__ = [
     "EmbeddingProvider",
+    "EntailmentVerifier",
     "ExtractiveGenerator",
     "GenerationProvider",
     "HashingEmbedding",
     "StaticEmbedding",
     "build_embedding",
+    "build_entailment_verifier",
     "build_generator",
 ]
 
@@ -62,3 +67,18 @@ def build_generator(config: Config) -> GenerationProvider:
             max_cost_usd=config.generation.max_cost_usd,
         )
     raise ValueError(f"unknown generation provider: {provider}")  # pragma: no cover
+
+
+def build_entailment_verifier(config: Config) -> EntailmentVerifier | None:
+    """``None`` unless ``generation.support_verifier: nli`` — the offline and lexical-only
+    cloud paths pass no verifier through to ``citation_guard`` (unchanged behavior).
+
+    ``Config`` already refuses to load with ``support_verifier: nli`` on the deterministic
+    provider or with an unpinned model hash (see ``GenerationConfig`` validation), so this
+    is purely a "which factory" switch, not a second place safety is enforced.
+    """
+    if config.generation.support_verifier != "nli":
+        return None
+    from ..verifiers import build_verifier
+
+    return build_verifier(config.generation.nli)

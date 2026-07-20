@@ -112,7 +112,12 @@ Stage by stage:
    Survivors become `AnswerSentence`s carrying a full `Citation` (doc, source, license,
    fetch date, URL, quote) and tagged `provenance="corpus"`. This is why ungrounded output
    is *structurally impossible*, not merely discouraged — and why a misbehaving cloud
-   provider degrades to a refusal rather than a hallucination.
+   provider degrades to a refusal rather than a hallucination. On the cloud path, an
+   optional cross-encoder **NLI entailment verifier** (`verifiers.py`, EXP-04, ADR-0018;
+   `generation.support_verifier: nli`) adds a second, model-based gate after the lexical
+   one — closing the residual same-plant sentence-recombination risk the lexical
+   bag-of-tokens check cannot see. It is strictly additive (can only drop what the lexical
+   check already accepted, never admit more) and the offline path never passes one.
 
 6. **Never-certify-safe filter** (`guards.safety_filter`). Any surviving sentence that
    asserts "safe"/"non-toxic"/"harmless" (per-language deny-list, accent-normalized) is

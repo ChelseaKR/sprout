@@ -47,7 +47,15 @@ def _load(config_path: str) -> Config:
 
 
 def _target_name(cfg: Config) -> str:
-    return f"{cfg.generation.provider}:{cfg.generation.model or 'extractive'}"
+    base = f"{cfg.generation.provider}:{cfg.generation.model or 'extractive'}"
+    if cfg.generation.support_verifier == "nli":
+        from .verifiers import config_identity
+
+        # EXP-04: fold the entailment verifier's model/revision/weight-hash/threshold into
+        # the eval fingerprint's target so an eval run with the verifier on is never
+        # conflated with one where it's off (RunFingerprint hashes `target`).
+        base = f"{base}+{config_identity(cfg.generation.nli)}"
+    return base
 
 
 @app.command()

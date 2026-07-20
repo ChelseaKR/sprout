@@ -336,8 +336,14 @@ case set — are authoritative in the committed report, not here.
   honest *source-attributed* statements ("the cited reference does not list X as toxic"). One
   residual remains: lexical (bag-of-token) verification can still admit a same-plant *recombination*
   (e.g. swapping which attribute applies), bounded in practice because retrieval is species-scoped to
-  one plant. A production deployment should add an NLI-grade entailment verifier on the cloud path;
-  the guards are the safety boundary, not the model's instruction-following.
+  one plant. An optional NLI-grade cross-encoder entailment verifier now exists behind the citation
+  guard for exactly this residual (`generation.support_verifier: nli`, cloud path only, ADR-0018) —
+  it is an *additional* gate, applied after the lexical check, that must also judge the cited chunk as
+  entailing the sentence. It defaults **off**; enabling it requires a pinned, hash-verified model
+  weight file (fail-closed on a hash mismatch) and is currently **EN-validated only** — off-the-shelf
+  NLI checkpoints are typically EN-strong/ES-weaker, and per-language false-reject rates have not yet
+  been measured, so do not assume ES parity for this gate. The guards remain the safety boundary
+  either way, not the model's instruction-following.
 - **Prompt-injection is handled structurally, not perfectly.** Injection attempts are *labeled* for
   the refusal suite and logs; the actual defense is that an injected instruction cannot produce a
   sentence entailed by a retrieved chunk. Novel attacks should be filed as eval cases.
