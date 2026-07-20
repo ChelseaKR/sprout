@@ -334,6 +334,20 @@ class RemindersConfig(_Model):
     )
 
 
+class ReviewConfig(_Model):
+    """Local review console (EXP-17): an opt-in capture of flagged/refused traces for
+    maintainer labeling. **Off by default** — the capture file stores question text, which
+    is data the rest of Sprout deliberately never persists (see
+    `docs/RESPONSIBLE-TECH-AUDITS.md` §C), so this is a separate, user-consented sink, not
+    the PII-free operational log. Nothing is written until a maintainer opts in."""
+
+    enabled: bool = False
+    path: str = "var/review/queue.json"
+    max_items: int = Field(default=500, ge=1, le=20000)
+    capture_on_low_confidence: bool = True
+    capture_on_refusal: bool = True
+
+
 class LanguageConfig(_Model):
     supported: list[str] = Field(default_factory=lambda: ["en", "es"])
 
@@ -622,6 +636,7 @@ class Config(_Model):
     guards: GuardsConfig = Field(default_factory=GuardsConfig)
     identification: IdentificationConfig = Field(default_factory=IdentificationConfig)
     reminders: RemindersConfig = Field(default_factory=RemindersConfig)
+    review: ReviewConfig = Field(default_factory=ReviewConfig)
     languages: LanguageConfig = Field(default_factory=LanguageConfig)
     prompts: PromptConfig = Field(default_factory=PromptConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)

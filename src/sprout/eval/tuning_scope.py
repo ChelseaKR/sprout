@@ -63,10 +63,10 @@ _CONFIG_MODULE_PATH = "src/sprout/config.py"
 # sound — no eval-visible module ever grows a read of ``config.server`` /
 # ``config.observability`` — is pinned by
 # ``tests/test_tuning_scope.py::test_eval_visible_modules_never_read_exempt_config``.
-_EVAL_INVISIBLE_CONFIG_CLASSES = frozenset({"ServerConfig", "ObservabilityConfig"})
+_EVAL_INVISIBLE_CONFIG_CLASSES = frozenset({"ServerConfig", "ObservabilityConfig", "ReviewConfig"})
 # The same classes' top-level keys in ``config/sprout.yaml``; a YAML delta confined to
 # these subtrees is operational for the same reason (and with the same pinned invariant).
-_EVAL_INVISIBLE_YAML_KEYS = frozenset({"server", "observability"})
+_EVAL_INVISIBLE_YAML_KEYS = frozenset({"server", "observability", "review"})
 _PROVIDER_FACTORY_PATH = "src/sprout/providers/__init__.py"
 _PROVIDER_LIFECYCLE_PATH = "src/sprout/provider_lifecycle.py"
 # One-time bootstrap: origin/main predates the operational lifecycle seam, so the exact
@@ -143,15 +143,30 @@ def _provider_factory_fingerprint(source: str) -> str:
 
 
 class _DropEvalInvisibleConfigClasses(ast.NodeTransformer):
-    """Erase only the class bodies named in ``_EVAL_INVISIBLE_CONFIG_CLASSES``.
+    """Erase only the class bodies named in ``_EVAL_INVISIBLE_CONFIG_CLASSES``, plus the
+    ``Config`` field lines whose declared type IS one of those classes (adding the class
+    without a field on ``Config`` would be dead code; the field line carries no behavior
+    beyond wiring the exempt class in).
 
     Everything else in ``config.py`` — retrieval, generation, guards, prompts,
     confidence — stays in the tree, so a mixed change still fails closed.
     """
 
+    @staticmethod
+    def _is_exempt_field(stmt: ast.stmt) -> bool:
+        return (
+            isinstance(stmt, ast.AnnAssign)
+            and isinstance(stmt.annotation, ast.Name)
+            and stmt.annotation.id in _EVAL_INVISIBLE_CONFIG_CLASSES
+        )
+
     def visit_ClassDef(self, node: ast.ClassDef) -> ast.AST | None:
         if node.name in _EVAL_INVISIBLE_CONFIG_CLASSES:
             return None
+        if node.name == "Config":
+            node.body = [stmt for stmt in node.body if not self._is_exempt_field(stmt)] or [
+                ast.Pass()
+            ]
         return self.generic_visit(node)
 
 

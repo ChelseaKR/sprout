@@ -315,6 +315,9 @@ case set — are authoritative in the committed report, not here.
   in-corpus species can yield a correct, cited answer about the *wrong* plant (mitigated by the
   confidence gate and the "a visual match, not a cited fact" label; see ADR-0010). Care reminders
   are stored only on the user's device (`var/reminders.json`): no sync, no push delivery (ADR-0011).
+  A local review console for flagged/refused traces (`sprout review`) is opt-in and **off by
+  default**; enabling it stores question text on the maintainer's own machine
+  (`var/review/queue.json`) — see ADR-0020 and `RESPONSIBLE-TECH-AUDITS.md` §C before enabling it.
 - **Offline retrieval is a baseline.** The default `HashingEmbedding` is lexical, not semantic;
   paraphrased or synonym-heavy questions may under-retrieve and refuse where a semantic embedder
   would answer. This trades recall for zero-dependency reproducibility. An opt-in offline

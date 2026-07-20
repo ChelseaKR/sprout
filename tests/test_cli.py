@@ -745,3 +745,109 @@ def test_check_tuning_scope_cli_smoke(tmp_path: Path, monkeypatch: pytest.Monkey
 
     missing_ref = runner.invoke(app, ["check-tuning-scope", "--base", "does-not-exist"])
     assert missing_ref.exit_code == 2
+
+
+def _project_with_review_enabled(tmp_path: Path) -> Path:
+    """``_project`` plus ``review.enabled: true`` pointed at a scratch queue file."""
+    cfg = _project(tmp_path)
+    cfg_data = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+    cfg_data["review"] = {"enabled": True, "path": str(tmp_path / "review-queue.json")}
+    cfg.write_text(yaml.safe_dump(cfg_data), encoding="utf-8")
+    return cfg
+
+
+def test_review_capture_off_by_default(tmp_path: Path) -> None:
+    """EXP-17: `review.enabled` defaults to false, so `ask` queues nothing unless a
+    maintainer opts in -- the capture file must never appear on its own."""
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    ask = runner.invoke(app, ["ask", "how do I fix a flat bicycle tire?", "--config", str(cfg)])
+    assert ask.exit_code == 0
+
+    queue = runner.invoke(app, ["review", "queue", "--all", "--config", str(cfg)])
+    assert queue.exit_code == 0
+    assert "Nothing queued" in queue.stdout
+    assert not (tmp_path / "var" / "review").exists()
+
+
+def test_review_lifecycle(tmp_path: Path) -> None:
+    """End to end: opt in, `ask` a refused question, list/show/label it, export drafts."""
+    cfg = _project_with_review_enabled(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+
+    empty = runner.invoke(app, ["review", "queue", "--config", str(cfg)])
+    assert empty.exit_code == 0 and "No unlabeled items" in empty.stdout
+
+    ask = runner.invoke(app, ["ask", "how do I fix a flat bicycle tire?", "--config", str(cfg)])
+    assert ask.exit_code == 0
+
+    queued = runner.invoke(app, ["review", "queue", "--config", str(cfg)])
+    assert queued.exit_code == 0
+    assert "refused" in queued.stdout
+    item_id = queued.stdout.strip().splitlines()[-1].split()[0]
+
+    show = runner.invoke(app, ["review", "show", item_id, "--config", str(cfg)])
+    assert show.exit_code == 0
+    assert "flat bicycle tire" in show.stdout
+
+    bad_label = runner.invoke(app, ["review", "label", item_id, "nonsense", "--config", str(cfg)])
+    assert bad_label.exit_code == 1
+
+    label = runner.invoke(
+        app, ["review", "label", item_id, "should-have-refused", "--config", str(cfg)]
+    )
+    assert label.exit_code == 0 and "Labeled" in label.stdout
+
+    now_empty = runner.invoke(app, ["review", "queue", "--config", str(cfg)])
+    assert "No unlabeled items" in now_empty.stdout
+
+    missing_show = runner.invoke(app, ["review", "show", "nonexistent", "--config", str(cfg)])
+    assert missing_show.exit_code == 1
+
+    bad_export = runner.invoke(app, ["review", "export", "nonsense", "--config", str(cfg)])
+    assert bad_export.exit_code == 2
+
+    export = runner.invoke(
+        app,
+        [
+            "review",
+            "export",
+            "eval-drafts",
+            "--out",
+            str(tmp_path / "drafts.yaml"),
+            "--config",
+            str(cfg),
+        ],
+    )
+    assert export.exit_code == 0
+    drafts = yaml.safe_load((tmp_path / "drafts.yaml").read_text(encoding="utf-8"))
+    assert len(drafts["cases"]) == 1
+    assert drafts["cases"][0]["should_refuse"] is True
+
+
+def test_review_export_with_nothing_labeled_fails(tmp_path: Path) -> None:
+    cfg = _project_with_review_enabled(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    result = runner.invoke(app, ["review", "export", "judge-probes", "--config", str(cfg)])
+    assert result.exit_code == 1
+
+
+def test_review_run_interactive_labels_and_bare_command_reports_empty(tmp_path: Path) -> None:
+    cfg = _project_with_review_enabled(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    assert (
+        runner.invoke(
+            app, ["ask", "how do I fix a flat bicycle tire?", "--config", str(cfg)]
+        ).exit_code
+        == 0
+    )
+
+    result = runner.invoke(
+        app, ["review", "run", "--config", str(cfg)], input="should-have-refused\n"
+    )
+    assert result.exit_code == 0
+    assert "labeled should-have-refused" in result.stdout
+
+    bare = runner.invoke(app, ["review", "--config", str(cfg)])
+    assert bare.exit_code == 0
+    assert "No unlabeled items" in bare.stdout
