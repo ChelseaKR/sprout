@@ -78,6 +78,8 @@ jobs:
         run: uv run sprout claims-check
       - name: Judge calibration (gated — deterministic judge, 66 probes; see docs/ROADMAP.md)
         run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
+      - name: Gate inventory (FIX-02 — every ledger AUTO row must map to a real mechanism)
+        run: uv run sprout gate-inventory --out docs/audits
 
   smoke:
     # Phase 1: a dedicated CI smoke suite of corpus-derived questions, distinct from the

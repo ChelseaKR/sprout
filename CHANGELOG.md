@@ -173,6 +173,23 @@ the public evaluation harness as the headline artifact.
   dated exercise until an automated Promptfoo `redteam` run is wired and promoted into the
   blocking `ci-gate` (tracked in the "Red-team (OWASP LLM01–LLM10)" ledger row).
 
+### Fixed
+- **Gate-inventory audit (FIX-02, `docs/ideation/02-large-scale-fixes.md`).** New `sprout
+  gate-inventory` command (wired into `make verify`/`make audits` and CI) parses
+  `docs/ROADMAP.md`'s ledger fresh on every run and fails if any `AUTO` row's `Measured by`
+  cell cannot be mechanically resolved to a real Makefile target, CI step, or repo file — the
+  "declared but unenforced gate" class of defect this repo has otherwise caught only by manual
+  audit. Closed the gaps it found: the `Conformance level` accessibility row overclaimed axe/
+  pa11y/Lighthouse as unconditional `AUTO` (only the structural `sprout a11y-check` is
+  merge-blocking; corrected to say so, matching `RESPONSIBLE-TECH-AUDITS.md` §E); the optional
+  Wilson `--statistical-gate` was described in `DEFINITION_OF_DONE.md` as if always enforced
+  when it is off by default in CI (turning it on today fails `multilingual` on sample size, not
+  quality — sequenced behind FIX-12); and roughly a dozen `Measured by` cells named a mechanism
+  in prose only (e.g. "per-language bundle diff", "transcript-view check") with no such check
+  ever wired — each now names its real, resolvable mechanism, including a new
+  `tests/test_i18n_parity.py` that actually implements the previously-nonexistent EN/ES
+  key-and-placeholder-parity diff.
+
 ### Security
 - Offline-by-default posture (no auth, no network, no persisted user queries) establishing the
   **OWASP ASVS L1** baseline; secrets via environment only; pip-audit, gitleaks, and Semgrep wired
