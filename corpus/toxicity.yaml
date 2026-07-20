@@ -1,0 +1,448 @@
+# corpus/toxicity.yaml — machine-readable species × animal × severity toxicity table.
+#
+# EXP-09 (docs/ideation/03-expansions.md): a structured, per-row-cited companion to the
+# prose "## Toxicity" sections in corpus/processed/*.md. It exists to power deterministic
+# coverage accounting (which species×animal pairs the corpus covers, with a citation per
+# cell) and exposure-type routing (FIX-13) — never to compose free-text answers. Rendered
+# answers stay extractive from the cited prose passages; this table only selects and
+# routes (see src/sprout/toxicity.py `check_consistency`, which fails ingest if a row and
+# its document's prose sentence disagree on whether a species is toxic to cats/dogs).
+#
+# HARD GATE (per EXP-09's "SME-gated" priority): every row below is `synthetic: true` —
+# original placeholder data, not a transcription of any real veterinary/ASPCA source
+# (source_name/url are the same "Synthetic Plant-Care Notes" / example.invalid citation
+# already used by corpus/manifest.yaml; see docs/cards/data-card-corpus.md). `synthetic`
+# MUST stay true, and no `source.url` may point at a real domain, until a veterinary
+# toxicologist has reviewed (a) this schema's semantics and (b) every real row's intended
+# rendering. That review's sign-off artifact must be committed before any row changes.
+#
+# `severity_class` is an intentionally small, provisional vocabulary (clinical severity
+# is a clinical judgment, not an engineering one — SME-owned per EXP-09) with exactly one
+# invariant enforced by src/sprout/toxicity.py: `toxic: false` <=> `severity_class:
+# not_applicable`. Do not add new severity_class values without updating that loader.
+#
+# "Non-toxic" is never "safe": every row-driven answer renders the standard
+# nontoxic_caveat_by_lang caveat from src/sprout/config.py regardless of a row's `toxic`
+# value, exactly as the existing prose corpus already does for "does not list ... as
+# toxic" passages.
+
+schema_version: 1
+
+severity_vocabulary:
+  not_applicable: >-
+    toxic is false for this row — the cited source does not list this species×animal
+    pairing as toxic. This is NOT a safety certification; the nontoxic caveat still
+    renders on every answer this row informs.
+  mild: "Cited source describes limited/self-resolving signs (e.g. mild GI upset)."
+  mild_moderate: "Cited source describes oral/GI irritation that generally needs no more than monitoring, but warrants a vet call if it does not resolve."
+  moderate: "Cited source describes systemic or more pronounced signs (e.g. cardiac, neurologic, or persistent GI signs)."
+  severe: "Reserved; unused in this synthetic set — no cited row currently supports it."
+
+rows:
+  - species_slug: aloe
+    species_name: Aloe vera (Aloe barbadensis)
+    animal: cat
+    toxic: true
+    principle: saponins and anthraquinones
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/aloe
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: aloe
+    species_name: Aloe vera (Aloe barbadensis)
+    animal: dog
+    toxic: true
+    principle: saponins and anthraquinones
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/aloe
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: boston-fern
+    species_name: Boston fern (Nephrolepis exaltata)
+    animal: cat
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/boston-fern
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: boston-fern
+    species_name: Boston fern (Nephrolepis exaltata)
+    animal: dog
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/boston-fern
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: calathea
+    species_name: Calathea
+    animal: cat
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/calathea
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: calathea
+    species_name: Calathea
+    animal: dog
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/calathea
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: dracaena
+    species_name: Dracaena (Dracaena)
+    animal: cat
+    toxic: true
+    principle: saponins
+    severity_class: moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/dracaena
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: dracaena
+    species_name: Dracaena (Dracaena)
+    animal: dog
+    toxic: true
+    principle: saponins
+    severity_class: moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/dracaena
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: english-ivy
+    species_name: English ivy (Hedera helix)
+    animal: cat
+    toxic: true
+    principle: triterpenoid saponins
+    severity_class: moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/english-ivy
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: english-ivy
+    species_name: English ivy (Hedera helix)
+    animal: dog
+    toxic: true
+    principle: triterpenoid saponins
+    severity_class: moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/english-ivy
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: fiddle-leaf-fig
+    species_name: Fiddle-leaf fig (Ficus lyrata)
+    animal: cat
+    toxic: true
+    principle: sap irritant compounds
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/fiddle-leaf-fig
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: fiddle-leaf-fig
+    species_name: Fiddle-leaf fig (Ficus lyrata)
+    animal: dog
+    toxic: true
+    principle: sap irritant compounds
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/fiddle-leaf-fig
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: jade-plant
+    species_name: Jade plant (Crassula ovata)
+    animal: cat
+    toxic: true
+    principle: mechanism not characterized by the cited source
+    severity_class: moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/jade-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: jade-plant
+    species_name: Jade plant (Crassula ovata)
+    animal: dog
+    toxic: true
+    principle: mechanism not characterized by the cited source
+    severity_class: moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/jade-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: monstera
+    species_name: Monstera (Monstera deliciosa)
+    animal: cat
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/monstera
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: monstera
+    species_name: Monstera (Monstera deliciosa)
+    animal: dog
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/monstera
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: orchid
+    species_name: Orchid (Phalaenopsis)
+    animal: cat
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/orchid
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: orchid
+    species_name: Orchid (Phalaenopsis)
+    animal: dog
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/orchid
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: orchid
+    species_name: Orchid (Phalaenopsis)
+    animal: horse
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/orchid
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: peace-lily
+    species_name: Peace lily (Spathiphyllum)
+    animal: cat
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/peace-lily
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: peace-lily
+    species_name: Peace lily (Spathiphyllum)
+    animal: dog
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/peace-lily
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: philodendron
+    species_name: Philodendron (Philodendron)
+    animal: cat
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/philodendron
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: philodendron
+    species_name: Philodendron (Philodendron)
+    animal: dog
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/philodendron
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: pothos
+    species_name: Pothos (Epipremnum aureum)
+    animal: cat
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/pothos
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: pothos
+    species_name: Pothos (Epipremnum aureum)
+    animal: dog
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/pothos
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: rubber-plant
+    species_name: Rubber plant (Ficus elastica)
+    animal: cat
+    toxic: true
+    principle: milky latex sap irritant
+    severity_class: mild
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/rubber-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: rubber-plant
+    species_name: Rubber plant (Ficus elastica)
+    animal: dog
+    toxic: true
+    principle: milky latex sap irritant
+    severity_class: mild
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/rubber-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: snake-plant
+    species_name: Snake plant (Dracaena trifasciata)
+    animal: cat
+    toxic: true
+    principle: saponins
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/snake-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: snake-plant
+    species_name: Snake plant (Dracaena trifasciata)
+    animal: dog
+    toxic: true
+    principle: saponins
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/snake-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: spider-plant
+    species_name: Spider plant (Chlorophytum comosum)
+    animal: cat
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/spider-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: spider-plant
+    species_name: Spider plant (Chlorophytum comosum)
+    animal: dog
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/spider-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: spider-plant
+    species_name: Spider plant (Chlorophytum comosum)
+    animal: human
+    toxic: false
+    principle: not listed as toxic by the cited source (non-toxic is not the same as safe)
+    severity_class: not_applicable
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/spider-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: zz-plant
+    species_name: ZZ plant (Zamioculcas zamiifolia)
+    animal: cat
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/zz-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
+
+  - species_slug: zz-plant
+    species_name: ZZ plant (Zamioculcas zamiifolia)
+    animal: dog
+    toxic: true
+    principle: insoluble calcium oxalate crystals
+    severity_class: mild_moderate
+    source_name: Synthetic Plant-Care Notes
+    url: https://example.invalid/zz-plant
+    license: CC0-1.0
+    fetch_date: '2026-05-01'
+    synthetic: true
