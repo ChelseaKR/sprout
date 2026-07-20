@@ -13,7 +13,7 @@ from __future__ import annotations
 import hashlib
 
 from ..models import RetrievedChunk
-from ..text import content_tokens, split_sentences, token_set
+from ..text import content_tokens, extract_facets, split_sentences, token_set
 
 
 class HashingEmbedding:
@@ -48,7 +48,18 @@ class HashingEmbedding:
 
 
 class ExtractiveGenerator:
-    """Selects the most query-relevant sentences verbatim from retrieved chunks."""
+    """Selects query-relevant sentences verbatim from retrieved chunks.
+
+    Selection is facet-coverage aware: the query is split into clauses (``text.
+    extract_facets``) and, after ranking every candidate sentence by query overlap as
+    before, sentences are picked greedily to maximise *marginal* facet coverage first
+    and raw score second. A single-clause query ("How often should I water my pothos?")
+    degrades to plain top-score selection — unchanged from before this was added. A
+    multi-clause query ("How often should I water, and does that change in winter?")
+    stops the ranker from returning three near-duplicate watering sentences and missing
+    the seasonal clause: once the watering clause is covered, only a sentence that also
+    covers the winter clause can outrank another watering repeat.
+    """
 
     def __init__(self, relevance_floor: float = 0.34) -> None:
         self._floor = relevance_floor
@@ -59,7 +70,22 @@ class ExtractiveGenerator:
         q_tokens = token_set(query)
         if not q_tokens:
             return []
-        scored: list[tuple[float, int, str, str]] = []
+        facets = extract_facets(query)
+        candidates = self._score_candidates(q_tokens, facets, context)
+        return self._select_diverse(candidates, max_sentences)
+
+    def _score_candidates(
+        self,
+        q_tokens: frozenset[str],
+        facets: list[frozenset[str]],
+        context: list[RetrievedChunk],
+    ) -> list[tuple[float, str, str, frozenset[int]]]:
+        """Rank every sentence by query overlap and tag which facets it covers.
+
+        Returns ``(score, sentence, chunk_id, facet_indices_covered)``, sorted by
+        score descending, deduplicated on exact sentence text (highest score wins).
+        """
+        scored: list[tuple[float, int, str, str, frozenset[int]]] = []
         for rank, rc in enumerate(context):
             for sentence in split_sentences(rc.chunk.text):
                 s_tokens = token_set(sentence)
@@ -70,18 +96,45 @@ class ExtractiveGenerator:
                     continue
                 # Prefer query overlap; nudge by retrieval score; break ties by order.
                 score = overlap + rc.score * 0.25 - rank * 1e-3
-                scored.append((score, rank, sentence.strip(), rc.chunk.chunk_id))
+                covers = frozenset(
+                    i
+                    for i, facet in enumerate(facets)
+                    if len(facet & s_tokens) / len(facet) >= self._floor
+                )
+                scored.append((score, rank, sentence.strip(), rc.chunk.chunk_id, covers))
         scored.sort(key=lambda t: (-t[0], t[1]))
-        out: list[tuple[str, str]] = []
+
+        deduped: list[tuple[float, str, str, frozenset[int]]] = []
         seen: set[str] = set()
-        for _, _, sentence, chunk_id in scored:
+        for score, _, sentence, chunk_id, covers in scored:
             key = sentence.lower()
             if key in seen:
                 continue
             seen.add(key)
+            deduped.append((score, sentence, chunk_id, covers))
+        return deduped
+
+    @staticmethod
+    def _select_diverse(
+        candidates: list[tuple[float, str, str, frozenset[int]]], max_sentences: int
+    ) -> list[tuple[str, str]]:
+        """Greedily pick sentences maximising marginal facet coverage, then score.
+
+        With a single facet (or none), every candidate's marginal coverage is
+        identical on the first pick and zero thereafter, so this reduces to plain
+        top-score selection — the pre-facet-coverage behaviour is unchanged.
+        """
+        out: list[tuple[str, str]] = []
+        covered_facets: set[int] = set()
+        remaining = list(candidates)
+        while remaining and len(out) < max_sentences:
+            best_idx = max(
+                range(len(remaining)),
+                key=lambda i: (len(remaining[i][3] - covered_facets), remaining[i][0]),
+            )
+            _, sentence, chunk_id, covers = remaining.pop(best_idx)
             out.append((sentence, chunk_id))
-            if len(out) >= max_sentences:
-                break
+            covered_facets |= covers
         return out
 
     def estimated_cost_usd(self, query: str, context: list[RetrievedChunk]) -> float:

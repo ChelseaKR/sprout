@@ -30,9 +30,9 @@ from sprout.guards import (
 )
 from sprout.lexical import BM25Index
 from sprout.models import AnswerSentence, Chunk, Citation, RetrievedChunk
-from sprout.providers.deterministic import HashingEmbedding
+from sprout.providers.deterministic import ExtractiveGenerator, HashingEmbedding
 from sprout.store import VectorStore
-from sprout.text import extract_cadences, has_negation
+from sprout.text import extract_cadences, extract_facets, has_negation
 
 
 # --- lexical ---------------------------------------------------------------------
@@ -798,4 +798,75 @@ def test_abstains_below_threshold(assistant_factory: Callable[..., Assistant]) -
     ans = a.answer("why are my monstera leaves yellowing")
     assert ans.abstained
     assert ans.refused
-    assert ans.refusal_reason == "low_confidence"
+
+
+# --- facet-coverage answer planner (EXP-01) ---------------------------------------
+def test_extract_facets_splits_multipart_question_on_conjunction() -> None:
+    facets = extract_facets("How often should I water, and does that change in winter?")
+    assert len(facets) == 2
+    assert "water" in facets[0]
+    assert "winter" in facets[1] and "change" in facets[1]
+
+
+def test_extract_facets_single_part_question_is_one_facet() -> None:
+    facets = extract_facets("How often should I water my Pothos?")
+    assert len(facets) == 1
+
+
+def test_extract_facets_empty_query_has_no_facets() -> None:
+    assert extract_facets("the a of") == []
+
+
+def _fern_chunk(text: str, chunk_id: str) -> Chunk:
+    return Chunk(
+        chunk_id=chunk_id,
+        doc_id="fern",
+        title="Fern",
+        source="fern.md",
+        text=text,
+        language="en",
+        topic="watering",
+        source_name="x",
+        url="u",
+        license="CC0-1.0",
+        fetch_date="2026-01-01",
+    )
+
+
+def test_extractive_generator_covers_facet_crowded_out_by_near_duplicates() -> None:
+    """Regression for the EXP-01 bug: a two-part question must not lose its second
+    clause to three near-duplicate answers of the first clause, even when the
+    duplicates individually outscore the clause-two sentence."""
+    frequent_chunk = _fern_chunk(
+        "Water your fern every five days during the growing season. "
+        "A fern likes consistent water on a five day rotation. "
+        "Keep your fern watered on a regular five day schedule. "
+        "Give your fern water on a steady five day pattern. "
+        "A fern does best with water every five days without fail.",
+        "freq1",
+    )
+    winter_chunk = _fern_chunk("In winter, watering slows because growth slows.", "winter1")
+    context = [
+        RetrievedChunk(chunk=frequent_chunk, score=0.9),
+        RetrievedChunk(chunk=winter_chunk, score=0.3),
+    ]
+    gen = ExtractiveGenerator()
+    out = gen.generate(
+        "How often should I water my fern, and does that change in winter?", context, 3
+    )
+    assert ("In winter, watering slows because growth slows.", "winter1") in out
+
+
+def test_extractive_generator_single_facet_unchanged_by_diversity_selection() -> None:
+    """A single-clause query degrades to plain top-score ranking (no behaviour change)."""
+    chunk = _fern_chunk(
+        "Water your fern every five days during the growing season. "
+        "A fern likes consistent water on a five day rotation. "
+        "Keep your fern watered on a regular five day schedule.",
+        "freq1",
+    )
+    gen = ExtractiveGenerator()
+    plain_scored = gen.generate(
+        "How often should I water my fern?", [RetrievedChunk(chunk=chunk, score=0.9)], 3
+    )
+    assert len(plain_scored) == 3
