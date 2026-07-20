@@ -394,6 +394,26 @@ class PromptConfig(_Model):
             "es": "Las fuentes difieren en este punto: {mention_a} ({source_a}) frente a {mention_b} ({source_b}).",  # noqa: E501
         }
     )
+    # Verbalized confidence bands (EXP-06): calibrated language alongside the raw
+    # confidence float, never instead of it. Band keys and cut-points live in
+    # `confidence.py` (derived from the committed reliability diagram); this is only
+    # the localized copy a screen reader announces for each band.
+    confidence_band_labels: dict[str, dict[str, str]] = Field(
+        default_factory=lambda: {
+            "well_supported": {
+                "en": "well-supported",
+                "es": "bien respaldada",
+            },
+            "partially_supported": {
+                "en": "partially supported — verify",
+                "es": "parcialmente respaldada — verificar",
+            },
+            "insufficient_evidence": {
+                "en": "insufficient evidence to answer",
+                "es": "evidencia insuficiente para responder",
+            },
+        }
+    )
 
     def refusal_for(self, language: str) -> str:
         return self.refusal_by_lang.get(language, self.refusal_by_lang["en"])
@@ -410,6 +430,10 @@ class PromptConfig(_Model):
     def photo_identified_for(self, language: str, name: str) -> str:
         template = self.photo_identified_by_lang.get(language, self.photo_identified_by_lang["en"])
         return template.format(name=name)
+
+    def confidence_band_label_for(self, band: str, language: str) -> str:
+        labels = self.confidence_band_labels.get(band, {})
+        return labels.get(language, labels.get("en", band))
 
     def disclosure_for(self, language: str) -> str:
         return self.disclosure_by_lang.get(language, self.disclosure_by_lang["en"])

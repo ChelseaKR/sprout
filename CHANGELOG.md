@@ -150,6 +150,13 @@ the public evaluation harness as the headline artifact.
   review).
 - **Calibrated uncertainty** (`confidence.py`): stated confidence the assistant is held to;
   abstains below threshold rather than guessing.
+- **Verbalized, screen-reader-first confidence bands** (`confidence.py`, EXP-06): the raw
+  confidence float is joined by a calibrated-language band — "well-supported" or "partially
+  supported — verify" — derived from the committed reliability diagram (`derive_band_cutoff`),
+  never invented. The band leads and the number follows in every surface (`sprout ask`, the
+  `/api/chat/stream` `done` event, the chat UI's `aria-live` meta line), so a screen reader
+  announces the calibrated language first while the number stays visible; localized in EN/ES via
+  `Config.prompts.confidence_band_labels`.
 - **English/Spanish parity** with enforced |EN − ES| ≤ 5pp pass-rate parity and mirrored
   facts/citations.
 - **Provider seam** (`providers/`): deterministic offline generator as default; a Claude-on-Bedrock

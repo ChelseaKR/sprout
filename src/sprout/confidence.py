@@ -161,3 +161,88 @@ def fit_drift_warning(cfg: ConfidenceConfig, retrieval: RetrievalConfig) -> str 
         f"{live[:12]}. Retrieval changed since this fit (FIX-07/EXP-03-style change) -- "
         "re-run `sprout fit-confidence` before trusting these constants."
     )
+
+
+# --- Verbalized confidence bands (EXP-06) -----------------------------------------
+#
+# A raw float ("confidence 0.71") is poorly read by lay users and by screen readers,
+# which announce it as an undifferentiated number with no sense of "is that good?".
+# These bands turn the calibrated number into calibrated *language* -- but the band is
+# always rendered ALONGSIDE the float, never instead of it: the number stays the
+# ground truth (and what the calibration suite gates on); the band is an accessible
+# gloss on it.
+#
+# Band keys are stable, machine-checkable identifiers (used for aria attributes, CSS
+# hooks, and eval assertions); ``Config.prompts`` carries the localized label text
+# shown to users, following the same *_by_lang pattern as ``refusal_by_lang`` etc.
+
+BAND_WELL_SUPPORTED = "well_supported"
+BAND_PARTIALLY_SUPPORTED = "partially_supported"
+BAND_INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+
+# Target n-weighted accuracy the "well-supported" band must clear.
+_WELL_SUPPORTED_ACCURACY = 0.75
+
+# The well-supported / partially-supported cut point, DERIVED (not invented) from the
+# committed reliability diagram in docs/audits/eval-report.json (calibration suite,
+# n=98): scanning populated bins from the top down and accumulating n-weighted
+# accuracy --
+#   [0.9,1.0) n=7  acc=0.857  -> cum acc=0.857
+#   [0.8,0.9) n=28 acc=0.821  -> cum acc=0.829
+#   [0.7,0.8) n=23 acc=0.696  -> cum acc=0.776   (still >= target)
+#   [0.6,0.7) n=20 acc=0.550  -> cum acc=0.718   (drops below target -- stop)
+# -- the lowest bin edge that keeps cumulative accuracy >= _WELL_SUPPORTED_ACCURACY is
+# 0.70. Re-derive with `derive_band_cutoff` against a fresh reliability diagram
+# whenever the confidence function is re-fit (see the _MIDPOINT/_STEEPNESS note above,
+# and ADR-0012) -- a cutoff fit to a stale diagram is exactly the kind of drift the
+# calibration suite exists to catch.
+_DEFAULT_WELL_SUPPORTED_CUTOFF = 0.70
+
+
+def derive_band_cutoff(
+    bins: Sequence[ReliabilityBin], target_accuracy: float = _WELL_SUPPORTED_ACCURACY
+) -> float:
+    """Derive the well-supported/partially-supported cut point from a reliability diagram.
+
+    Scans populated bins from highest confidence downward, accumulating an n-weighted
+    accuracy. The cutoff is the lower edge of the lowest bin at which that cumulative
+    accuracy still clears ``target_accuracy``. Conservative by construction: if even the
+    top bin misses the target the cutoff stays at 1.0 (nothing qualifies as
+    well-supported) rather than picking an optimistic value from noisy data.
+    """
+    populated = sorted((b for b in bins if b.count), key=lambda b: b.lo, reverse=True)
+    cum_n = 0
+    cum_hits = 0.0
+    cutoff = 1.0
+    for b in populated:
+        cum_n += b.count
+        cum_hits += b.accuracy * b.count
+        if cum_hits / cum_n >= target_accuracy:
+            cutoff = b.lo
+        else:
+            break
+    return cutoff
+
+
+def confidence_band(
+    confidence: float,
+    cfg: ConfidenceConfig,
+    cutoff: float = _DEFAULT_WELL_SUPPORTED_CUTOFF,
+) -> str:
+    """Map a confidence score to a verbalized band key.
+
+    Three bands, in ascending confidence order:
+    - below ``cfg.abstain_threshold``: the assistant abstains, so there is no rendered
+      claim to qualify -- the band names the refusal itself, not a stated fact.
+    - ``[abstain_threshold, cutoff)``: "partially supported -- verify" (localized).
+    - ``[cutoff, 1.0]``: "well-supported" (localized).
+
+    ``cutoff`` defaults to the value derived from the committed reliability diagram
+    (see module docstring); pass the output of :func:`derive_band_cutoff` against a
+    fresh diagram after a confidence re-fit.
+    """
+    if confidence < cfg.abstain_threshold:
+        return BAND_INSUFFICIENT_EVIDENCE
+    if confidence >= cutoff:
+        return BAND_WELL_SUPPORTED
+    return BAND_PARTIALLY_SUPPORTED

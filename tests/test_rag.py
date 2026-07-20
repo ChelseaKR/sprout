@@ -9,7 +9,12 @@ import pytest
 
 from sprout.answer import Assistant
 from sprout.confidence import (
+    BAND_INSUFFICIENT_EVIDENCE,
+    BAND_PARTIALLY_SUPPORTED,
+    BAND_WELL_SUPPORTED,
     best_and_margin,
+    confidence_band,
+    derive_band_cutoff,
     expected_calibration_error,
     fit_drift_warning,
     is_low_confidence,
@@ -351,6 +356,49 @@ def test_reliability_and_ece() -> None:
     assert expected_calibration_error([], n_bins=10) == 0.0
 
 
+# --- verbalized confidence bands (EXP-06) -----------------------------------------
+def test_confidence_band_three_way(config: Config) -> None:
+    below_abstain = config.confidence.abstain_threshold - 0.01
+    assert confidence_band(below_abstain, config.confidence) == BAND_INSUFFICIENT_EVIDENCE
+    assert confidence_band(0.5, config.confidence, cutoff=0.7) == BAND_PARTIALLY_SUPPORTED
+    assert confidence_band(0.95, config.confidence, cutoff=0.7) == BAND_WELL_SUPPORTED
+    # The cutoff bin edge itself counts as well-supported (closed lower bound).
+    assert confidence_band(0.7, config.confidence, cutoff=0.7) == BAND_WELL_SUPPORTED
+
+
+def test_derive_band_cutoff_matches_committed_reliability_diagram() -> None:
+    """Regression-pins the cutoff to the bins in docs/audits/eval-report.json.
+
+    If this ever moves, it means the confidence function or the eval set changed —
+    re-derive and update the committed default in confidence.py, per its docstring.
+    """
+    pairs: list[tuple[float, bool]] = []
+    committed_bins = {
+        (0.3, 0.4): (2, 0.5),
+        (0.4, 0.5): (1, 1.0),
+        (0.5, 0.6): (17, 0.8824),
+        (0.6, 0.7): (20, 0.55),
+        (0.7, 0.8): (23, 0.6957),
+        (0.8, 0.9): (28, 0.8214),
+        (0.9, 1.0): (7, 0.8571),
+    }
+    for (lo, _hi), (count, acc) in committed_bins.items():
+        n_correct = round(acc * count)
+        pairs.extend((lo + 0.05, True) for _ in range(n_correct))
+        pairs.extend((lo + 0.05, False) for _ in range(count - n_correct))
+    bins = reliability_diagram(pairs, n_bins=10)
+    assert derive_band_cutoff(bins, target_accuracy=0.75) == pytest.approx(0.7)
+
+
+def test_derive_band_cutoff_conservative_when_top_bin_misses_target() -> None:
+    bins = reliability_diagram([(0.95, False), (0.95, False), (0.95, True)], n_bins=10)
+    assert derive_band_cutoff(bins, target_accuracy=0.75) == 1.0
+
+
+def test_derive_band_cutoff_empty_diagram() -> None:
+    assert derive_band_cutoff(reliability_diagram([], n_bins=10)) == 1.0
+
+
 # --- guards ----------------------------------------------------------------------
 def test_is_safety_query() -> None:
     g = Config().guards
@@ -571,6 +619,11 @@ def test_conflicting_sources_surface_both_citations_not_top_ranked(
     assert "sources differ" in ans.display_text.lower()
     assert "every 7 days" in ans.display_text
     assert "every 14 days" in ans.display_text
+    # The band is shown alongside the float, never instead of it: both are populated,
+    # and an answered (non-abstained) case never carries the "insufficient evidence"
+    # band, since that band names the refusal path, not a rendered claim.
+    assert ans.confidence_band in {BAND_WELL_SUPPORTED, BAND_PARTIALLY_SUPPORTED}
+    assert ans.confidence_band_label
 
 
 def test_out_of_scope_refuses(assistant: Assistant) -> None:
@@ -798,6 +851,8 @@ def test_abstains_below_threshold(assistant_factory: Callable[..., Assistant]) -
     ans = a.answer("why are my monstera leaves yellowing")
     assert ans.abstained
     assert ans.refused
+    assert ans.refusal_reason == "low_confidence"
+    assert ans.confidence_band == BAND_INSUFFICIENT_EVIDENCE
 
 
 # --- facet-coverage answer planner (EXP-01) ---------------------------------------
