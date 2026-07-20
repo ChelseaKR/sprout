@@ -101,19 +101,8 @@ or a malformed judge response fails the run rather than passing quietly.
 
 ---
 
-## For Claude Code
-
-- **Build from:** `CLAUDE.md` (the spec), `docs/ROADMAP.md` (phased plan and metric
-  values), and the standards-conformance table below.
-- **Entry points:** the `sprout` CLI (`src/sprout/cli.py`) and the eval harness (`src/sprout/eval/`).
-- **Hard guardrails — change only behind an ADR + CODEOWNERS review:** the citation guard
-  and never-certify-safe guard (`src/sprout/guards.py`), the abstention thresholds
-  (`src/sprout/confidence.py`), and the fail-closed eval loader (`src/sprout/eval/dataset.py`).
-- **The one command that proves it:** `make verify` reproduces the full CI gate set locally
-  (lint · type · test ≥90% · security · a11y · eval). A phase is not "done" until it is green.
-- **Definition of done:** install Sprout, ask a question offline, get a cited answer
-  or an honest refusal, run `make eval` to regenerate the committed report with no cloud
-  account, and read a model card that states the limits plainly — with every gate green.
+Agent-facing build instructions live in [`CLAUDE.md`](./CLAUDE.md) (the spec, plus the
+agent contract at its end).
 
 ## Standards conformance
 

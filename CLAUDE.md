@@ -299,3 +299,22 @@ Conventional commits; pinned, SLSA-friendly GitHub Actions; Dependabot.
 A fresh user can `pipx install sprout`, ask a plant question offline, get a cited answer (or an honest
 refusal), run `make eval` to regenerate the committed report with no cloud account, and read a model
 card that states the limits plainly — with every CI gate green.
+
+---
+
+## Agent contract (moved from the README, 2026-07-19)
+
+Per DOCUMENTATION-STANDARD §7/§9, agent-facing instructions live here, not in a README
+section.
+
+- **Build from:** this file (the spec), `docs/ROADMAP.md` (phased plan and metric
+  values), and the README's standards-conformance table.
+- **Entry points:** the `sprout` CLI (`src/sprout/cli.py`) and the eval harness (`src/sprout/eval/`).
+- **Hard guardrails — change only behind an ADR + CODEOWNERS review:** the citation guard
+  and never-certify-safe guard (`src/sprout/guards.py`), the abstention thresholds
+  (`src/sprout/confidence.py`), and the fail-closed eval loader (`src/sprout/eval/dataset.py`).
+- **The one command that proves it:** `make verify` reproduces the full CI gate set locally
+  (lint · type · test ≥90% · security · a11y · eval). A phase is not "done" until it is green.
+- **Definition of done:** install Sprout, ask a question offline, get a cited answer
+  or an honest refusal, run `make eval` to regenerate the committed report with no cloud
+  account, and read a model card that states the limits plainly — with every gate green.
