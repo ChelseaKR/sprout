@@ -45,7 +45,7 @@ def _is_correct(item: DatasetItem, ans: Answer, config: Config) -> bool:
 
 
 def record_item(assistant: Assistant, item: DatasetItem, config: Config) -> DatasetItem:
-    ans = assistant.answer(item.question, item.language)
+    ans = assistant.answer(item.question, item.language, season=item.season, light=item.light)
     # text holds only the cited claims (or the refusal prose); the routing directive lives
     # in safety_notice so groundedness never treats it as an ungrounded claim.
     text = ans.text if not ans.refused else (ans.refusal_text or "")

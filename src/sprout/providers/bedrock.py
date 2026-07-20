@@ -16,6 +16,7 @@ from typing import Any
 
 from ..models import RetrievedChunk
 from ..text import coverage, split_sentences
+from .base import context_hint
 
 _PRICING_PER_1K = {"haiku": 0.0013, "sonnet": 0.018, "opus": 0.09}
 
@@ -79,12 +80,16 @@ class BedrockGenerator:
         return "opus"  # most expensive tier as the conservative default
 
     def generate(
-        self, query: str, context: list[RetrievedChunk], max_sentences: int
+        self,
+        query: str,
+        context: list[RetrievedChunk],
+        max_sentences: int,
+        boost_terms: frozenset[str] = frozenset(),
     ) -> list[tuple[str, str]]:
         if not context:
             return []
         try:
-            text = self._invoke(query, context, max_sentences)
+            text = self._invoke(query, context, max_sentences, boost_terms)
         except Exception:
             return []
         out: list[tuple[str, str]] = []
@@ -93,14 +98,21 @@ class BedrockGenerator:
             out.append((sentence.strip(), best.chunk.chunk_id))
         return out
 
-    def _invoke(self, query: str, context: list[RetrievedChunk], max_sentences: int) -> str:
+    def _invoke(
+        self,
+        query: str,
+        context: list[RetrievedChunk],
+        max_sentences: int,
+        boost_terms: frozenset[str] = frozenset(),
+    ) -> str:
         client = self._client or _client(self._region)
         sources = "\n".join(
             f"[{i}] (chunk {rc.chunk.chunk_id}) {rc.chunk.text}" for i, rc in enumerate(context)
         )
         prompt = (
             "Answer the question using ONLY the sources above. Quote them faithfully, "
-            f"never certify a plant 'safe', and use at most {max_sentences} sentences.\n\n"
+            f"never certify a plant 'safe', and use at most {max_sentences} sentences."
+            f"{context_hint(boost_terms)}\n\n"
             f"SOURCES:\n{sources}\n\nQUESTION: {query}"
         )
         resp = client.invoke_model(

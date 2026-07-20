@@ -109,7 +109,11 @@ class _CapturingGenerator:
         self.seen: list[str] = []
 
     def generate(
-        self, query: str, context: list[RetrievedChunk], max_sentences: int
+        self,
+        query: str,
+        context: list[RetrievedChunk],
+        max_sentences: int,
+        boost_terms: frozenset[str] = frozenset(),
     ) -> list[tuple[str, str]]:
         self.seen.append(query)
         return []

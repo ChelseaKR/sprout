@@ -99,6 +99,17 @@ the public evaluation harness as the headline artifact.
   HTTP API, a monthly budget alarm). Degrades to a no-op — never a crash — for tier B/C or
   when the `observability` extra isn't installed. See `docs/ROADMAP.md`'s Observability
   tier section for what is unit/e2e-tested versus not yet exercised (a live `cdk deploy`).
+- **Explicit season/light context qualifiers** (EXP-05, `answer.py`, `providers/`). Optional
+  `--season`/`--light` CLI flags (and matching `season`/`light` fields on `POST /api/chat` and
+  `GET /api/chat/stream`) let a user state context like "winter" or "north window" for a single
+  request. The words are taken exactly as given — never inferred from locale or the system
+  clock — and only nudge which already-cited, already-supported sentence the generator selects;
+  they never admit an otherwise-ungrounded sentence, are never treated as a citation, and are
+  never persisted anywhere. The same selector-not-fact contract [ADR-0010](docs/adr/0010-photo-plant-id-as-selector-not-fact-source.md)
+  built for photo-ID, generalized. The qualifier is echoed back on `Answer.season`/`Answer.light`
+  and a localized `Answer.context_note` ("As you stated (winter) — your own context, not a cited
+  fact, and not saved."), rendered by the CLI and available to the UI, never folded into the
+  answer's cited prose.
 - **Photo-based plant identification → grounded care lookup** (`identify.py`,
   `providers/plantnet.py`). A photo is identified into candidate species, the best confident
   match is resolved to a species **already in the cited corpus**, and that species is routed
