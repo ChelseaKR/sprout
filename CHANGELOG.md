@@ -10,6 +10,11 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- Release authorization now runs from reviewed `main` through the immutable
+  portfolio authorizer; verification and builds use the exact selected commit,
+  while separate checkout-free jobs recheck the tag object before PyPI and
+  GitHub Release publication.
+
 ### Changed
 - Moved the offline deterministic quickstart into the README's opening screen,
   before the product and safety deep dive.
