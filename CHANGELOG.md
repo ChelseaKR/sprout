@@ -10,6 +10,10 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+### Changed
+- Moved the offline deterministic quickstart into the README's opening screen,
+  before the product and safety deep dive.
+
 ### Added
 - Deploy-grade app-level server hardening (FIX-10): security headers (CSP, HSTS,
   anti-framing/sniffing), a streaming-safe request-size cap, per-client-IP token-bucket rate
