@@ -17,6 +17,19 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 deterministic cited-answer pipeline runs entirely in the browser; questions are not
 sent, saved, or logged.
 
+## Quickstart (offline, no cloud account)
+
+```bash
+git clone https://github.com/ChelseaKR/sprout.git
+cd sprout
+uv sync --extra serve
+uv run sprout ingest
+uv run sprout ask "Why are my Monstera's leaves yellowing?"
+```
+
+This path uses the bundled corpus and deterministic generator. It needs no API
+key and makes no cloud call.
+
 ---
 
 ## What it does
@@ -59,16 +72,6 @@ sent, saved, or logged.
    Claude-on-Bedrock generator is the production seam behind a config switch.
 
 ---
-
-## Quickstart (offline, no cloud account)
-
-```bash
-git clone https://github.com/ChelseaKR/sprout.git
-cd sprout
-uv sync --extra serve
-uv run sprout ingest
-uv run sprout ask "Why are my Monstera's leaves yellowing?"
-```
 
 The project has not published its first package release yet. After the initial release,
 `pipx install sprout` will be the supported packaged installation path. From a source checkout:
