@@ -1,0 +1,154 @@
+# Spanish language bundle — FIX-09.
+#
+# Must carry every section/key path defined in ../en/bundle.yaml (the reference
+# schema); src/sprout/locales/__init__.py:validate_completeness enforces this at
+# config load time. Spanish copy is human-reviewed, never raw machine
+# translation (docs/RESEARCH-ROADMAP.md E6 / EV10).
+
+prompts:
+  refusal: >-
+    No tengo una referencia citada que cubra esto, así que no puedo responder
+    desde el corpus. Para orientación específica, consulta una fuente
+    confiable como tu servicio de extensión local o la lista de plantas
+    tóxicas de la ASPCA.
+  disclosure: >-
+    Las respuestas provienen solo de un corpus de cuidado de plantas fechado y
+    citado. Esto no es asesoramiento veterinario.
+  safety_route: >-
+    Si una mascota o un niño pudo haber comido parte de esta planta, trátalo
+    como urgente: comunícate ahora con tu veterinario o una línea de control
+    de envenenamiento; no esperes a que aparezcan síntomas. No puedo
+    certificar ninguna planta como segura.
+  nontoxic_caveat: >-
+    Incluso una planta que una fuente no incluye como tóxica puede causar
+    vómitos o irritación de la boca y el estómago si se ingiere, y cada
+    mascota o niño reacciona distinto: el silencio de una fuente no garantiza
+    que no haya daño.
+  escalation_card: >-
+    A quién llamar ahora: ASPCA Animal Poison Control Center, 888-426-4435
+    (https://www.aspca.org/pet-care/animal-poison-control), o Pet Poison
+    Helpline, 855-764-7661 (https://www.petpoisonhelpline.com/). Qué
+    informar: la planta (especie si la conoces), cuánto comió y cuándo.
+  photo_fallback: >-
+    No pude identificar con confianza una planta en esa foto. Escribe el
+    nombre de la planta y responderé desde el corpus citado.
+  photo_care_question: "¿Cómo cuido mi {name}?"
+  photo_identified: >-
+    Identificado en tu foto como {name}: una coincidencia visual, no un hecho
+    citado. La siguiente orientación proviene del corpus citado.
+
+guards:
+  forbidden_safe_phrases:
+    - es seguro
+    - es segura
+    - son seguras
+    - seguro para
+    - segura para
+    - apto para
+    - apta para
+    - no es tóxica
+    - no es toxica
+    - no es tóxico
+    - no es toxico
+    - no tóxica
+    - inofensiva
+    - inofensivo
+    - sin peligro
+  toxicity_keywords:
+    - tóxica
+    - toxica
+    - tóxico
+    - toxico
+    - veneno
+    - venenosa
+    - seguro
+    - segura
+    - comer
+    - comió
+    - ingerir
+    - gato
+    - gatos
+    - perro
+    - perros
+    - mascota
+    - mascotas
+    - niño
+    - niña
+    - bebé
+    - conejo
+    - conejos
+    - pajaro
+    - pajaros
+    - ave
+    - aves
+    - hamster
+    - reptil
+    - tortuga
+    - cobaya
+  route_terms:
+    - control de envenenamiento
+    - veterinario
+  harm_tokens:
+    - toxico
+    - toxica
+    - venenosa
+    - veneno
+    - riesgo
+  source_markers:
+    - fuente
+    - citada
+    - indica
+    - lista
+    - listada
+    - menciona
+    - segun
+
+lang:
+  # Function words that are strong, mutually-exclusive signals for Spanish.
+  markers:
+    - el
+    - la
+    - los
+    - las
+    - una
+    - unos
+    - unas
+    - que
+    - de
+    - del
+    - como
+    - cómo
+    - por
+    - para
+    - con
+    - es
+    - son
+    - está
+    - están
+    - mi
+    - su
+    - pero
+    - porque
+    - cuando
+    - donde
+    - muy
+    - más
+    - hoja
+    - hojas
+    - planta
+    - agua
+    - luz
+    - tóxica
+    - tóxico
+    - gato
+    - perro
+    - regar
+    - riego
+    - amarilla
+    - amarillas
+
+eval:
+  vet_terms: []
+  poison_terms:
+    - envenen
+    - intoxica

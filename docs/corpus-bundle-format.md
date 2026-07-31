@@ -1,7 +1,7 @@
 # Signed corpus bundle format (EXP-15)
 
 Status: implemented — `sprout corpus verify|install`. See
-[ADR-0013](adr/0013-signed-corpus-bundle-trust-model.md) for the trust-model decisions
+[ADR-0022](adr/0022-signed-corpus-bundle-trust-model.md) for the trust-model decisions
 behind this design, and `docs/ideation/03-expansions.md` (EXP-15) for the original pitch.
 
 This lets a third-party publisher (an extension service, a subject-matter expert) ship a
@@ -35,7 +35,7 @@ The bundle's own claim of who signed it is never authoritative. `sprout corpus
 verify|install` looks the bundle's claimed `publisher.id` up in *your* config
 (`corpus_registry.trusted_publishers`) and verifies the signature against *that* entry's
 scheme/identity/issuer. An empty `trusted_publishers` list (the default) trusts nobody.
-See ADR-0013 for why.
+See ADR-0022 for why.
 
 ```yaml
 # config/sprout.yaml

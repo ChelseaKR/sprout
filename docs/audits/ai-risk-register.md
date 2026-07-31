@@ -2,7 +2,7 @@
 
 **Frame:** NIST AI RMF (1.0, Jan 2023) **MAP** function + GenAI Profile **NIST AI 600-1** (Jul 2024,
 12 risks). Instantiates the governance scaffolding in
-[`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md) §Governance.
+`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md` §Governance.
 Numeric gate thresholds are owned by the sibling standards and linked, not restated.
 
 - **Author / accountable owner:** Chelsea Kelly-Reif (ISO 42001 Cl. 6.2 owner)
@@ -87,7 +87,7 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
     2026-07-05, was miscited as 0.45) the assistant refuses rather than
     guesses ([`src/sprout/confidence.py`](../../src/sprout/confidence.py)).
   - **Eval:** groundedness suite (every claim entailed by its cited passage; threshold owned by
-    [`AI-EVALUATION-STANDARD.md`](../../../STANDARDS/AI-EVALUATION-STANDARD.md), confabulation floor
+    `AI-EVALUATION-STANDARD.md`, confabulation floor
     ≤ 5%). Default mode is 100% by construction.
 - **Residual risk: Low.** The guard verifies *attribution*, not the corpus's real-world correctness;
   a wrong-but-cited corpus passage would pass. Mitigated by the dated/versioned corpus and the
@@ -131,9 +131,9 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
     config or the repo.
   - **No-PII-in-logs (AUTO-GATED).** Tier C structured logs are PII-free; the secret-in-logs SAST rule
     and the `jq`-on-logs integration test are owned by
-    [`OBSERVABILITY-STANDARD.md`](../../../STANDARDS/OBSERVABILITY-STANDARD.md).
+    `OBSERVABILITY-STANDARD.md`.
   - **Security posture:** ASVS L1 in the offline mode; the cloud seam targets L2 per
-    [`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md).
+    `SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`.
 - **Residual risk: Low (offline) / Med (cloud).** Once a query reaches a foundation-model provider it
   is governed by that provider's data terms, outside Sprout's control — disclosed in the model card.
   Redaction is best-effort regex, not a guarantee. The mitigation of last resort is that cloud mode is
@@ -157,9 +157,12 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
   fails the integrity check.
 
 ### R5 — Environmental + value-chain (cloud-seam dependency) · Risks 5, 12
-- **Controls:** default mode = 0 training + 0 inference (offline, no GPU). Cloud seam is per-token
-  foundation-model inference only — environmental footprint recorded in the model-card CO2 row; cost
-  capped (`max_cost_usd` 0.05/answer) with a budget alarm. Provider failure is fail-closed: any error
+- **Controls:** default mode = 0 training + 0 inference (offline, no GPU). Claude generation is
+  per-token foundation-model inference only — environmental footprint recorded in the model-card
+  CO2 row; cost is preflight-capped (`max_cost_usd` 0.05/answer) and unpriced models refuse before
+  invocation. Titan uses the shared AWS catalog rate for the configured Bedrock region and rejects
+  a missing or unsupported region.
+  Provider failure is fail-closed: any error
   or malformed response returns an empty candidate list, so the pipeline **refuses rather than
   inventing** (`AnthropicGenerator.generate`), behind a circuit breaker; the system degrades to the
   offline extractive path.
@@ -171,7 +174,7 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
   Spanish users get worse answers). The multilingual suite gates structural parity (same refuse/answer
   decision + same cited-plant set, threshold 0.85) and an LLM-judge records semantic equivalence; the
   |EN−ES| ≤ 5pp pass-rate parity gate is owned by
-  [`INTERNATIONALIZATION-STANDARD.md`](../../../STANDARDS/INTERNATIONALIZATION-STANDARD.md).
+  `INTERNATIONALIZATION-STANDARD.md`.
 - **Residual risk: Low.** ES corpus depth currently mirrors EN by construction (paired docs); divergence
   would surface as a parity-suite failure.
 
@@ -216,4 +219,4 @@ behind an ADR + CODEOWNERS review.
 - ISO 42001 Statement of Applicability: [`iso42001-soa.md`](./iso42001-soa.md)
 - Latest red-team report: [`red-team-2026-06-22.md`](./red-team-2026-06-22.md)
 - Model card (limits, intended/out-of-scope use, CO2): `docs/cards/model-card.md`
-- Methodology: [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md)
+- Methodology: `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`

@@ -14,6 +14,7 @@ from typing import Any
 
 from ..models import RetrievedChunk
 from ..text import coverage, split_sentences
+from .base import context_hint
 
 _ENDPOINT = "https://api.anthropic.com/v1/messages"
 _API_VERSION = "2023-06-01"
@@ -41,12 +42,16 @@ class AnthropicGenerator:
         return "opus"
 
     def generate(
-        self, query: str, context: list[RetrievedChunk], max_sentences: int
+        self,
+        query: str,
+        context: list[RetrievedChunk],
+        max_sentences: int,
+        boost_terms: frozenset[str] = frozenset(),
     ) -> list[tuple[str, str]]:
         if not context or not self._api_key:
             return []
         try:
-            text = self._invoke(query, context, max_sentences)
+            text = self._invoke(query, context, max_sentences, boost_terms)
         except Exception:
             return []
         out: list[tuple[str, str]] = []
@@ -55,7 +60,13 @@ class AnthropicGenerator:
             out.append((sentence.strip(), best.chunk.chunk_id))
         return out
 
-    def _invoke(self, query: str, context: list[RetrievedChunk], max_sentences: int) -> str:
+    def _invoke(
+        self,
+        query: str,
+        context: list[RetrievedChunk],
+        max_sentences: int,
+        boost_terms: frozenset[str] = frozenset(),
+    ) -> str:
         import httpx
 
         client = self._client or httpx.Client(timeout=60.0)
@@ -76,6 +87,7 @@ class AnthropicGenerator:
                 "system": (
                     "Answer using ONLY the numbered sources. Quote faithfully, never "
                     f"certify a plant 'safe', use at most {max_sentences} sentences."
+                    f"{context_hint(boost_terms)}"
                 ),
                 "messages": [
                     {"role": "user", "content": f"SOURCES:\n{sources}\n\nQUESTION: {query}"}

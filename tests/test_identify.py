@@ -8,6 +8,8 @@ visual match is never presented as a cited fact. Everything here is offline/dete
 
 from __future__ import annotations
 
+import pytest
+
 from sprout.answer import Assistant
 from sprout.config import Config
 from sprout.identify import (
@@ -224,6 +226,36 @@ def test_plantnet_identifier_parses_via_injected_client() -> None:
     assert ident.best is not None
     assert ident.best.scientific_name == "Monstera deliciosa"
     assert client.calls  # the endpoint was actually called
+
+
+def test_plantnet_operational_client_wrapper_is_cached(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    from sprout.provider_lifecycle import CachedHttpClient
+    from sprout.providers.plantnet import PlantNetIdentifier
+
+    payload: dict[str, object] = {
+        "results": [
+            {
+                "score": 0.77,
+                "species": {"scientificNameWithoutAuthor": "Monstera deliciosa"},
+            }
+        ]
+    }
+    constructions = 0
+    client = _FakeClient(payload)
+
+    def build(*_args: object, **_kwargs: object) -> _FakeClient:
+        nonlocal constructions
+        constructions += 1
+        return client
+
+    monkeypatch.setattr(httpx, "Client", build)
+    identifier = PlantNetIdentifier(api_key="test-key", client=CachedHttpClient(timeout=30.0))
+    assert identifier.identify(b"jpeg").best is not None
+    assert identifier.identify(b"jpeg").best is not None
+    assert constructions == 1
+    assert len(client.calls) == 2
 
 
 def test_plantnet_identifier_fails_closed_without_key() -> None:

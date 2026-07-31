@@ -2,7 +2,7 @@
 
 **Standard:** ISO/IEC 42001:2023 (AI Management System), the 42 Annex A controls (groups A.2–A.10).
 This SoA records, per control, whether it **applies** and how Sprout satisfies it — or a justified
-**N/A**. Per [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md)
+**N/A**. Per `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`
 §Governance, this is a **REVIEW-GATE** artifact, regenerated on release and post-architecture-change.
 
 - **Author / accountable owner:** Chelsea Kelly-Reif (Cl. 6.2)
@@ -116,4 +116,4 @@ provenance (A.7.5), V&V (A.6.2.4), responsible-use objectives (A.9.3) — are no
 - AI risk register: [`ai-risk-register.md`](./ai-risk-register.md)
 - EU AI Act classification: [`eu-ai-act-classification.md`](./eu-ai-act-classification.md)
 - Red-team report: [`red-team-2026-06-22.md`](./red-team-2026-06-22.md)
-- Methodology: [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md)
+- Methodology: `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`

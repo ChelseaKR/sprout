@@ -4,8 +4,8 @@ Sprout is an independent personal open-source project (Apache-2.0). It runs **of
 — no auth, no network, no persisted user data — so its app-security posture is **OWASP ASVS L1**
 (see [`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md)
 for the cross-cutting controls this repo references rather than restates; per-repo values are in
-[`docs/ROADMAP.md`](docs/ROADMAP.md)). The optional serverless API and the Family-Greenhouse
-household-data path raise the bar to L2 and are deferred to a later phase.
+[`docs/ROADMAP.md`](docs/ROADMAP.md)). The authenticated Family Greenhouse API boundary is
+reviewed at L2; see the [dated review](docs/audits/asvs-l2-review-2026-07-12.md).
 
 ## Supported versions
 

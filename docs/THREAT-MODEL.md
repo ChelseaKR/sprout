@@ -2,13 +2,13 @@
 
 > **Scope:** Sprout the offline-first, grounded plant-care RAG assistant and its in-repo
 > eval harness — the assistant, the corpus/index, the provider seam, the optional
-> serverless API, and the CI/release supply chain. **Out of scope** (deferred phase): the
-> Family Greenhouse household-data integration (its own ASVS L2 boundary). This document
+> serverless API, the Family Greenhouse read-only integration, and the CI/release supply chain. This document
 > instantiates the methodology in
-> [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md)
+> `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`
 > and the controls in
-> [`STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md);
-> it does not restate them. Per-repo posture: **ASVS L1** (offline mode).
+> `STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`;
+> it does not restate them. Per-repo posture: **ASVS L1** offline mode and a scoped
+> **ASVS L2** authenticated integration boundary.
 >
 > **Last verified:** 2026-06-22 · **Author:** Chelsea Kelly-Reif
 
@@ -53,11 +53,18 @@
                                   │  (B2) opt-in cloud provider (Bedrock/Anthropic)  ── network egress
                                   │  (B3) optional serverless API (untrusted internet input)
                                   │  (B4) CI / release supply chain        ← builds the artifact users install
+                                  │  (B5) Family Greenhouse HMAC API       ← minimized household selectors
 ```
 
 The untrusted input — the user's free-text question — never reaches a privileged action.
 The most important boundary is **B1 (corpus authoring)**, because the corpus is what the
 assistant is *allowed* to say.
+
+At B5, requests are HMAC-SHA256 signed over a canonical body and timestamp, expire after five
+minutes, and are capped at 64 KiB. Strict schemas reject unknown fields. Accepted household
+context contains species, coarse light category, task type, and relative day counts only;
+care answers retain corpus provenance and citations. The caller redacts known plant nicknames,
+email addresses, and phone numbers from free-text questions before transmission.
 
 ---
 
@@ -178,7 +185,7 @@ index so the assistant cites a tampered or unattributed "fact" — poisoning the
   rebuildable from `make ingest`, so a corrupted index is recoverable, not authoritative.
 - **Supply-chain integrity.** `gitleaks`, `pip-audit`, `Semgrep`, SHA-pinned Actions, and SBOM
   on release per
-  [`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md);
+  `SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`;
   corpus edits are data PRs reviewed like code.
 - **Reproducibility as a tripwire.** Byte-identical artifacts for identical inputs
   ([`determinism.py`](../src/sprout/determinism.py)) mean any unexplained diff in the
@@ -206,7 +213,7 @@ persisted in logs, or the question text is shipped to a model provider in cloud 
   network call, so there is nothing to leak and no third party to leak to (Confidentiality).
   Offline is also the privacy-preserving default.
 - **Observability tier.** Tier C for the offline CLI; Tier A for the optional serverless API,
-  per [`OBSERVABILITY-STANDARD.md`](../../STANDARDS/OBSERVABILITY-STANDARD.md).
+  per `OBSERVABILITY-STANDARD.md`.
 
 **Residual risk.** A model *provider's* own request logs in cloud mode are outside Sprout's
 control; mitigated by redaction + the offline default + the model card disclosure. Low in
@@ -232,7 +239,7 @@ garbage; or pathological/oversized input or API flooding exhausts resources.
   a fixed top-k; no agentic loop, no unbounded recursion. The corpus is small and local.
 - **Availability shape.** Serverless scales to zero with a budget alarm, or ships as a static
   offline build with no always-on dependency
-  ([`CI-CD`](../../STANDARDS/CI-CD-STANDARD.md) / `infra/`); rate limits guard the API.
+  (`CI-CD` / `infra/`); rate limits guard the API.
 - **Eval analogue.** A suite that throws becomes a `fail_closed` FAIL rather than aborting the
   run ([`runner.py`](../src/sprout/eval/runner.py)) — the harness itself degrades safely.
 
@@ -271,6 +278,6 @@ boundaries (cloud provider, public API) are explicit opt-ins documented as such.
 - [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) — the pipeline and the invariant table (I1–I12)
   these threats map onto.
 - [`docs/cards/model-card.md`](cards/model-card.md) — stated limits.
-- [`STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md),
-  [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md) —
+- `STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`,
+  `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md` —
   the methodology and controls this document instantiates.

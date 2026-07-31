@@ -23,6 +23,7 @@ from sprout.text import (
     contains_phrase,
     content_tokens,
     coverage,
+    has_antonym_conflict,
     has_negation,
     jaccard,
     normalize,
@@ -94,6 +95,23 @@ def test_has_negation(text: str, expected: bool) -> None:
     assert has_negation(text) is expected
 
 
+@pytest.mark.parametrize(
+    ("a", "b", "expected"),
+    [
+        ("Aloe vera is safe for dogs.", "Aloe vera is toxic to dogs.", True),
+        ("El potos es toxico para los gatos.", "El potos es seguro para los gatos.", True),
+        ("La planta es toxica.", "La planta es segura.", True),
+        ("Es venenosa para los perros.", "Es segura para los perros.", True),
+        # Same side of the pair (or no pair vocabulary at all) is not a conflict.
+        ("Aloe vera is toxic for dogs.", "Aloe vera is toxic to dogs.", False),
+        ("Water weekly in summer.", "Water weekly in summer.", False),
+        ("Pothos is toxic to cats.", "Bright indirect light is best.", False),
+    ],
+)
+def test_has_antonym_conflict(a: str, b: str, expected: bool) -> None:
+    assert has_antonym_conflict(a, b) is expected
+
+
 def test_coverage_full_and_partial() -> None:
     assert coverage("yellow leaves", "yellowing leaves indicate overwatering") == 1.0
     assert coverage("", "anything") == 1.0
@@ -140,6 +158,21 @@ def test_default_config_is_valid() -> None:
     assert "veterinario" in cfg.prompts.safety_route_for("es")
 
 
+def test_confidence_band_labels_have_en_es_parity() -> None:
+    # EXP-06: every band key resolves in every supported language, with an English
+    # fallback for unsupported ones — same contract as the other *_by_lang catalogs.
+    cfg = Config()
+    langs = set(cfg.languages.supported)
+    for band, catalog in cfg.prompts.confidence_band_labels.items():
+        assert set(catalog) >= langs, band
+    assert cfg.prompts.confidence_band_label_for("well_supported", "es") == "bien respaldada"
+    assert cfg.prompts.confidence_band_label_for(
+        "well_supported", "fr"
+    ) == cfg.prompts.confidence_band_label_for("well_supported", "en")
+    # Unknown band key falls back to the key itself rather than raising.
+    assert cfg.prompts.confidence_band_label_for("not_a_band", "en") == "not_a_band"
+
+
 def test_safety_directive_has_en_es_parity_and_never_certifies() -> None:
     # The urgency routing (E2), the non-toxic-caveat (R7), and the escalation card (E9)
     # must each exist in every supported language, and the composed directive must never
@@ -162,6 +195,102 @@ def test_safety_directive_has_en_es_parity_and_never_certifies() -> None:
         assert not any(term in low for term in forbidden)
         # The standardized escalation card names the real public authorities.
         assert "888-426-4435" in directive and "855-764-7661" in directive
+
+
+def test_detect_exposure_type_classifies_child_animal_both_unspecified() -> None:
+    # FIX-13: exposure-type routing must be deterministic and keyword-driven, matching
+    # the audience the query actually names.
+    from sprout.guards import detect_exposure_type
+
+    cfg = Config().guards
+    assert detect_exposure_type("Is this toxic to my cat?", "en", cfg) == "animal"
+    assert detect_exposure_type("My dog chewed a leaf, is that bad?", "en", cfg) == "animal"
+    assert detect_exposure_type("My toddler bit a leaf off this plant", "en", cfg) == "child"
+    assert detect_exposure_type("Is this safe for my baby?", "en", cfg) == "child"
+    assert detect_exposure_type("Is this toxic to kids or pets?", "en", cfg) == "both"
+    assert detect_exposure_type("Is this plant poisonous?", "en", cfg) == "unspecified"
+    # Spanish mirrors the English classification (multilingual parity, R4).
+    assert detect_exposure_type("¿Es tóxico para mi gato?", "es", cfg) == "animal"
+    assert detect_exposure_type("Mi niño mordió una hoja de esta planta", "es", cfg) == "child"
+
+
+def test_detect_exposure_type_covers_family_terms_in_both_languages() -> None:
+    # FIX-13 review fix: son/daughter/grandchild (EN) and hijo/hija/nieto (ES) are how
+    # real child-ingestion questions are phrased at least as often as "child"/"toddler";
+    # before this fix they classified "unspecified" and would never have received the
+    # human card post-sign-off.
+    from sprout.guards import detect_exposure_type
+
+    cfg = Config().guards
+    assert detect_exposure_type("My son chewed a philodendron leaf", "en", cfg) == "child"
+    assert detect_exposure_type("My daughter ate a pothos leaf", "en", cfg) == "child"
+    assert detect_exposure_type("My grandson bit this plant", "en", cfg) == "child"
+    assert detect_exposure_type("Mi hijo comió una hoja de potos", "es", cfg) == "child"
+    assert detect_exposure_type("Mi hija mordió esta planta", "es", cfg) == "child"
+    assert detect_exposure_type("Mi nieta tocó las hojas, ¿es venenosa?", "es", cfg) == "child"
+
+
+def test_detect_exposure_type_matches_whole_tokens_not_substrings() -> None:
+    # FIX-13 review fix: audience routing must not key off word fragments. Before this
+    # fix, "cat" inside "identification" classified as animal, "pet" inside "petal" and
+    # "kid" inside "kidney" polluted the classification, and adding "son" (needed above)
+    # would have matched "poison" itself, tagging every toxicity query as child.
+    from sprout.guards import detect_exposure_type
+
+    cfg = Config().guards
+    assert (
+        detect_exposure_type("Help with identification, is this plant poisonous?", "en", cfg)
+        == "unspecified"
+    )
+    assert detect_exposure_type("My toddler ate a petal from this plant", "en", cfg) == "child"
+    assert (
+        detect_exposure_type("The kidney-shaped leaves are wilting, is it toxic?", "en", cfg)
+        == "unspecified"
+    )
+    # "son" must match only as its own word, never inside "poison"/"poisonous".
+    assert detect_exposure_type("Is this plant poisonous to humans?", "en", cfg) == "unspecified"
+    # Plurals still match via their explicit list entries, not substring luck.
+    assert detect_exposure_type("Are these leaves toxic to kittens?", "en", cfg) == "animal"
+    assert detect_exposure_type("¿Es tóxica para los gatitos?", "es", cfg) == "animal"
+
+
+def test_human_escalation_card_gated_off_by_default() -> None:
+    # FIX-13 hard gate: the human-poison-control card must not render for any exposure
+    # type until a real clinician sign-off flips ``human_card_reviewed`` to True (see
+    # docs/audits/human-poison-control-card-review.md). Default config behavior for a
+    # child-ingestion query is unchanged from before FIX-13: only the animal card shows.
+    cfg = Config()
+    assert cfg.prompts.human_card_reviewed is False
+    for exposure_type in ("child", "animal", "both", "unspecified", None):
+        directive = cfg.prompts.safety_directive_for("en", exposure_type)
+        assert "1-800-222-1222" not in directive
+        assert "poison.org" not in directive
+        # The animal card still renders exactly as before FIX-13.
+        assert "888-426-4435" in directive
+
+
+def test_human_escalation_card_renders_only_for_child_exposure_once_reviewed() -> None:
+    # Simulates post-sign-off state: a reviewer has flipped human_card_reviewed to True
+    # (docs/audits/human-poison-control-card-review.md filled in). The human card must
+    # then appear *alongside*, never instead of, the animal card, and only for
+    # audiences that name a child ("child" or "both") -- never for a pure animal query.
+    cfg = Config()
+    reviewed_prompts = cfg.prompts.model_copy(update={"human_card_reviewed": True})
+
+    for exposure_type in ("child", "both"):
+        directive = reviewed_prompts.safety_directive_for("en", exposure_type)
+        assert "1-800-222-1222" in directive
+        assert "888-426-4435" in directive  # animal card still present, not replaced
+
+    for non_child_exposure_type in ("animal", "unspecified", None):
+        directive = reviewed_prompts.safety_directive_for("en", non_child_exposure_type)
+        assert "1-800-222-1222" not in directive
+        assert "888-426-4435" in directive
+
+    # Spanish parity for the human card too.
+    directive_es = reviewed_prompts.safety_directive_for("es", "child")
+    assert "1-800-222-1222" in directive_es
+    assert "888-426-4435" in directive_es
 
 
 def test_config_rejects_unknown_keys() -> None:

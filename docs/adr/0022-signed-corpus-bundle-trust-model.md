@@ -1,4 +1,4 @@
-# 13. Signed corpus bundle trust model (EXP-15)
+# 22. Signed corpus bundle trust model (EXP-15)
 
 - Status: Accepted
 - Date: 2026-07-08

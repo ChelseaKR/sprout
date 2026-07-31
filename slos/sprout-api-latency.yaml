@@ -1,0 +1,17 @@
+# SLO definition — STANDARDS/OBSERVABILITY-STANDARD.md §4, schema as in
+# sprout-api-availability.yaml. Latency budget for the LLM-backed chat routes
+# (`/api/chat`, `/api/chat/stream`) is the standard's default for LLM/RAG routes:
+# "p95 first-token < 1.5s" (§4). The fixed histogram bucket list in
+# STANDARDS/OBSERVABILITY-STANDARD.md §2 (.005 .01 .025 .05 .1 .25 .5 1 2.5 5 10) has no
+# 1.5s bucket boundary, so the SLI below uses the next bucket up (le="2.5") — a
+# deliberately conservative proxy for the 1.5s target, not the target itself. If this SLO
+# is ever exercised against real traffic and the gap matters, add a recording rule with a
+# custom 1.5-bucket histogram rather than relaxing the target.
+name: sprout-api-latency
+sli_query: >-
+  sum(rate(sprout_http_request_duration_seconds_bucket{route=~"/api/chat.*", le="2.5"}[5m]))
+  /
+  sum(rate(sprout_http_request_duration_seconds_count{route=~"/api/chat.*"}[5m]))
+target_percentage: 95.0
+window_days: 28
+error_budget_policy: freeze-features-on-50pct-burn

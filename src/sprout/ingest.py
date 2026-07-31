@@ -98,11 +98,17 @@ def build_chunks(config: Config, documents: list[Document]) -> list[Chunk]:
 
 
 def build_index(config: Config) -> VectorStore:
-    """Full ingest: load corpus, chunk, embed, and return a populated store."""
+    """Full ingest: load corpus, chunk, embed, build BM25 postings, return the store.
+
+    BM25 postings are built here — once, over every chunk — and persisted in
+    ``index.json`` by ``store.save`` (FIX-07: see ``docs/ideation/02-large-scale-fixes.md``).
+    No query pays to retokenise the corpus at request time.
+    """
     embedder = build_embedding(config)
     store = VectorStore()
     for chunk in build_chunks(config, load_corpus(config)):
         store.add(chunk, embedder.embed(chunk.text))
+    store.build_bm25(k1=config.retrieval.bm25_k1, b=config.retrieval.bm25_b)
     return store
 
 

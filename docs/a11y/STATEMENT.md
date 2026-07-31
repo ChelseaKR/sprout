@@ -23,27 +23,23 @@ buyers actually audit to.
 
 ## How this is verified
 
-**Corrected 2026-07-05** — a conformance audit found this section overstated what actually gates.
-The honest breakdown:
+The enforcement breakdown:
 
 - **Automated, merge-blocking today:** a deterministic structural self-check
   (`sprout a11y-check`) that runs on both the chat UI and the generated eval report and **fails
   closed** — Sprout will not emit an inaccessible report. This is genuinely wired into `make verify`
   and the required `ci-gate` check.
-- **Automated, advisory only (not yet merge-blocking):** axe-core and pa11y-ci both run inside the
-  `pa11y` CI job, which is `continue-on-error: true` and excluded from `ci-gate` — a violation is
-  visible in CI logs but does not fail a PR. Wiring this to blocking is tracked (gap tracked;
-  planned in `docs/ROADMAP.md`).
-- **Not yet wired:** Lighthouse CI accessibility scoring does not exist in this repo yet, despite
-  being referenced below in the past. Tracked as a gap, not silently dropped.
+- **Automated, merge-blocking in CI:** axe-core and pa11y-ci scan the served UI, while Lighthouse
+  enforces an accessibility score of at least 0.95 on the UI and HTML eval report. Both jobs feed
+  the required `ci-gate` check.
 - **Manual, per release — not yet performed:** a keyboard-only walkthrough and screen-reader review
   (NVDA + Firefox, VoiceOver + Safari) is planned per release but has not yet been carried out; no
   dated walkthrough artifact exists yet. A prior version of this statement cited
   `docs/a11y/screen-reader-walkthrough-2026-06-22.md`, which was never created — that reference is
   removed here and will be restored, with a real dated file, once the walkthrough is actually done.
 
-`make verify` runs the structural self-check above; it does not yet run pa11y/axe/Lighthouse
-(those are CI-only, and advisory as described above).
+`make verify` runs the structural self-check locally. The browser-dependent pa11y/axe/Lighthouse
+checks are CI-only and merge-blocking.
 
 ## What we have done
 

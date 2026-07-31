@@ -9,87 +9,25 @@ network. ``langdetect`` is consulted only as an optional tie-breaker when instal
 
 from __future__ import annotations
 
-from .text import tokenize
+from . import locales
+from .text import strip_accents, tokenize
 
-SUPPORTED: tuple[str, ...] = ("en", "es")
-DEFAULT_LANGUAGE = "en"
+# Which languages are detectable is driven by which locale bundles exist on disk
+# (FIX-09, src/sprout/locales/) — adding language #3 is dropping a
+# ``locales/<lang>/bundle.yaml``, not editing this module.
+SUPPORTED: tuple[str, ...] = locales.available_languages()
+DEFAULT_LANGUAGE = locales.REFERENCE_LANGUAGE
 
-# Function words that are strong, mutually-exclusive signals for each language.
+# Function words that are strong, mutually-exclusive signals for each language,
+# authored in src/sprout/locales/<lang>/bundle.yaml under ``lang.markers``.
+# Markers are accent-folded at load because ``tokenize`` accent-folds every token:
+# an accented marker as authored ("está", "tóxica") could otherwise never match.
 _MARKERS: dict[str, frozenset[str]] = {
-    "es": frozenset(
-        {
-            "el",
-            "la",
-            "los",
-            "las",
-            "una",
-            "unos",
-            "unas",
-            "que",
-            "de",
-            "del",
-            "como",
-            "cómo",
-            "por",
-            "para",
-            "con",
-            "es",
-            "son",
-            "está",
-            "están",
-            "mi",
-            "su",
-            "pero",
-            "porque",
-            "cuando",
-            "donde",
-            "muy",
-            "más",
-            "hoja",
-            "hojas",
-            "planta",
-            "agua",
-            "luz",
-            "tóxica",
-            "tóxico",
-            "gato",
-            "perro",
-            "regar",
-            "riego",
-            "amarilla",
-            "amarillas",
-        }
-    ),
-    "en": frozenset(
-        {
-            "the",
-            "and",
-            "is",
-            "are",
-            "of",
-            "to",
-            "in",
-            "my",
-            "why",
-            "how",
-            "what",
-            "for",
-            "with",
-            "leaf",
-            "leaves",
-            "plant",
-            "water",
-            "light",
-            "toxic",
-            "cat",
-            "dog",
-            "yellow",
-            "yellowing",
-            "watering",
-            "should",
-            "does",
-        }
-    ),
+    lang: frozenset(
+        strip_accents(str(m).lower())
+        for m in locales.load_bundle(lang).get("lang", {}).get("markers", [])
+    )
+    for lang in SUPPORTED
 }
 
 # Characters that only appear in Spanish text in this domain.
