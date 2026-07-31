@@ -1,6 +1,7 @@
 site_name: Sprout
 site_description: A grounded, evaluated, multilingual plant-care assistant and eval harness.
 site_author: Chelsea Kelly-Reif
+site_url: https://sprout.chelseakr.com/
 repo_url: https://github.com/ChelseaKR/sprout
 copyright: Copyright 2026 Chelsea Kelly-Reif — Apache-2.0
 
@@ -20,7 +21,7 @@ markdown_extensions:
   - pymdownx.superfences
 
 # The docs are GitHub-first and intentionally link to source files (../src/...),
-# the README, and the vendored ../STANDARDS/ — none of which are site pages. Tolerate
+# the README — which is not a site page. Tolerate
 # those cross-tree links and the not-in-nav reference docs (ADRs, audits) while still
 # catching broken in-site anchors under --strict.
 validation:
@@ -40,6 +41,7 @@ nav:
   - Adapt to your domain: ADAPT.md
   - Roadmap: ROADMAP.md
   - Responsible-tech audits: RESPONSIBLE-TECH-AUDITS.md
+  - ASVS L2 integration review: audits/asvs-l2-review-2026-07-12.md
   - Accessibility:
       - Statement: a11y/STATEMENT.md
       - Conformance report (ACR): accessibility/ACR.md
@@ -49,3 +51,5 @@ nav:
   - Evaluation report: audits/eval-report.md
   - ADRs:
       - Record decisions: adr/0000-record-architecture-decisions.md
+      - Family Greenhouse integration: adr/0013-family-greenhouse-first-party-integration.md
+      - Public web surface: adr/0015-web-is-a-reference-and-assurance-surface.md

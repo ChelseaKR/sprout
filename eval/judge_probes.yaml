@@ -2,7 +2,7 @@
 # warns (does not yet fail — see P0-4/AIEV-20) when this is more than 30 days old, per the
 # ROADMAP's "judge-calibration freshness" row. Update this only when the human labels
 # themselves are actually re-reviewed, not on unrelated edits.
-labeled_date: "2026-06-22"
+labeled_date: "2026-07-08"
 probes:
 - id: g1-pothos-toxic
   kind: entails
@@ -77,3 +77,342 @@ probes:
   text_a: El potos es toxico para los gatos si lo ingieren.
   text_b: El potos es seguro para los gatos si lo ingieren.
   human_label: false
+- id: g6-monstera-light
+  kind: entails
+  text_a: The Monstera grows best in bright, indirect light for roughly 6 to 8 hours a day.
+  sources:
+  - The Monstera (Monstera deliciosa) grows best in bright, indirect light for roughly 6 to 8 hours
+    a day.
+  human_label: true
+- id: g7-monstera-toxic
+  kind: entails
+  text_a: Monstera is toxic to cats and dogs and ingestion can cause oral irritation and drooling.
+  sources:
+  - The cited reference lists Monstera (Monstera deliciosa) as toxic to cats and dogs; ingestion
+    can cause oral irritation, intense burning of the mouth and lips, excessive drooling, vomiting,
+    and difficulty swallowing.
+  human_label: true
+- id: g8-peace-lily-toxic
+  kind: entails
+  text_a: Peace lily is toxic to cats and dogs and ingestion can cause oral irritation and drooling.
+  sources:
+  - The cited reference lists Peace lily (Spathiphyllum) as toxic to cats and dogs; ingestion can
+    cause oral irritation, intense burning of the mouth and lips, drooling, vomiting, and difficulty
+    swallowing.
+  human_label: true
+- id: g9-zz-plant-watering
+  kind: entails
+  text_a: Water the ZZ plant only when the top 2 inches of soil have dried out completely.
+  sources:
+  - Water the ZZ plant only when the top 2 inches of soil have dried out completely, which often
+    means every two to three weeks.
+  human_label: true
+- id: g10-jade-light
+  kind: entails
+  text_a: The Jade plant does best in bright light and tolerates several hours of direct sun each
+    day.
+  sources:
+  - The Jade plant (Crassula ovata) does best in bright light and tolerates several hours of direct
+    sun each day.
+  human_label: true
+- id: g11-philodendron-watering
+  kind: entails
+  text_a: Water Philodendron when the top one to two inches of soil have dried out.
+  sources:
+  - Water Philodendron when the top one to two inches of soil have dried out, which is often about
+    once a week in spring and summer.
+  human_label: true
+- id: g12-dracaena-tips
+  kind: entails
+  text_a: Dracaena can develop brown leaf tips when watered with fluoride- or chlorine-heavy tap
+    water.
+  sources:
+  - Dracaena can develop brown leaf tips when watered with fluoride- or chlorine-heavy tap water,
+    so use filtered or distilled water if tips brown.
+  human_label: true
+- id: g13-rubber-plant-light
+  kind: entails
+  text_a: The Rubber plant grows best in bright, indirect light near an east- or south-facing window.
+  sources:
+  - The Rubber plant (Ficus elastica) grows best in bright, indirect light near an east- or south-facing
+    window.
+  human_label: true
+- id: g14-fiddle-leaf-fig-watering
+  kind: entails
+  text_a: Overwatering is the most common cause of trouble for the Fiddle-leaf fig and can lead to
+    root rot.
+  sources:
+  - Overwatering is the most common cause of trouble for the Fiddle-leaf fig and can lead to root
+    rot and dropped leaves.
+  human_label: true
+- id: g15-orchid-toxicity
+  kind: entails
+  text_a: The cited reference does not list Orchid as toxic to cats or dogs.
+  sources:
+  - The cited reference does not list Orchid (Phalaenopsis) as toxic to cats or dogs.
+  human_label: true
+- id: g16-calathea-watering
+  kind: entails
+  text_a: Calathea prefers consistently moist soil and reacts to drought by curling and crisping
+    its leaf edges.
+  sources:
+  - Calathea prefers consistently moist soil and reacts to drought by curling and crisping its leaf
+    edges.
+  human_label: true
+- id: g17-boston-fern-humidity
+  kind: entails
+  text_a: The Boston fern resents dry air, so mist its fronds or set the pot on a humidity tray.
+  sources:
+  - Because the Boston fern resents dry air, mist its fronds or set the pot on a humidity tray to
+    keep relative humidity near 50 to 70 percent.
+  human_label: true
+- id: g18-english-ivy-not-toxic-negation
+  kind: entails
+  text_a: English ivy is not toxic to cats and dogs.
+  sources:
+  - The cited reference lists English ivy (Hedera helix) as toxic to cats and dogs; ingestion can
+    cause vomiting, excessive drooling, abdominal pain, and diarrhea.
+  human_label: false
+- id: g19-boston-fern-toxic-negation
+  kind: entails
+  text_a: The Boston fern is toxic to cats and dogs and ingestion causes vomiting.
+  sources:
+  - The cited reference does not list the Boston fern (Nephrolepis exaltata) as toxic to cats or
+    dogs. According to the cited reference, the Boston fern is not associated with poisoning in household
+    pets that nibble its fronds.
+  human_label: false
+- id: g20-zz-plant-wrong-topic
+  kind: entails
+  text_a: The ZZ plant needs twelve to fourteen hours of daylight to rebloom every spring.
+  sources:
+  - The ZZ plant grows well in low to bright indirect light, which makes the ZZ plant a forgiving
+    choice for dim rooms and offices.
+  human_label: false
+- id: g21-orchid-wrong-topic
+  kind: entails
+  text_a: Repot the Orchid every eighteen to twenty-four months using a loose, well-draining mix.
+  sources:
+  - Water the Orchid (Phalaenopsis) about once every seven to ten days, allowing the potting medium
+    to dry slightly between waterings.
+  human_label: false
+- id: g22-jade-plant-not-toxic-negation
+  kind: entails
+  text_a: The Jade plant is not toxic to cats and dogs.
+  sources:
+  - The cited reference lists the Jade plant (Crassula ovata) as toxic to cats and dogs; ingestion
+    can cause vomiting, lethargy, loss of coordination, and a slowed heart rate.
+  human_label: false
+- id: g23-calathea-toxic-negation
+  kind: entails
+  text_a: Calathea is toxic to cats and dogs.
+  sources:
+  - The cited reference does not list Calathea as toxic to cats or dogs.
+  human_label: false
+- id: g24-spider-plant-wrong-topic
+  kind: entails
+  text_a: Fertilize the Spider plant monthly during spring and summer with a balanced houseplant
+    fertilizer.
+  sources:
+  - The Spider plant grows best in bright, indirect light near an east- or north-facing window.
+  human_label: false
+- id: g25-dracaena-wrong-topic
+  kind: entails
+  text_a: Dracaena flowers profusely indoors and produces fragrant white blooms twice a year.
+  sources:
+  - Dracaena (Dracaena) grows best in bright, indirect light but tolerates medium and lower light
+    with slower growth.
+  human_label: false
+- id: g26-monstera-safe-antonym-contradiction
+  kind: entails
+  text_a: Monstera is safe for cats and dogs to chew on.
+  sources:
+  - The cited reference lists Monstera (Monstera deliciosa) as toxic to cats and dogs; ingestion
+    can cause oral irritation, intense burning of the mouth and lips, excessive drooling, vomiting,
+    and difficulty swallowing.
+  human_label: false
+- id: g27-english-ivy-harmless-antonym-contradiction
+  kind: entails
+  text_a: English ivy is harmless for dogs to chew on and causes no reaction.
+  sources:
+  - The cited reference lists English ivy (Hedera helix) as toxic to cats and dogs; ingestion can
+    cause vomiting, excessive drooling, abdominal pain, and diarrhea.
+  human_label: false
+- id: c5-monstera-winter-watering
+  kind: contains
+  text_a: In winter, water your Monstera much less often, roughly once every 2 to 3 weeks, since
+    growth slows down. Based on references as of 2026-05-01.
+  text_b: in winter the monstera needs less frequent watering, often only once every 2 to 3 weeks
+  human_label: true
+- id: c6-peace-lily-wilting
+  kind: contains
+  text_a: A thirsty Peace lily wilts visibly and usually perks back up within a few hours of a thorough
+    watering.
+  text_b: the peace lily wilts visibly when it is thirsty
+  human_label: true
+- id: c7-zz-plant-rhizomes
+  kind: contains
+  text_a: The ZZ plant stores water in its thick rhizomes, which is why it tolerates being forgotten
+    for weeks at a time.
+  text_b: the zz plant stores water in its thick rhizomes
+  human_label: true
+- id: c8-jade-plant-window
+  kind: contains
+  text_a: A south- or west-facing window is a strong choice for the Jade plant indoors, giving it
+    the bright light it wants.
+  text_b: a south- or west-facing window is a strong choice for the jade plant
+  human_label: true
+- id: c9-philodendron-drooping
+  kind: contains
+  text_a: Drooping or yellowing lower leaves on a Philodendron often signal overwatering rather than
+    thirst.
+  text_b: drooping or yellowing lower leaves on a philodendron often signal overwatering
+  human_label: true
+- id: c10-dracaena-drainage
+  kind: contains
+  text_a: Let excess water drain fully and never leave Dracaena sitting in a saucer of water, since
+    it is sensitive to overwatering.
+  text_b: dracaena is sensitive to overwatering
+  human_label: true
+- id: c11-rubber-plant-sap
+  kind: contains
+  text_a: The milky latex sap of the Rubber plant can irritate the skin of people who handle damaged
+    stems or leaves, so wash your hands after pruning.
+  text_b: the milky latex sap of the rubber plant can irritate the skin
+  human_label: true
+- id: c12-fiddle-leaf-fig-drafts
+  kind: contains
+  text_a: Keep the Fiddle-leaf fig away from cold drafts and heating vents, which stress the foliage.
+  text_b: keep the fiddle-leaf fig away from cold drafts and heating vents
+  human_label: true
+- id: c13-orchid-roots
+  kind: contains
+  text_a: Roots that turn silvery-grey signal that the Orchid is ready for its next drink, while
+    plump green roots mean it has enough moisture.
+  text_b: roots that turn silvery-grey signal that the orchid is ready for its next drink
+  human_label: true
+- id: c14-boston-fern-temperature
+  kind: contains
+  text_a: A spot that stays between 18 and 24 degrees Celsius suits the Boston fern well throughout
+    the year.
+  text_b: a spot between 18 and 24 degrees celsius suits the boston fern
+  human_label: true
+- id: c15-monstera-fact-absent
+  kind: contains
+  text_a: This answer explains the Monstera's light needs and how often to rotate the pot for even
+    growth.
+  text_b: repot the monstera every 1 to 2 years in spring
+  human_label: false
+- id: c16-peace-lily-fact-absent
+  kind: contains
+  text_a: This answer covers how often to water the Peace lily and where to place it for the best
+    light.
+  text_b: the sap of the peace lily can irritate human skin
+  human_label: false
+- id: c17-zz-plant-fact-absent
+  kind: contains
+  text_a: This answer explains the ZZ plant's tolerance for low light and forgiving watering schedule.
+  text_b: the zz plant contains insoluble calcium oxalate crystals in all parts of the plant
+  human_label: false
+- id: c18-philodendron-fact-absent
+  kind: contains
+  text_a: This answer describes Philodendron's preferred light and how often to rotate the pot.
+  text_b: philodendron is toxic to cats and dogs due to calcium oxalate crystals
+  human_label: false
+- id: c19-dracaena-fact-absent
+  kind: contains
+  text_a: This answer explains how often to water Dracaena and how to avoid brown leaf tips.
+  text_b: dracaena contains saponins that can cause dilated pupils in cats
+  human_label: false
+- id: c20-rubber-plant-fact-absent
+  kind: contains
+  text_a: This answer covers the Rubber plant's light preference and how to rotate it for even growth.
+  text_b: overwatering the rubber plant is a common cause of yellowing lower leaves and root rot
+  human_label: false
+- id: c21-orchid-fact-absent
+  kind: contains
+  text_a: This answer explains how to tell when an Orchid's roots need water again.
+  text_b: the orchid will scorch under direct midday sun
+  human_label: false
+- id: c22-boston-fern-fact-absent
+  kind: contains
+  text_a: This answer describes how often to water the Boston fern and how to raise humidity around
+    it.
+  text_b: harsh midday sun will scorch the fronds of the boston fern and bleach their green color
+  human_label: false
+- id: e4-es-zz-plant-watering-paraphrase
+  kind: equivalent
+  text_a: Riega la planta ZZ solo cuando los 2 centimetros superiores del sustrato se hayan secado
+    por completo.
+  text_b: Riega la planta ZZ unicamente cuando los 2 centimetros superiores del sustrato se hayan
+    secado por completo.
+  human_label: true
+- id: e5-es-jade-light-paraphrase
+  kind: equivalent
+  text_a: La planta de jade necesita luz brillante y tolera varias horas de sol directo al dia.
+  text_b: La planta de jade necesita luz brillante y tolera varias horas de sol directo cada dia.
+  human_label: true
+- id: e6-es-dracaena-toxic-paraphrase
+  kind: equivalent
+  text_a: La Dracaena es toxica para gatos y perros segun la referencia citada.
+  text_b: La referencia citada indica que la Dracaena es toxica para gatos y perros.
+  human_label: true
+- id: e7-en-monstera-watering-paraphrase
+  kind: equivalent
+  text_a: Water the Monstera when the top 2 to 3 centimeters of soil have dried out.
+  text_b: Water the Monstera once the top 2 to 3 centimeters of soil have dried out.
+  human_label: true
+- id: e8-en-orchid-toxicity-paraphrase
+  kind: equivalent
+  text_a: The cited reference does not list Orchid as toxic to cats or dogs.
+  text_b: The cited reference does not list the Orchid as toxic to cats or dogs.
+  human_label: true
+- id: e9-en-philodendron-light-paraphrase
+  kind: equivalent
+  text_a: Philodendron grows best in bright, indirect light near an east- or north-facing window.
+  text_b: Philodendron grows best in bright indirect light near an east or north facing window.
+  human_label: true
+- id: e10-es-calathea-watering-paraphrase
+  kind: equivalent
+  text_a: Riega tu Calatea cuando la pulgada superior de la mezcla haya comenzado a secarse.
+  text_b: Riega tu Calatea cuando la pulgada superior de la mezcla comience a secarse.
+  human_label: true
+- id: e11-es-rubber-plant-watering-paraphrase
+  kind: equivalent
+  text_a: La planta de caucho prefiere que se seque la pulgada superior del sustrato antes de volver
+    a regar.
+  text_b: La planta de caucho prefiere que la pulgada superior del sustrato se seque antes de regar
+    de nuevo.
+  human_label: true
+- id: e12-en-boston-fern-light-paraphrase
+  kind: equivalent
+  text_a: The Boston fern grows best in bright, indirect light and tolerates moderate shade.
+  text_b: The Boston fern grows best in bright indirect light and tolerates moderate shade.
+  human_label: true
+- id: e13-es-monstera-watering-vs-toxicity
+  kind: equivalent
+  text_a: Riega la Monstera cuando los 2 a 3 centimetros superiores del sustrato se hayan secado.
+  text_b: La Monstera es toxica para gatos y perros; la ingestion puede causar irritacion bucal.
+  human_label: false
+- id: e14-en-pothos-light-vs-repotting
+  kind: equivalent
+  text_a: Pothos grows best in bright, indirect light and keeps its variegation strongest under those
+    conditions.
+  text_b: Repot a Pothos every one to two years, or when roots begin circling the pot.
+  human_label: false
+- id: e15-es-orchid-vs-fern-watering
+  kind: equivalent
+  text_a: Riega la Orquidea cada siete a diez dias, dejando que el sustrato se seque un poco entre
+    riegos.
+  text_b: El helecho de Boston necesita agua dos o tres veces por semana en una habitacion calida
+    y luminosa.
+  human_label: false
+- id: e16-es-brown-tips-synonym-paraphrase
+  kind: equivalent
+  text_a: Las puntas marrones de las hojas suelen deberse a la baja humedad.
+  text_b: El resecamiento de las puntas foliares casi siempre se origina por ambientes poco humedos.
+  human_label: true
+- id: e17-en-root-rot-synonym-paraphrase
+  kind: equivalent
+  text_a: Standing water in the saucer causes the roots to rot.
+  text_b: Letting the pot sit in a puddle leads to decayed roots.
+  human_label: true

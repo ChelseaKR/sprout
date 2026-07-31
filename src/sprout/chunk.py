@@ -73,6 +73,19 @@ def _windows(sentences: list[str], max_words: int, overlap_words: int) -> list[s
     return windows
 
 
+def section_by_topic_slug(text: str, default_topic: str, topic_slug: str) -> str | None:
+    """Return the body of the ``## <topic>`` section whose slug matches, or ``None``.
+
+    Public wrapper around :func:`_sections` for callers outside the chunker (e.g.
+    ``toxicity.check_consistency``) that need one named section's raw text rather than
+    the full chunked-and-windowed passage set.
+    """
+    for topic, body in _sections(text, default_topic):
+        if slugify(topic) == topic_slug:
+            return body
+    return None
+
+
 def chunk_document(doc: Document, max_words: int, overlap_words: int) -> list[Chunk]:
     """Chunk a document into topic-aligned, sentence-bounded passages."""
     chunks: list[Chunk] = []

@@ -1,0 +1,632 @@
+{
+  "target_topics": [
+    "watering",
+    "light",
+    "toxicity",
+    "soil-and-repotting",
+    "common-problems"
+  ],
+  "species_count": 16,
+  "document_count": 32,
+  "completeness": [
+    {
+      "species": "aloe",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "aloe",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "boston-fern",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "boston-fern",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "calathea",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "calathea",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "dracaena",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "dracaena",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "english-ivy",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "english-ivy",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "fiddle-leaf-fig",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "fiddle-leaf-fig",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "jade-plant",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "jade-plant",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "monstera",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "monstera",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "orchid",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "orchid",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "peace-lily",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "peace-lily",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "philodendron",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "philodendron",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "pothos",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "pothos",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "rubber-plant",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "rubber-plant",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "snake-plant",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "snake-plant",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "spider-plant",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "spider-plant",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "zz-plant",
+      "language": "en",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    },
+    {
+      "species": "zz-plant",
+      "language": "es",
+      "present_topics": [
+        "watering",
+        "light",
+        "toxicity",
+        "soil-and-repotting",
+        "common-problems"
+      ],
+      "missing_topics": [],
+      "extra_topics": []
+    }
+  ],
+  "parity_issues": [
+    {
+      "species": "aloe",
+      "kind": "untranslated-heading",
+      "detail": "section 1 heading 'Watering' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "aloe",
+      "kind": "untranslated-heading",
+      "detail": "section 2 heading 'Light' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "aloe",
+      "kind": "untranslated-heading",
+      "detail": "section 3 heading 'Toxicity' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "aloe",
+      "kind": "untranslated-heading",
+      "detail": "section 4 heading 'Soil and repotting' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "aloe",
+      "kind": "untranslated-heading",
+      "detail": "section 5 heading 'Common problems' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "boston-fern",
+      "kind": "untranslated-heading",
+      "detail": "section 1 heading 'Watering' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "boston-fern",
+      "kind": "untranslated-heading",
+      "detail": "section 2 heading 'Light' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "boston-fern",
+      "kind": "untranslated-heading",
+      "detail": "section 3 heading 'Toxicity' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "boston-fern",
+      "kind": "untranslated-heading",
+      "detail": "section 4 heading 'Soil and repotting' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "boston-fern",
+      "kind": "untranslated-heading",
+      "detail": "section 5 heading 'Common problems' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "calathea",
+      "kind": "untranslated-heading",
+      "detail": "section 1 heading 'Watering' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "calathea",
+      "kind": "untranslated-heading",
+      "detail": "section 2 heading 'Light' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "calathea",
+      "kind": "untranslated-heading",
+      "detail": "section 3 heading 'Toxicity' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "calathea",
+      "kind": "untranslated-heading",
+      "detail": "section 4 heading 'Soil and repotting' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "calathea",
+      "kind": "untranslated-heading",
+      "detail": "section 5 heading 'Common problems' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "jade-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 1 heading 'Watering' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "jade-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 2 heading 'Light' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "jade-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 3 heading 'Toxicity' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "jade-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 4 heading 'Soil and repotting' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "jade-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 5 heading 'Common problems' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "orchid",
+      "kind": "untranslated-heading",
+      "detail": "section 1 heading 'Watering' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "orchid",
+      "kind": "untranslated-heading",
+      "detail": "section 2 heading 'Light' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "orchid",
+      "kind": "untranslated-heading",
+      "detail": "section 3 heading 'Toxicity' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "orchid",
+      "kind": "untranslated-heading",
+      "detail": "section 4 heading 'Soil and repotting' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "orchid",
+      "kind": "untranslated-heading",
+      "detail": "section 5 heading 'Common problems' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "philodendron",
+      "kind": "untranslated-heading",
+      "detail": "section 1 heading 'Watering' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "philodendron",
+      "kind": "untranslated-heading",
+      "detail": "section 2 heading 'Light' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "philodendron",
+      "kind": "untranslated-heading",
+      "detail": "section 3 heading 'Toxicity' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "philodendron",
+      "kind": "untranslated-heading",
+      "detail": "section 4 heading 'Soil and repotting' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "philodendron",
+      "kind": "untranslated-heading",
+      "detail": "section 5 heading 'Common problems' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "pothos",
+      "kind": "untranslated-heading",
+      "detail": "section 1 heading 'Watering' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "pothos",
+      "kind": "untranslated-heading",
+      "detail": "section 2 heading 'Light' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "pothos",
+      "kind": "untranslated-heading",
+      "detail": "section 3 heading 'Toxicity' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "pothos",
+      "kind": "untranslated-heading",
+      "detail": "section 4 heading 'Soil and repotting' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "pothos",
+      "kind": "untranslated-heading",
+      "detail": "section 5 heading 'Common problems' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "zz-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 1 heading 'Watering' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "zz-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 2 heading 'Light' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "zz-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 3 heading 'Toxicity' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "zz-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 4 heading 'Soil and repotting' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    },
+    {
+      "species": "zz-plant",
+      "kind": "untranslated-heading",
+      "detail": "section 5 heading 'Common problems' in the .es.md file matches the en heading verbatim (likely untranslated)"
+    }
+  ],
+  "lint_issues": []
+}

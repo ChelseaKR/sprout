@@ -57,6 +57,13 @@ class DatasetItem(_Strict):
     expected_behavior: ExpectedBehavior | None = None
     rationale: str = ""
 
+    # EXP-05: optional per-case season/light selector, replayed through
+    # ``Assistant.answer`` exactly like a real caller's flags — lets a case assert that
+    # the qualifier changed which cited sentence was selected (e.g. a winter-vs-default
+    # pair sharing the same ``question``).
+    season: str | None = None
+    light: str | None = None
+
     target_response: TargetResponse | None = None
 
     # groundedness / accuracy
@@ -77,6 +84,17 @@ class DatasetItem(_Strict):
     # multilingual
     pair_id: str | None = None
     is_reference: bool = False
+
+    # conversation (EXP-07: multi-turn, history as a selector never a source)
+    # Prior user turns replayed, in order, before `question`, to build the session's
+    # selector context (species-slug/topic/language) the way a live chat session would —
+    # never authored as ground truth text, only replayed as questions through the live
+    # engine. A case participates in the `conversation` suite only when this is non-empty.
+    history: list[str] = []
+    # The canonical species slug the *follow-up* (`question`) must resolve to and cite. For
+    # adversarial history-injection cases this is deliberately a *different* species than the
+    # one named in `history`, proving the prior turn's fact cannot leak into this answer.
+    expected_species: str | None = None
 
 
 class Dataset(BaseModel):

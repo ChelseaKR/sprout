@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="4" failures="1"><testsuite name="sprout-eval" tests="4" failures="1"><testcase classname="sprout.eval" name="groundedness"></testcase><testcase classname="sprout.eval" name="refusal"></testcase><testcase classname="sprout.eval" name="calibration"><failure message="score 0.351 vs threshold 0.150">ECE=0.351; abstention_below_0.25_enforced=True</failure></testcase><testcase classname="sprout.eval" name="herb-actionable-advice"></testcase></testsuite></testsuites>

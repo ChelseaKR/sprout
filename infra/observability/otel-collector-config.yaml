@@ -1,0 +1,46 @@
+# OTel Collector pipeline for local dev — STANDARDS/OBSERVABILITY-STANDARD.md §7.
+# `memory_limiter` first, per the standard, so a runaway span/metric burst degrades by
+# dropping data rather than OOM-killing the Collector.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 200
+    spike_limit_mib: 50
+  batch:
+    timeout: 5s
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: local-dev
+        action: upsert
+
+exporters:
+  # Tempo's OTLP-ingest port (its distributor), not its query API port (3200, exposed to
+  # the host separately for Grafana's Tempo datasource).
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+    tls:
+      insecure: true
+  prometheusremotewrite/mimir:
+    endpoint: http://mimir:9009/api/v1/push
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [otlphttp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [prometheusremotewrite/mimir]

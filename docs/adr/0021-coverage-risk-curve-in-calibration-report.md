@@ -1,4 +1,4 @@
-# 13. Coverage/risk curve in the calibration report (E4)
+# 21. Coverage/risk curve in the calibration report (E4)
 
 - Status: Accepted
 - Date: 2026-07-09

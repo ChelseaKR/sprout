@@ -9,11 +9,10 @@
 > surfaces something the existing docs don't cover, it is tagged **[NET-NEW]**.
 >
 > **Status context.** Sprout is `In build` (Phase 3). The *engine* (pipeline, five
-> eval suites, guards, fail-closed loader, providers) exists; much of the *committed
-> content* (synthetic corpus, 120+ cases, baseline scoreboard, model card, ACR,
-> red-team report, deployed UI) is outstanding per [`docs/ROADMAP.md`](ROADMAP.md).
-> Several top items below are therefore "finish what's specced," reframed and
-> re-prioritized by who is hurt when it's missing.
+> eval suites, guards, fail-closed loader, providers) exists. The synthetic corpus,
+> 120+ cases, baseline scoreboard, model card, ACR, red-team report, and deployed UI
+> are now committed; remaining gaps are tracked in [`docs/ROADMAP.md`](ROADMAP.md).
+> Several items below are retained as the research record that drove that work.
 >
 > **Synthetic-data caveat.** Personas are synthetic; this backlog is a hypothesis set
 > to validate, not validated demand. See the warning in [`USER-RESEARCH.md`](USER-RESEARCH.md).
@@ -46,19 +45,19 @@ Priority: **P0** now · **P1** next · **P2** soon. Effort: **S** ≈ an afterno
 | R1 | **Author & commit the synthetic CC0 corpus + dated manifest**, prioritizing (a) the top beginner houseplants and (b) the highest-call-volume *toxic* plants (lilies, sago palm, pothos, philodendron, azalea, tulip) so the safety suite has real toxicity refs to cite | A1,A2,A4,B1,B2 | P0 | L | EV1,EV2,EV4 · **[corroborates ROADMAP Phase 1]** |
 | R2 | **Author the 120+ YAML cases + commit the baseline scoreboard** (mediocre numbers shown, not hidden); wire the CI smoke suite of corpus-derived questions | C1,C2,E1 | P0 | L | EV6 · **[corroborates ROADMAP Phase 2]** |
 | R3 | **Commit the model card + data card** stating limits plainly: corpus coverage gaps, extractive-but-context-incomplete risk, and "non-toxic ≠ safe" | E1,B1,C2 | P0 | M | EV1,EV3 · **[corroborates ROADMAP Phase 3]** |
-| R4 | **Deploy the accessible UI behind a real URL** with the reference-implementation banner **and commit the ACR** (VPAT 2.5 Rev 508) | D1,A4,A5(→D1) | P1 | M | EV10 · **[corroborates ROADMAP Phase 3]** |
+| R4 | **Deploy the accessible UI behind a real URL** with the reference-implementation banner **and commit the ACR** (VPAT 2.5 Rev 508) | D1,A4,A5(→D1) | P1 | M | EV10 · **[corroborates ROADMAP Phase 3] · [DONE]** |
 | R5 | **Commit the judge-calibration probe set + κ** and the **OWASP-LLM red-team report** | C1,C2 | P1 | M | EV6,EV7 · **[corroborates ROADMAP Phase 2/3]** |
 | R6 | **Reconcile the photo-ID status drift**: remove/replace the "Not a plant-ID-from-photo tool" non-goal in [`RESPONSIBLE-TECH-AUDITS.md`](RESPONSIBLE-TECH-AUDITS.md) §A, and add a **photo-ID + reminders privacy/DPIA row** (Pl@ntNet egress, image-not-retained, `var/reminders.json` local state) to §C | E1,A3 | P1 | S | EV9 · **[NET-NEW]** (doc-consistency gap; complements [ADR-0010](adr/0010-photo-plant-id-as-selector-not-fact-source.md)/[ADR-0011](adr/0011-local-first-reminder-scheduler.md)) |
 | R7 | **Add an explicit "non-toxic ≠ safe" disclosure** for low-toxicity plants (mild-GI-upset cases) so the never-assert-safe rule covers the *subtle* case, EN+ES; add the phrase to the safety deny-list review | A2,B1,B2 | P1 | S | EV2,EV3 · **[NET-NEW]** |
 | R8 | **Surface photo-ID uncertainty in the UI**: show the visual-match label + the abstain-on-low-confidence path, screen-reader-announced; emit a "species not in corpus → fallback" message | A3,D1 | P1 | S | EV9 · **[corroborates ADR-0010]** (extend) |
-| R9 | **State the reminder honest-limits in-product** (local-only, no sync, no push) and verify the reminders panel passes the SR a11y gate | E1,D1 | P2 | S | — · **[corroborates ADR-0011]** |
+| R9 | **Clarify the reminder boundary in-product**: household reminders belong in Family Greenhouse; retain the local CLI/API contract without promoting it in Sprout's public web surface | E1,D1 | P2 | S | — · **[corroborates ADR-0011; resolved by ADR-0015]** |
 | R10 | **Make the eval job a required CI status check** with per-item "why it failed" traces surfaced in the report | C1,E1 | P2 | S | EV6 · **[corroborates ROADMAP Phase 2]** |
 
 ## Expansion backlog (new capability)
 
 | ID | Expansion | Personas | Pri | Effort | Evidence / tag |
 |---|---|---|---|---|---|
-| E1 | **Toxicity-coverage eval slice + report panel**: assert the corpus cites a toxicity reference for every ASPCA top-N pet-toxic plant, and that "is X safe for my cat" *always* routes and *never* certifies | B1,A2,C1 | P1 | M | EV2,EV3 · **[NET-NEW]** |
+| E1 | **Toxicity-coverage eval slice + report panel**: assert the corpus cites a toxicity reference for every ASPCA top-N pet-toxic plant, and that "is X safe for my cat" *always* routes and *never* certifies | B1,A2,C1 | P1 | M | EV2,EV3 · **[NET-NEW]** · **[DONE]** |
 | E2 | **Urgency-forward routing for ingestion** ("my cat ate a lily petal" → call-now framing + the >18h fatality window, *without* giving veterinary advice), localized EN/ES | B1,A2 | P1 | S | EV2,EV5 · **[NET-NEW]** |
 | E9 | **Standardized vet/poison-control escalation card** on every toxicity answer/refusal: ASPCA APCC (888-426-4435) + Pet Poison Helpline (855-764-7661) + "what to tell them: plant, amount, time", accessible + localized | B1,A2,D1 | P1 | S | EV4,EV5 · **[NET-NEW]** |
 | E3 | **External-suite comparison/ablation**: benchmark Sprout's grounding-by-construction + deterministic safety against ≥1 of Ragas/DeepEval/ALCE-style citation precision/recall; publish the (saturation-aware) result | C2 | P2 | L | EV6,EV7 · **[NET-NEW]** |
@@ -82,7 +81,7 @@ C1 at once.
 
 **Next (P1 — make safety loud and prove the claims).** R7 + E9 + E2 (non-toxic≠safe
 disclosure, escalation card, urgency-forward routing) harden the keystone control with
-framing the research demands; R4 + R5 (deploy UI + ACR, judge-κ + red-team) turn three
+framing the research demands; R4 + R5 (deployed UI + ACR, judge-κ + red-team) turn three
 self-claims into artifacts; R6 + R8 reconcile the photo-ID docs and surface its
 uncertainty; E1 adds the toxicity-coverage slice.
 
@@ -176,15 +175,25 @@ only when explicitly requested. Wired up as `sprout freshness [--check-links]`
 `pytest tests/test_freshness.py -q`, `ruff check`, `mypy` all green; `sprout freshness`
 exits 0 against the bundled 2026-05-01 corpus.
 
+**R9 superseded and resolved by ADR-0015 (2026-07-16).** The earlier implementation put a
+local-only reminders panel in `web/dist/index.html` and documented its no-sync/no-push limits.
+The product-boundary review found that even an honestly limited panel duplicated Family
+Greenhouse's task domain. The public Sprout surface now carries no reminder UI or household
+state; the tested local CLI/API contract remains available for compatibility. Verify with
+`uv run sprout a11y-check web/dist/index.html` and
+`uv run pytest tests/test_server.py::test_shipped_ui_is_a_stateless_reference_surface -q`.
+
+Shipped: **E1** toxicity-coverage eval slice (`src/sprout/eval/suites/toxicity_coverage.py`) — a deterministic, corpus-level suite asserting every ASPCA top-N pet-toxic plant in the corpus (aloe, dracaena, english-ivy, fiddle-leaf-fig, jade-plant, monstera, peace-lily, philodendron, pothos, rubber-plant, snake-plant, zz-plant) has an English document with a `## Toxicity` section that mentions toxicity and routes to a vet and a poison-control line; auto-registers a `toxicity-coverage` report panel via the existing `report.py` suite-iteration. Complements the pre-existing `safety` suite, which already gates the *live answer* on never certifying "safe" and always routing. Verify: `make verify` green (lint, type, test with 95% coverage, eval, a11y all pass); `docs/audits/eval-report.md` shows `toxicity-coverage` — ✅ PASS, n=12.
+
 ## Implementation status — 2026-07-09
 Shipped: **E4** coverage-vs-risk (selective-prediction) curve in the calibration report —
-`sprout.confidence.coverage_risk_curve()` (ADR-0013) computes, at a fixed set of confidence
+`sprout.confidence.coverage_risk_curve()` (ADR-0021) computes, at a fixed set of confidence
 thresholds including the engine's own 0.25 `abstain_threshold`, what fraction of labeled
 calibration cases would be answered (coverage) and what fraction of those would be wrong
 (risk); the `calibration` eval suite (`eval/suites/calibration.py`) appends the curve to its
 existing `SuiteResult.segments` table alongside the reliability bins, so `report.py` needed
 no changes to render it. Report-only: the suite's own PASS/FAIL stays keyed to ECE and
-abstention exactly as before, per ADR-0013's reasoning. Verify: `pytest tests/test_confidence.py
+abstention exactly as before, per ADR-0021's reasoning. Verify: `pytest tests/test_confidence.py
 -q`, `ruff check`, `mypy` all green; `sprout eval` regenerates `docs/audits/eval-report.md`
 with the new `coverage≥…` segment rows under `calibration`, and the baseline regression check
 (`diff_against_baseline`) reports no issues — purely additive.

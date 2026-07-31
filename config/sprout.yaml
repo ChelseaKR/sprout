@@ -16,7 +16,7 @@ retrieval:
   top_k: 6
   min_score: 0.12                 # below this, refuse rather than pad
   embedding_dim: 512
-  embedding_provider: deterministic   # deterministic (offline) | bedrock (Titan)
+  embedding_provider: deterministic   # deterministic (offline hashing) | static (offline curated EN/ES vectors, ADR-0017) | bedrock (Titan)
   hybrid: true                    # fuse dense + BM25 via reciprocal rank fusion
   rrf_k: 60
   dedup_threshold: 0.92
@@ -54,10 +54,22 @@ generation:
   max_sentences: 3
   relevance_floor: 0.30
   support_overlap: 0.66           # citation guard: a sentence must be this covered by its chunk
-  # model: anthropic.claude-3-5-haiku-20241022-v1:0   # set when provider != deterministic
+  # model: anthropic.claude-haiku-4-5-20251001-v1:0   # provider: bedrock
+  # model: claude-haiku-4-5-20251001                  # provider: anthropic (native)
   region: us-west-2
-  max_cost_usd: 0.05
+  max_cost_usd: 0.05             # per-answer preflight ceiling; unpriced models refuse
   redact_query_pii: false         # redact PII before sending to a network provider
+  # EXP-04 (docs/adr/0018): an additional cross-encoder NLI entailment gate behind the
+  # citation guard, for the cloud path only — provider must not be "deterministic" and
+  # nli.model_sha256 must be pinned, enforced at config load (fail closed).
+  support_verifier: lexical       # lexical (default, zero-dependency) | nli
+  # nli:
+  #   model_id: cross-encoder/nli-deberta-v3-xsmall
+  #   revision: main               # pin to a commit sha, not a branch, in production
+  #   onnx_filename: onnx/model.onnx
+  #   model_sha256: "<sha256 of the pinned onnx file — required to enable nli>"
+  #   entail_threshold: 0.5
+  #   entailment_label_index: 1    # this checkpoint's "entailment" index; verify per model
 
 identification:                   # photo plant-ID -> grounded care lookup
   provider: offline               # offline (no network, always falls back) | plantnet
@@ -84,6 +96,13 @@ confidence:
   low_confidence_threshold: 0.50  # below this, answer but flag for human review (per ADR-0012)
   reliability_bins: 10
 
+review:                           # local review console (EXP-17): OFF by default -- see
+  enabled: false                  # docs/RESPONSIBLE-TECH-AUDITS.md section C and ADR-0020 before
+  path: var/review/queue.json     # enabling. Stores question text on this machine only;
+  max_items: 500                  # nothing is uploaded. A maintainer opts in with `enabled:
+  capture_on_low_confidence: true # true` to queue flagged/refused traces for `sprout review`.
+  capture_on_refusal: true
+
 languages:
   supported: [en, es]             # first entry is the reference language for parity
 
@@ -91,12 +110,15 @@ server:
   host: 127.0.0.1
   port: 8000
   max_question_chars: 500
-  session_memory: 4
 
 observability:
   log_format: text                # text | json (Tier C offline CLI; Tier A for the API)
-  tier: C
+  tier: C                         # C (offline CLI, default) | A (the optional serverless
+                                   # API, infra/ — turns on OTel traces/RED metrics; see
+                                   # docs/ROADMAP.md's Observability tier section)
   service_name: sprout
+  service_version: 0.1.0
+  deployment_environment: production
 
 store:
   path: var/index.json

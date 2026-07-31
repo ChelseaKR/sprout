@@ -1,8 +1,10 @@
 # Responsible-Tech Audits — Sprout
 
-Instantiates [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md).
+Instantiates `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`.
 Last regenerated: **2026-06-22** (photo-ID + reminders DPIA/non-goal reconciliation
-**2026-06-30**, per ADR-0010/ADR-0011). Author: Chelsea Kelly-Reif.
+**2026-06-30**, per ADR-0010/ADR-0011; conversation-memory data-inventory row added
+**2026-07-08**, per EXP-07; review-console DPIA delta **2026-07-08**, per
+ADR-0020). Author: Chelsea Kelly-Reif.
 
 This document supplies the *frame* (what could go wrong, who is hurt, what we commit to)
 and the AI-governance scaffolding. It does **not** restate numeric thresholds: every gate
@@ -19,7 +21,7 @@ Each control below is marked **AUTO** (mechanically checkable, merge-blocking in
 | --- | --- | --- |
 | A Ethics | **applies** | this doc §A; non-goals below |
 | B Bias & fairness | **applies** | this doc §B; EN/ES parity is a first-class segment |
-| C Privacy (DPIA) | **applies** | this doc §C; future-household-data DPIA staged, not yet active |
+| C Privacy (DPIA) | **applies** | this doc §C; minimized household-data Phase A active behind a feature flag |
 | D Transparency | **applies** | this doc §D; model card `docs/cards/model-card.md` |
 | E Accessibility | **applies** | ACR `docs/accessibility/ACR.md` (VPAT 2.5 Rev 508) |
 | F Security | **applies** | threat model `docs/THREAT-MODEL.md` |
@@ -27,10 +29,9 @@ Each control below is marked **AUTO** (mechanically checkable, merge-blocking in
 | I18N | **applies** | EN/ES key + capability parity; see §B |
 
 No audit is `N/A`. This is an AI/RAG/eval repo; per the framework's applicability matrix
-every column is `yes`. Family Greenhouse household-data personalization (which would raise
-the privacy and bias surface materially) is **deferred to a later phase**; its audit deltas
-are pre-staged in §B and §C as "future-state" rows so the work sequences *before* the
-feature, not after.
+every column is `yes`. Family Greenhouse read-only personalization is implemented behind a
+feature flag with the privacy, provenance, and ASVS L2 deltas below. Proactive notification
+and confirmed-write phases remain deferred.
 
 ---
 
@@ -133,7 +134,7 @@ people (see the inferred-attributes stance below).
 - *String/catalog parity*: every user-facing string exists in both `en` and `es` bundles —
   refusal, disclosure, safety-route, forbidden-safe phrases, toxicity keywords, route terms
   (`PromptConfig`, `GuardsConfig`). The catalog key + placeholder parity gate is owned by
-  [`INTERNATIONALIZATION-STANDARD.md`](../../STANDARDS/INTERNATIONALIZATION-STANDARD.md).
+  `INTERNATIONALIZATION-STANDARD.md`.
 - *Capability parity*: the **multilingual eval suite** checks that a Spanish answer preserves
   the facts and citations of its English mirror, and the harness enforces
   **|EN − ES| ≤ 5pp pass-rate parity** as a gate (README standards table; threshold owned by
@@ -157,10 +158,9 @@ accessibility requirement, see §E). The synthetic CC0 corpus is authored to thi
 than scraped, which removes the source-bias surface of web-scraped care lore. Maps to NIST AI
 600-1 Risk 6 (Harmful Bias & Homogenization).
 
-**Future-state (Family Greenhouse, deferred).** When household data is added, the bias audit
-gains a personalization-fairness row: the assistant must not let household data override or
-fabricate a cited fact, and must not infer household composition. Pre-staged as a
-`personalization` eval suite requirement in CLAUDE.md; it sequences before the feature.
+**Family Greenhouse Phase A.** The personalization-fairness rule is active: household data
+may select corpus passages but may not override or fabricate a cited fact, and the assistant
+must not infer household composition. Strict schemas and provenance labels enforce the rule.
 
 **Enforcement.**
 - **AUTO** — EN/ES capability parity (multilingual suite, ≤ 5pp gate) and string/placeholder
@@ -185,13 +185,26 @@ no personal data to protect**, by design.
 | Operational logs | health/debugging | stderr / log sink | per deployment | operator |
 | Photo bytes (photo-ID, opt-in) | *select* a candidate species to route to the corpus (ADR-0010) | **not persisted**; the offline default does no I/O; the `plantnet` provider streams the image once to the allowlisted Pl@ntNet endpoint and retains nothing | duration of the request | the process; Pl@ntNet **only if** the `plantnet` provider is enabled |
 | Care reminders (opt-in) | user-set watering/fertilizing schedule the user asked Sprout to remember (ADR-0011) | **one local JSON file** (`var/reminders.json`) on the user's own device; created lazily on first use | until the user deletes it; **never uploaded**, no sync, no push | the local process only |
+| Review queue (opt-in, **off by default**) | maintainer-side labeling of flagged/refused traces feeding the judge probe set, confidence re-fit, and draft eval cases (ADR-0020, EXP-17) | **one local JSON file** (`var/review/queue.json`) on the maintainer's own machine; written only when `review.enabled: true`; created lazily on first capture | until the maintainer deletes it; **never uploaded**, no sync, no push; exports go to `var/review/*.yaml` (also local, never auto-merged into a committed file) | the local maintainer process only |
 | API keys (cloud + Pl@ntNet seams) | auth to Bedrock/Anthropic; `PLANTNET_API_KEY` for the photo seam | **env vars only**, never config/repo | n/a | operator |
+| Conversation turn selector (opt-in, EXP-07) | resolve which species/topic a follow-up question is about | **in-memory only** (`conversation.SessionMemory`), keyed by a caller-supplied opaque session id; holds only `{species_slug, topic, language}` per turn — **never** question or answer text | last `ConversationConfig.session_memory` turns (default 4) per session, cleared on process restart | the process |
 
 - **No query persistence in the demo.** The assistant holds the question in memory for the
   duration of a request and returns an `Answer`; nothing writes the question to disk. The
+  optional server is stateless per-request; no session state of any kind — it has **no
+  database** — there is no mutable server state to leak or subpoena (README: "No database,
+  no agentic loop"). Survivability: corpus and index rebuild from `make ingest`. If
+  multi-turn session context is ever added, EXP-07 (grounded multi-turn) is the designed
+  path — it would re-introduce this row behind its own DPIA entry, not silently.
   optional server keeps at most a small in-memory session window
-  (`ServerConfig.session_memory`, default 4) and has **no database** — there is no mutable
-  server state to leak or subpoena (README: "No database, no agentic loop"). Survivability:
+  (`ConversationConfig.session_memory`, default 4, `conversation.SessionMemory`) and has **no
+  database** — there is no mutable server state to leak or subpoena (README: "No database, no
+  agentic loop"). The window carries only a closed-vocabulary selector
+  (species-slug/topic/language) so a follow-up can resolve "what about in winter?" without
+  restating the plant; it is a fallback input to retrieval's species filter only and never
+  reaches the generator, so it can narrow which passages are searched but can never add or
+  override a cited fact (EXP-07; the adversarial proof lives in
+  `eval/suites/conversation.yaml` and `tests/test_conversation.py`). Survivability:
   corpus and index rebuild from `make ingest`.
 - **PII-free logs *by construction*.** The structured logger does not redact PII after the
   fact; it physically *cannot* log it. `obs.py` whitelists a closed set of low-cardinality
@@ -218,6 +231,19 @@ no personal data to protect**, by design.
   lazily on first use; nothing is uploaded, there is no sync and no push delivery, and
   reminder *content* (plant labels, notes) never reaches the logs — only event names and
   counts pass the whitelist logger, preserving the Tier-C PII-free posture.
+- **The review console is opt-in, OFF BY DEFAULT, and stores question text (DPIA delta for
+  ADR-0020, EXP-17).** `Answer.low_confidence`/`Answer.refused` traces are queued for
+  maintainer labeling only when a maintainer sets `review.enabled: true`; the shipped default
+  is `false`, so out of the box nothing changes and no file is created. This is the one
+  opt-in seam that deliberately captures the thing the rest of this document treats as
+  radioactive — the user's question text — so its controls are stricter than the other opt-in
+  seams above: local-only (one JSON file, `var/review/queue.json`, on the *maintainer's* own
+  machine, never the end user's), no network call anywhere in `review.py`, and the three
+  exporters (`sprout review export`) never auto-merge into a committed, gate-backing file —
+  they write to `var/review/*.yaml` for a maintainer to review and hand-merge, so a single
+  reviewer's judgment cannot silently become part of the judge-calibration or eval-suite
+  record. `capture()` does not consult config itself; the CLI caller is the single place that
+  gates on `review.enabled`, so there is one code path to audit, not several.
 
 ### Data-flow (default offline)
 
@@ -235,18 +261,18 @@ the `plantnet` photo-ID provider — and both fail closed; the photo seam stream
 once and retains nothing (see the bullets above). Reminders add **local** state only and
 never leave the device.
 
-### Sentinel-PII plan (future household-data path — Family Greenhouse)
+### Sentinel-PII proof (Family Greenhouse Phase A)
 
-Personalization is **deferred and opt-in**; the privacy-preserving mode (corpus-only) is the
-default. When household data is introduced, the DPIA gains:
+Personalization is **feature-flagged and opt-in**; the privacy-preserving mode (corpus-only)
+remains the default. The DPIA includes:
 - **Minimize at the boundary.** Send the model **derived, minimized context only** — species
   plus relative timings ("watered 9 days ago"), *never* names, coordinates, or photo bytes;
   cache household context for the session only; request the narrowest scope; honor revocation
   by degrading to corpus-only without error.
-- **Sentinel-PII data-flow proof (planned AUTO-GATE).** The portfolio's signature pattern:
+- **Sentinel-PII data-flow proof (AUTO-GATE).** The portfolio's signature pattern:
   inject sentinel PII into *every* household field and assert in an isolated CI job that none
   of it reaches the model prompt or the logs. This mirrors `ledger`'s no-outing sentinel test
-  and is pre-staged so it lands *with* the feature, gating it, not after.
+  and landed with the feature in both repositories.
 - **Provenance rule.** Every personalized sentence is tagged `corpus` (must cite) or `from
   your Greenhouse` (must trace to a fetched record); anything untagged does not render. The
   guard already emits a `provenance` tag on every `AnswerSentence` (`guards.citation_guard`
@@ -262,9 +288,9 @@ lands, because it would process personal data and be exposed to external users.
   test (`tests/test_server.py::test_json_logs_are_valid_json_and_pii_free_end_to_end`, added
   2026-07-05 — parses every emitted log line as JSON over a real request carrying sentinel PII
   and asserts only `_ALLOWED_FIELDS` appear; the raw question text never reaches a line) (rule
-  owned by [`OBSERVABILITY-STANDARD.md`](../../STANDARDS/OBSERVABILITY-STANDARD.md));
+  owned by `OBSERVABILITY-STANDARD.md`);
   secret scanning (gitleaks pre-commit **and** CI, no `|| true`) and the no-secrets-in-config
-  invariant per [`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md).
+  invariant per `SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`.
   Sentinel-PII job is AUTO once household data ships.
 - **REVIEW** — DPIA sign-off (this section), committed dated; AI System Impact Assessment
   sign-off before the household-data phase.
@@ -290,8 +316,8 @@ path. An empty survivor set is a refusal, not a guess.
 **Confidence signposting.** Each answer carries a calibrated confidence in [0,1] computed from
 *retrieval evidence* (best cosine + margin over the runner-up), deliberately **not** from
 answer fluency, which would reward confident nonsense (`confidence.score_confidence`). Two
-thresholds turn the score into behavior: below `abstain_threshold` (default 0.25) the
-assistant **refuses rather than guesses**; below `low_confidence_threshold` (default 0.50) it
+thresholds turn the score into behavior: below `abstain_threshold` (default 0.25)<!-- claim:responsible-tech-abstain-threshold --> the
+assistant **refuses rather than guesses**; below `low_confidence_threshold` (default 0.50)<!-- claim:responsible-tech-low-confidence-threshold --> it
 answers but flags the answer for review (`Answer.low_confidence`). Values per
 [ADR-0012](adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md), which supersedes
 ADR-0005 — the earlier 0.45/0.62 figures cited here never matched the shipped, calibrated
@@ -321,7 +347,7 @@ The classification decision is committed (see Governance §).
 
 **Enforcement.**
 - **AUTO** — the citation/grounding guard (no ungrounded code path; codified portfolio-wide in
-  [`AI-EVALUATION-STANDARD.md`](../../STANDARDS/AI-EVALUATION-STANDARD.md)); disclosure-string
+  `AI-EVALUATION-STANDARD.md`); disclosure-string
   presence tests (the not-vet-advice and safety-route strings must render); calibration ECE +
   reliability checked in the eval gate; model-card YAML front-matter completeness
   (`tests/test_model_card.py`, added 2026-07-05 — a prior version of this line claimed this
@@ -353,15 +379,12 @@ Authentication). A committed **ACR (VPAT 2.5 Rev 508)** at
 508 Chapters 5–6, and the Functional Performance Criteria; it is regenerated each release.
 
 **Enforcement** (thresholds owned by
-[`ACCESSIBILITY-STANDARD.md`](../../STANDARDS/ACCESSIBILITY-STANDARD.md)):
+`ACCESSIBILITY-STANDARD.md`):
 - **AUTO, merge-blocking today** — the deterministic structural self-check (`sprout a11y-check`)
   on both the chat UI and the HTML report, wired into `make verify` and the required `ci-gate`.
-- **Corrected 2026-07-05 — not yet AUTO, despite prior wording here:** axe-core
-  (`wcag2a,wcag2aa,wcag22aa`) and `pa11y-ci` both run only inside the `pa11y` CI job, which is
-  `continue-on-error: true` and excluded from `ci-gate` (advisory, not blocking); Lighthouse a11y
-  scoring is not wired at all. This paragraph previously claimed `pa11y-ci` was "blocking (no
-  `continue-on-error`/`\|\| true`)," which was false — see `docs/ROADMAP.md` for the tracked gap
-  to wire these for real (P1-3).
+- **AUTO, merge-blocking in CI:** axe-core plus `pa11y-ci` scan the served UI, and Lighthouse
+  enforces an accessibility score of at least 0.95 on the UI and HTML eval report. Both jobs are
+  dependencies of the required `ci-gate` check.
 - **REVIEW, planned but not yet performed** — the screen-reader walkthrough (NVDA+Firefox/Chrome,
   VoiceOver+Safari) and the ARIA APG pattern audit for the chat widget have not yet been carried
   out; no dated artifact exists for either yet. ACR re-committed (this is a genuine review-gated
@@ -373,8 +396,8 @@ Authentication). A committed **ACR (VPAT 2.5 Rev 508)** at
 
 **Frame: this audit adds the narrative threat model and residual-risk register on top of the
 mechanical scanners.** Gates live in
-[`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`](../../STANDARDS/SECURITY-AND-SUPPLY-CHAIN-STANDARD.md)
-and [`CI-CD-STANDARD.md`](../../STANDARDS/CI-CD-STANDARD.md). The full STRIDE threat model and
+`SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`
+and `CI-CD-STANDARD.md`. The full STRIDE threat model and
 residual-risk register live in [`docs/THREAT-MODEL.md`](THREAT-MODEL.md); summary here.
 
 **ASVS target = Level 1 (declared, with reason).** The portfolio default target is **ASVS 5.0
@@ -383,8 +406,14 @@ is neither**: it holds no user PII (§C), persists no state, and makes no requir
 call, so **L1 is the justified target for the offline build**. The decision is written down,
 not assumed. The moment the externally-exposed surface grows — the serverless API or the
 Family Greenhouse household-data path — the target **steps up to L2** (README: "household-data
-path, ASVS L2, deferred"). This is the framework's "N/A-with-reason" discipline applied to a
-posture level rather than a whole audit.
+path, ASVS L2"). The scoped review is committed at
+[`docs/audits/asvs-l2-review-2026-07-12.md`](audits/asvs-l2-review-2026-07-12.md).
+The `serve` HTTP surface (`sprout.server`) is the first piece of that step: it is
+unauthenticated and public once deployed, so the L2-facing *application-layer* controls
+(rate limiting, security headers, a request-size cap, a concurrency bound) are implemented
+app-side per FIX-10 and committed as a delta checklist against the deployed surface —
+`docs/audits/asvs-l2-delta.md` — ahead of the full personalization-triggered L2
+declaration, which still waits on the Family Greenhouse household-data path per ADR-0008.
 
 **STRIDE highlights.**
 - **Tampering (corpus integrity).** The corpus is content-hashed and the manifest carries
@@ -454,6 +483,7 @@ dated artifacts; regenerated on release.
 | **EU AI Act risk classification** | EU AI Act Annex III + GPAI | **minimal-risk, not Annex III.** Rationale: a houseplant-care information assistant is not a listed high-risk use; no biometric, no employment/credit/essential-service decisioning; not a GPAI model (it *uses* a model). Decision committed, re-run on material change. | `docs/audits/eu-ai-act-classification.md` |
 | **Conformity-assessment package** | EU AI Act Art. 17/18/47 | **N/A** — not high-risk per the classification above | n/a |
 | **Red-team report** | OWASP LLM Top 10 v2.0; PyRIT/Garak | the refusal/adversarial eval suite is the standing red-team (injection, "just tell me it's fine," out-of-scope); a focused report is authored before any cloud-seam major-model release | `docs/audits/red-team-2026-06-22.md` |
+| **ASVS L2 delta (deployed HTTP surface)** | OWASP ASVS 5.0 | item-by-item delta the public `serve` API adds over the declared offline L1 (ADR-0008): rate limiting, security headers, request-size cap, concurrency bound, each mapped to code + test | `docs/audits/asvs-l2-delta.md` |
 | **Environmental footprint** | NIST AI 600-1 Risk 5; EU AI Act GPAI | offline default: **no inference cost, no training** — negligible. Cloud seam: per-call estimate surfaced via `estimated_cost_usd`; recorded in the model-card CO2 row | model-card CO2 row |
 
 **Framework versions confirmed at build time (2026-06-22):** NIST AI RMF 1.0 + GenAI Profile

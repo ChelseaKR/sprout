@@ -3,137 +3,230 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Sprout — a grounded, cited houseplant-care assistant." />
-    <title>Sprout — grounded plant-care answers</title>
+    <meta
+      name="description"
+      content="Try Sprout's cited plant-care answer pipeline and inspect the evaluation evidence behind it."
+    />
+    <title>Sprout — inspect a grounded answer</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to the question box</a>
-    <header class="banner" role="banner">
-      <p class="ref-impl">Reference implementation · answers come only from a dated, cited corpus</p>
-      <h1>Sprout <span aria-hidden="true">🌱</span></h1>
-      <p class="tagline">Ask about houseplant care. Every answer cites its source — or says it doesn't know.</p>
+    <a class="skip-link" href="#try">Skip to the live reference</a>
+
+    <header class="site-header" role="banner">
+      <div class="header-inner">
+        <a class="wordmark" href="#top" aria-label="Sprout home">
+          <span class="wordmark-mark" aria-hidden="true">S</span>
+          <span>Sprout</span>
+        </a>
+        <nav aria-label="Primary navigation">
+          <a href="#try">Try</a>
+          <a href="#evaluation">Evaluation</a>
+          <a href="#docs">Docs</a>
+        </nav>
+      </div>
     </header>
 
-    <main id="main">
-      <form id="ask-form" aria-describedby="form-help">
-        <p id="form-help" class="help">Answers are not veterinary advice. Toxicity questions are never certified “safe.”</p>
-        <label for="q">Your plant-care question</label>
-        <div class="row">
-          <input id="q" name="q" type="text" autocomplete="off" required maxlength="500"
-                 aria-describedby="form-help" placeholder="Why are my Monstera's leaves yellowing?" />
-          <button type="submit" id="ask-btn">Ask</button>
-        </div>
-        <fieldset class="lang">
-          <legend>Answer language</legend>
-          <label><input type="radio" name="lang" value="en" checked /> English</label>
-          <label><input type="radio" name="lang" value="es" /> Español</label>
-        </fieldset>
-      </form>
-
-      <section aria-labelledby="examples-h">
-        <h2 id="examples-h">Try an example</h2>
-        <ul class="examples" id="examples">
-          <li><button type="button" data-q="Why are my Monstera's leaves yellowing?">Yellowing Monstera leaves</button></li>
-          <li><button type="button" data-q="Is pothos toxic to my cat?">Is pothos toxic to my cat?</button></li>
-          <li><button type="button" data-q="How often should I water in winter?">Watering in winter</button></li>
-          <li><button type="button" data-q="¿Es tóxico el potho para los gatos?">Toxicidad del potho (ES)</button></li>
-        </ul>
-      </section>
-
-      <section aria-labelledby="answer-h">
-        <h2 id="answer-h">Answer</h2>
-        <p id="status" class="status" role="status" aria-live="polite"></p>
-        <div id="answer" class="answer" aria-live="polite"></div>
-        <div id="safety" class="safety" role="alert" hidden></div>
-        <div id="sources-wrap" hidden>
-          <h3>Sources</h3>
-          <ul id="citations" class="citations"></ul>
-        </div>
-        <p id="meta" class="meta" aria-live="polite"></p>
-      </section>
-
-      <section aria-labelledby="photo-h">
-        <h2 id="photo-h">Identify a plant from a photo</h2>
-        <p class="help">
-          A photo only <em>selects</em> the plant; the care answer below is still drawn from
-          the cited corpus. If the plant can't be identified, type its name in the box above.
-        </p>
-        <form id="photo-form">
-          <label for="photo">Plant photo (JPG or PNG)</label>
-          <input id="photo" name="photo" type="file" accept="image/png,image/jpeg" />
-          <label for="photo-q">Optional question about the plant</label>
-          <input id="photo-q" name="photo-q" type="text" autocomplete="off" maxlength="500"
-                 placeholder="Is this toxic to my cat?" />
-          <div class="row">
-            <button type="submit" id="photo-btn">Identify and answer</button>
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Grounded RAG, exposed</p>
+          <h1 id="hero-title">An answer you can inspect all the way down.</h1>
+          <p class="lede">
+            Sprout is a public reference implementation for cited, evaluated plant-care
+            answers. It renders a sentence only after the sentence survives its evidence
+            checks—and publishes the tests that hold that rule in place.
+          </p>
+          <div class="hero-actions">
+            <a class="button-link" href="#try">Try one question</a>
+            <a
+              class="text-link"
+              href="https://github.com/ChelseaKR/sprout/blob/main/docs/audits/eval-report.md"
+            >Read the evaluation report <span aria-hidden="true">↗</span></a>
           </div>
-        </form>
-        <p id="photo-status" class="status" role="status" aria-live="polite"></p>
-        <p id="photo-label" class="meta"></p>
-        <div id="photo-answer" class="answer" aria-live="polite"></div>
-        <div id="photo-safety" class="safety" role="alert" hidden></div>
-        <div id="photo-sources-wrap" hidden>
-          <h3>Sources</h3>
-          <ul id="photo-citations" class="citations"></ul>
+        </div>
+
+        <aside class="claim-chain" aria-labelledby="chain-title">
+          <p class="utility-label" id="chain-title">Claim chain</p>
+          <ol>
+            <li><span aria-hidden="true"></span><strong>Cited passage</strong><small>dated corpus</small></li>
+            <li><span aria-hidden="true"></span><strong>Verbatim sentence</strong><small>extractive output</small></li>
+            <li><span aria-hidden="true"></span><strong>Guard verified</strong><small>unsupported text drops</small></li>
+            <li><span aria-hidden="true"></span><strong>Answer rendered</strong><small>or an honest refusal</small></li>
+          </ol>
+        </aside>
+      </section>
+
+      <section class="reference-lab" id="try" aria-labelledby="try-title">
+        <div class="section-intro">
+          <p class="eyebrow">Live reference</p>
+          <h2 id="try-title">Ask the corpus, not a profile.</h2>
+          <p>
+            This surface is stateless and corpus-only. It does not know your plants, keep a
+            care schedule, or save the question. Household care belongs in Family Greenhouse.
+          </p>
+        </div>
+
+        <div class="lab-grid">
+          <div class="question-panel">
+            <form id="ask-form" aria-describedby="form-help">
+              <p id="form-help" class="help">
+                Plant-care reference only—not veterinary advice. Toxicity questions are never
+                certified “safe.”
+              </p>
+              <label for="q">Plant-care question</label>
+              <textarea
+                id="q"
+                name="q"
+                rows="3"
+                required
+                maxlength="500"
+                aria-describedby="form-help"
+                placeholder="How should I water my Monstera?"
+              ></textarea>
+
+              <div class="form-footer">
+                <fieldset class="lang">
+                  <legend>Answer language</legend>
+                  <label><input type="radio" name="lang" value="en" checked /> English</label>
+                  <label><input type="radio" name="lang" value="es" /> Español</label>
+                </fieldset>
+                <button type="submit" id="ask-btn">Inspect answer</button>
+              </div>
+            </form>
+
+            <section class="examples" aria-labelledby="examples-title">
+              <p class="utility-label" id="examples-title">Or use a test question</p>
+              <div id="examples">
+                <button type="button" data-q="How should I water my Monstera?">
+                  Watering a Monstera
+                </button>
+                <button type="button" data-q="Is pothos toxic to my cat?">
+                  Pothos and cats
+                </button>
+                <button type="button" data-q="How do I patch a bicycle tire?">
+                  Test an honest refusal
+                </button>
+                <button type="button" data-q="¿Es tóxico el potho para los gatos?">
+                  Toxicidad del potho
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <section class="evidence-panel" aria-labelledby="answer-h" aria-busy="false">
+            <div class="panel-heading">
+              <p class="utility-label">Verified output</p>
+              <span class="status-dot" aria-hidden="true"></span>
+            </div>
+            <h3 id="answer-h">Evidence appears here</h3>
+            <p id="status" class="status" role="status" aria-live="polite">
+              Ask a question to see the rendered answer, citations, freshness, and confidence.
+            </p>
+            <div id="answer" class="answer" aria-live="polite"></div>
+            <div id="safety" class="safety" role="alert" hidden></div>
+            <div id="disagreements" class="disagreement" role="status" aria-live="polite" hidden></div>
+            <div id="sources-wrap" class="sources" hidden>
+              <h4>Sources</h4>
+              <ul id="citations" class="citations"></ul>
+            </div>
+            <p id="meta" class="meta" aria-live="polite"></p>
+          </section>
         </div>
       </section>
 
-      <section aria-labelledby="reminders-h">
-        <h2 id="reminders-h">Care reminders</h2>
-        <p class="help">
-          Watering and fertilizing reminders are stored only on this device — nothing is
-          uploaded. A reminder's cadence is your own setting, not a cited fact.
+      <section class="evaluation" id="evaluation" aria-labelledby="evaluation-title">
+        <div class="section-intro compact">
+          <p class="eyebrow">Published evidence</p>
+          <h2 id="evaluation-title">Trust is a report, not a tagline.</h2>
+          <p>
+            Every run is content-addressed and fail-closed. Known misses stay visible beside
+            the passing scores.
+          </p>
+        </div>
+        <div class="evidence-grid">
+          <article>
+            <p class="metric">142</p>
+            <h3>Committed cases</h3>
+            <p>Groundedness, safety, refusal, calibration, and English/Spanish parity.</p>
+          </article>
+          <article>
+            <p class="metric">100%</p>
+            <h3>Grounded by construction</h3>
+            <p>Rendered claims must map back to the exact corpus passage they cite.</p>
+          </article>
+          <article>
+            <p class="metric">0</p>
+            <h3>Skipped verdicts</h3>
+            <p>Malformed inputs and empty suites fail the evaluation instead of disappearing.</p>
+          </article>
+        </div>
+        <p class="report-link">
+          <a href="https://github.com/ChelseaKR/sprout/blob/main/docs/audits/eval-report.md">
+            Open the current evaluation report <span aria-hidden="true">↗</span>
+          </a>
+          <span>Includes scores, thresholds, and failing examples.</span>
         </p>
-        <form id="reminder-form">
-          <div class="row">
-            <span class="field">
-              <label for="r-plant">Plant</label>
-              <input id="r-plant" name="r-plant" type="text" autocomplete="off" required
-                     maxlength="60" placeholder="pothos" />
-            </span>
-            <span class="field">
-              <label for="r-kind">Task</label>
-              <select id="r-kind" name="r-kind">
-                <option value="water">Water</option>
-                <option value="fertilize">Fertilize</option>
-                <option value="mist">Mist</option>
-                <option value="rotate">Rotate</option>
-                <option value="repot">Repot</option>
-              </select>
-            </span>
-            <span class="field">
-              <label for="r-every">Every (days)</label>
-              <input id="r-every" name="r-every" type="number" min="1" max="3650" value="7" />
-            </span>
-            <span class="field align-end">
-              <button type="submit" id="r-add-btn">Add reminder</button>
-            </span>
-          </div>
-        </form>
-        <p id="reminder-status" class="status" role="status" aria-live="polite"></p>
-        <h3>Your reminders</h3>
-        <table id="reminders-table">
-          <caption class="visually-hidden">Care reminders, with task, plant, cadence, and next due date</caption>
-          <thead>
-            <tr>
-              <th scope="col">Plant</th>
-              <th scope="col">Task</th>
-              <th scope="col">Every</th>
-              <th scope="col">Next due</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="reminders-body"></tbody>
-        </table>
-        <p id="reminders-empty" class="meta">No reminders yet.</p>
+      </section>
+
+      <section class="boundary" aria-labelledby="boundary-title">
+        <div>
+          <p class="eyebrow">Product boundary</p>
+          <h2 id="boundary-title">Sprout proves the answer. Family Greenhouse owns the home.</h2>
+        </div>
+        <div class="boundary-grid">
+          <article>
+            <h3>Sprout owns</h3>
+            <ul>
+              <li>Versioned horticulture corpus</li>
+              <li>Grounded answer and citation pipeline</li>
+              <li>Safety, calibration, and parity evaluation</li>
+              <li>Reusable CLI and API contracts</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Family Greenhouse owns</h3>
+            <ul>
+              <li>Household plants and care history</li>
+              <li>Authentication and preferences</li>
+              <li>Tasks, reminders, and notifications</li>
+              <li>Every confirmed household write</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="docs" id="docs" aria-labelledby="docs-title">
+        <div class="section-intro compact">
+          <p class="eyebrow">Build and audit</p>
+          <h2 id="docs-title">Follow the evidence into the repository.</h2>
+        </div>
+        <div class="doc-links">
+          <a href="https://sprout.chelseakr.com/ARCHITECTURE/">
+            <strong>Architecture</strong>
+            <span>Pipeline, providers, invariants</span>
+          </a>
+          <a href="https://sprout.chelseakr.com/cards/model-card/">
+            <strong>Model card</strong>
+            <span>Intended use and known limits</span>
+          </a>
+          <a href="https://sprout.chelseakr.com/ADAPT/">
+            <strong>Adapt the harness</strong>
+            <span>Swap in another cited corpus</span>
+          </a>
+          <a href="https://github.com/ChelseaKR/sprout">
+            <strong>Source code</strong>
+            <span>Apache-2.0 on GitHub</span>
+          </a>
+        </div>
       </section>
     </main>
 
     <footer role="contentinfo">
-      <p>Sprout is an independent, open-source reference implementation (Apache-2.0).
-         The bundled corpus is synthetic and CC0. This is not veterinary or medical advice.</p>
+      <p><strong>Sprout</strong> is an independent open-source reference implementation.</p>
+      <p>Synthetic CC0 corpus · Apache-2.0 · Not veterinary or medical advice.</p>
     </footer>
+
     <script src="app.js"></script>
   </body>
 </html>

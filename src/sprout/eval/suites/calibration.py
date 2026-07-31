@@ -8,7 +8,7 @@ have been a refusal. Reliability bins are reported as segments so the diagram is
 in the report.
 
 Alongside ECE, the suite also publishes a selective-prediction **coverage/risk curve**
-(RESEARCH-ROADMAP E4, ADR-0013): at each of a fixed set of confidence thresholds, what
+(RESEARCH-ROADMAP E4, ADR-0021): at each of a fixed set of confidence thresholds, what
 fraction of labeled cases would be answered (coverage) and what fraction of *those* would
 be wrong (risk). This is report-only — it does not change the suite's PASS/FAIL, which
 stays keyed to ECE and abstention, exactly as before E4 landed.

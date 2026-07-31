@@ -18,7 +18,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: Linguistic",
 ]
-authors = [{ name = "Chelsea Kelly-Reif", email = "ckellyreif@gmail.com" }]
+authors = [{ name = "Chelsea Kelly-Reif", email = "3114598+ChelseaKR@users.noreply.github.com" }]
 keywords = [
     "rag",
     "retrieval-augmented-generation",
@@ -37,24 +37,33 @@ keywords = [
 dependencies = [
     "pydantic>=2.7",
     "pyyaml>=6.0",
-    "typer>=0.12",
+    "typer>=0.27.0",
     "jinja2>=3.1",
 ]
 
 [project.optional-dependencies]
-serve = ["fastapi>=0.115", "uvicorn>=0.29", "sse-starlette>=2.1"]
-bedrock = ["boto3>=1.35"]
+serve = ["fastapi>=0.139.2", "uvicorn>=0.51.0", "sse-starlette>=2.1"]
+bedrock = ["boto3>=1.43.50"]
 anthropic = ["httpx>=0.27"]
 identify = ["httpx>=0.27"]
 lang = ["langdetect>=1.0.9"]
+observability = [
+    "opentelemetry-api>=1.27",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "opentelemetry-sdk>=1.27",
+]
+# EXP-04: NLI-grade entailment verifier for the cloud generation path (ADR-0018). CPU-only
+# ONNX inference — no torch/transformers — kept optional so the offline default install
+# stays zero-ML-dependency.
+nli = ["onnxruntime>=1.18", "tokenizers>=0.19", "huggingface-hub>=0.24", "numpy>=1.26"]
 
 [project.scripts]
 sprout = "sprout.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/ChelseaKR/sprout"
+Homepage = "https://sprout.chelseakr.com/"
 Repository = "https://github.com/ChelseaKR/sprout"
-Documentation = "https://github.com/ChelseaKR/sprout/tree/main/docs"
+Documentation = "https://sprout.chelseakr.com/"
 Changelog = "https://github.com/ChelseaKR/sprout/blob/main/CHANGELOG.md"
 
 # The eval harness ships in-repo as the `sprout.eval` subpackage (the headline
@@ -64,15 +73,18 @@ Changelog = "https://github.com/ChelseaKR/sprout/blob/main/CHANGELOG.md"
 dev = [
     "pytest>=8.2",
     "pytest-cov>=5.0",
-    "ruff>=0.6",
-    "mypy>=1.11",
+    "ruff>=0.15.22",
+    "mypy>=2.3.0",
     "pip-audit>=2.7",
-    "hypothesis>=6.100",
+    "hypothesis>=6.156.6",
     "types-pyyaml>=6.0",
     "httpx>=0.27",
-    "fastapi>=0.115",
-    "uvicorn>=0.29",
+    "fastapi>=0.139.2",
+    "uvicorn>=0.51.0",
     "sse-starlette>=2.1",
+    "opentelemetry-api>=1.27",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "opentelemetry-sdk>=1.27",
 ]
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5"]
 
@@ -86,6 +98,7 @@ include = ["src/sprout", "corpus", "eval", "config", "web/dist", "README.md", "L
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+extend-exclude = ["src/sprout/_vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "C90", "RUF"]
@@ -95,6 +108,7 @@ max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
+"src/sprout/_vendor/**/*.py" = ["RUF022", "RUF100"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -105,6 +119,16 @@ files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
 module = ["boto3.*", "botocore.*", "sse_starlette.*", "langdetect.*", "uvicorn.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["sprout._vendor.genai_telemetry.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# Optional `sprout[nli]` extra (EXP-04) — lazily imported, unstubbed, and not part of the
+# base install; see providers/bedrock.py for the identical treatment of boto3.
+module = ["onnxruntime.*", "huggingface_hub.*", "tokenizers.*", "numpy.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -124,6 +148,7 @@ filterwarnings = [
 branch = true
 source = ["sprout"]
 omit = [
+    "src/sprout/_vendor/*",
     "src/sprout/providers/bedrock.py",
     "src/sprout/providers/anthropic_native.py",
     "src/sprout/providers/plantnet.py",

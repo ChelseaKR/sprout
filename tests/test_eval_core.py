@@ -134,6 +134,29 @@ def test_deterministic_judge_contains_and_equivalent() -> None:
     assert not j.equivalent("toxic to cats", "bright indirect light").passed
 
 
+def test_deterministic_judge_catches_antonym_contradiction_without_negation() -> None:
+    """No explicit negation marker, but "safe" vs "toxic" is still a contradiction —
+    the failure mode the judge-calibration probe set (g5) flagged as a false positive."""
+    j = DeterministicJudge()
+    contradiction = j.entails("Aloe vera is safe for dogs to eat.", ["Aloe vera is toxic to dogs."])
+    assert not contradiction.passed
+    assert "polarity" in contradiction.detail
+    # High lexical overlap alone would otherwise have passed this (coverage >= threshold).
+    assert contradiction.score >= 0.5
+
+
+def test_deterministic_judge_equivalent_rejects_antonym_flip() -> None:
+    """Near-identical sentences that flip a safety antonym are not equivalent, even
+    though jaccard similarity is high (probe e3: "toxico" vs "seguro")."""
+    j = DeterministicJudge()
+    decision = j.equivalent(
+        "El potos es toxico para los gatos si lo ingieren.",
+        "El potos es seguro para los gatos si lo ingieren.",
+    )
+    assert not decision.passed
+    assert "antonym" in decision.detail
+
+
 def test_build_judge() -> None:
     assert isinstance(build_judge("deterministic"), DeterministicJudge)
     with pytest.raises(ValueError, match="unknown judge"):

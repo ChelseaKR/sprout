@@ -13,6 +13,23 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 [![CI](https://github.com/ChelseaKR/sprout/actions/workflows/ci.yml/badge.svg)](https://github.com/ChelseaKR/sprout/actions/workflows/ci.yml)
 &nbsp;Python ≥3.12 · offline by default · WCAG 2.2 AA
 
+**Live reference:** [sprout.chelseakr.com](https://sprout.chelseakr.com) — the
+deterministic cited-answer pipeline runs entirely in the browser; questions are not
+sent, saved, or logged.
+
+## Quickstart (offline, no cloud account)
+
+```bash
+git clone https://github.com/ChelseaKR/sprout.git
+cd sprout
+uv sync --extra serve
+uv run sprout ingest
+uv run sprout ask "Why are my Monstera's leaves yellowing?"
+```
+
+This path uses the bundled corpus and deterministic generator. It needs no API
+key and makes no cloud call.
+
 ---
 
 ## What it does
@@ -32,9 +49,14 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
   guarded pipeline. Offline by default, with a graceful "type the plant's name" fallback
   and an allowlisted Pl@ntNet provider behind a config switch — see
   [ADR-0010](docs/adr/0010-photo-plant-id-as-selector-not-fact-source.md).
-- **Sets local care reminders** (watering/fertilizing) tied to a plant and answer, stored
-  only on your device — offline, opt-in, nothing uploaded — see
-  [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md).
+- **Provides local reminder contracts** for CLI/API adopters, stored only on the running
+  device — offline, opt-in, nothing uploaded. Reminders are intentionally absent from the
+  public web reference because household tasks belong in Family Greenhouse; see
+  [ADR-0011](docs/adr/0011-local-first-reminder-scheduler.md) and
+  [ADR-0015](docs/adr/0015-web-is-a-reference-and-assurance-surface.md). **Exports them as
+  a standards-based `.ics` calendar** (`sprout remind export --ics`) so any calendar app
+  can notify you — one-directional, no sync/push channel added, the local JSON file stays
+  the single source of truth.
 
 ### The four hard rules (enforced, not aspirational)
 
@@ -51,13 +73,22 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 
 ---
 
-## Quickstart (offline, no cloud account)
+The project has not published its first package release yet. After the initial release,
+`pipx install sprout` will be the supported packaged installation path. From a source checkout:
 
 ```bash
+uv run sprout ingest                    # build the index from the bundled corpus
+uv run sprout ask "Why are my Monstera's leaves yellowing?"
+uv run sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
+uv run sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer
+uv run sprout remind add pothos --kind water --every 7    # local, offline reminder
+uv run sprout remind export --ics --out reminders.ics     # standards-based calendar file, any app
+uv run sprout serve                     # stateless reference UI + JSON/SSE API at :8000
 pipx install sprout              # or: uv sync && uv run sprout ...
 sprout ingest                    # build the index from the bundled corpus
 sprout ask "Why are my Monstera's leaves yellowing?"
 sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
+sprout ask "How much water does my Pothos need?" --season winter --light "north window"
 sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer (offline → fallback)
 sprout remind add pothos --kind water --every 7    # local, offline reminder
 sprout serve                     # accessible chat UI + JSON/SSE API at :8000
@@ -85,42 +116,32 @@ or a malformed judge response fails the run rather than passing quietly.
 
 ---
 
-## For Claude Code
-
-- **Build from:** `CLAUDE.md` (the spec) + `~/portfolio/STANDARDS/` (the cross-cutting rigor)
-  + `docs/ROADMAP.md` (phased plan + per-repo metric values).
-- **Entry points:** the `sprout` CLI (`src/sprout/cli.py`) and the eval harness (`src/sprout/eval/`).
-- **Hard guardrails — change only behind an ADR + CODEOWNERS review:** the citation guard
-  and never-certify-safe guard (`src/sprout/guards.py`), the abstention thresholds
-  (`src/sprout/confidence.py`), and the fail-closed eval loader (`src/sprout/eval/dataset.py`).
-- **The one command that proves it:** `make verify` reproduces the full CI gate set locally
-  (lint · type · test ≥90% · security · a11y · eval). A phase is not "done" until it is green.
-- **Definition of done:** `pipx install sprout`, ask a question offline, get a cited answer
-  or an honest refusal, run `make eval` to regenerate the committed report with no cloud
-  account, and read a model card that states the limits plainly — with every gate green.
+Agent-facing build instructions live in [`CLAUDE.md`](./CLAUDE.md) (the spec, plus the
+agent contract at its end).
 
 ## Standards conformance
 
-This repo references the portfolio [`STANDARDS/`](../STANDARDS/README.md) rather than
-restating them. Per-repo *values* live in [`docs/ROADMAP.md`](docs/ROADMAP.md) and
+The table below names the engineering standards applied to Sprout; their concrete controls,
+targets, and evidence are recorded in this public repository. Per-repo *values* live in
+[`docs/ROADMAP.md`](docs/ROADMAP.md) and
 [`docs/RESPONSIBLE-TECH-AUDITS.md`](docs/RESPONSIBLE-TECH-AUDITS.md).
 
 | Standard | Applies | This repo's posture |
 |---|---|---|
 | Quality & Metrics (ISO 25010 / DORA) | ✅ | Metrics ledger in ROADMAP; `make verify` uses the same tools/thresholds as the CI-required checks |
 | Code Quality | ✅ | `ruff` + `mypy --strict`; branch coverage ≥90% (published-library floor); src layout |
-| Security & Supply Chain | ✅ | ASVS L1 (offline mode); pip-audit + Semgrep blocking (CI and `make verify`); gitleaks in CI; CodeQL + zizmor workflow-SAST; SHA-pinned actions; SBOM generated + uploaded on release |
+| Security & Supply-Chain | ✅ | ASVS L1 offline mode; scoped ASVS L2 review for the authenticated Family Greenhouse boundary; pip-audit + Semgrep blocking; gitleaks; CodeQL + zizmor; SHA-pinned actions; release SBOM |
 | CI/CD | ✅ | Single `ci-gate` required check; least-privilege tokens; `make verify` mirrors CI's tools/thresholds |
 | Release & Versioning | ✅ | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
-| Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check` gate is merge-blocking; axe/pa11y run today as **advisory only**, Lighthouse **not yet wired** (gap tracked, corrected 2026-07-05); transcript view; ACR (VPAT 2.5 Rev 508) |
+| Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
 | Observability | ✅ | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
 | Internationalization | ✅ | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
-| AI Evaluation | ✅ | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, gap tracked); judge-calibration is **report-only, currently below threshold** (gap tracked); judge≠answer model; model/data cards |
+| AI Evaluation | ✅ | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, gap tracked); judge-calibration (deterministic judge, 66 probes) gated at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
 | Documentation | ✅ | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
-| Responsible-Tech Framework | ✅ | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; no audit is N/A (added to this table 2026-07-05 — was silently omitted) |
+| Responsible-Tech Framework | ✅ | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; every audit applies (added to this table 2026-07-05 — was silently omitted) |
 
-No standard is `N/A`. Family Greenhouse personalization (household-data path, ASVS L2) is
-**deferred to a later phase**; see [`docs/ROADMAP.md`](docs/ROADMAP.md). Every row above with a
+No standard is `N/A`. Family Greenhouse Phase A personalization is implemented behind a feature
+flag with an ASVS L2 review; notification and confirmed-write phases remain deferred. Every row above with a
 "gap tracked" note is tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md) and this repo's remediation
 history, not silently carried — see the 2026-07-05 audit remediation for the full list.
 
@@ -150,7 +171,7 @@ src/sprout/        ingest · retrieve · answer · guards · confidence · provi
   eval/            the harness: dataset · suites · runner · judges · report · calibration
 corpus/            manifest.yaml (dated, licensed) + processed passages (EN/ES, synthetic CC0)
 eval/suites/       120+ YAML cases; baseline.json
-web/dist/          framework-free WCAG 2.2 chat UI
+web/dist/          framework-free WCAG 2.2 reference and assurance surface
 docs/              ARCHITECTURE · THREAT-MODEL · ACCESSIBILITY · ROADMAP · audits/ · cards/ · adr/
 ```
 

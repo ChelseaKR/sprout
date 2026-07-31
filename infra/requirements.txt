@@ -1,0 +1,7 @@
+# Infra-only dependencies for the CDK app. Deliberately isolated from the root
+# pyproject.toml/uv.lock — aws-cdk-lib is a ~50 MB dependency with no bearing on the
+# offline CLI or the eval harness, and nobody running `sprout ask` should have to fetch
+# it. Install with `pip install -r infra/requirements.txt` in a dedicated venv (see
+# infra/README.md).
+aws-cdk-lib>=2.150,<3
+constructs>=10.3,<11

@@ -73,7 +73,7 @@ model-index:
 - **License:** Apache-2.0 (code); bundled corpus and eval datasets are **synthetic and CC0-1.0**
 
 This card follows the Hugging Face model-card format and the portfolio
-[`AI-EVALUATION-STANDARD`](../../../STANDARDS/AI-EVALUATION-STANDARD.md) §4 (model/data cards as
+`AI-EVALUATION-STANDARD` §4 (model/data cards as
 committed, release-regenerated artifacts). It references the cross-cutting standards rather than
 restating them.
 
@@ -143,11 +143,26 @@ guard → confidence/abstention → answer-or-refuse`.
   generator can only copy retrieved text, and the citation guard re-verifies it. The whole project,
   including the eval, runs with **no network and no cloud account**, for free.
 
+### Opt-in offline semantic embedder (`embedding_provider: static`)
+
+- **Embedding:** `StaticEmbedding` — a curated, precomputed lookup table (EN+ES plant-care
+  vocabulary clusters, `data/embeddings/`) with a hashing fallback for any token outside the
+  table, so coverage is total. Same determinism guarantee as `HashingEmbedding`: no network, no
+  training, byte-identical output for identical input. See ADR-0017.
+- **Generator and everything else unchanged** — this only swaps the embedder; `generation.provider`
+  stays `deterministic` (or any other value) independently.
+- **Why it exists:** it closes part of the offline recall gap `HashingEmbedding` has by
+  construction (see "Offline retrieval is a baseline" below) without giving up any offline
+  guarantee. It is not the default because it does not yet clear the suite's 0.95 excellence bar
+  on its own — see ADR-0017's measured delta and honest analysis of what it does and does not fix.
+
 ### Claude-on-Bedrock production seam (`provider: bedrock`) and native Anthropic (`provider: anthropic`)
 
-- **Answer model:** Claude **Haiku** — `anthropic.claude-3-5-haiku-20241022-v1:0` on Bedrock, or
+- **Answer model:** Claude **Haiku** — `anthropic.claude-haiku-4-5-20251001-v1:0` on Bedrock, or
   `claude-haiku-4-5-20251001` via the native Anthropic Messages API. Temperature 0.0; the prompt
-  constrains the model to quote the numbered sources and never certify a plant "safe."
+  constrains the model to quote the numbered sources and never certify a plant "safe." Bedrock
+  activation requires this priced model to be set explicitly; the older constructor fallback is
+  intentionally rejected as unpriced rather than silently substituted.
 - **Embedding (Bedrock):** Amazon Titan `amazon.titan-embed-text-v2:0`.
 - **Same failure posture as offline.** Any exception, timeout, or malformed/empty model response
   logs and returns an *empty* candidate list, so a provider outage degrades to a refusal — never an
@@ -156,10 +171,13 @@ guard → confidence/abstention → answer-or-refuse`.
   and then **independently re-verified by the same citation guard**, so a hallucinated or
   mis-attributed sentence is *dropped*, not shown. Groundedness does not depend on the model's good
   behavior; it depends on the guard.
-- **Cost & dependencies:** the cloud path is single-digit dollars/month with a budget alarm; `boto3`
-  and `httpx` are lazily imported only when their provider is selected, so a plain install runs
-  offline end to end. These paths require live credentials and are exercised via an injectable client
-  in integration tests only (excluded from the coverage floor).
+- **Cost & dependencies:** A separate operational lifecycle wrapper shared-table prices Claude
+  answer calls and fails closed before transport when unpriced or above the configured per-answer
+  ceiling; it forwards provider inputs unchanged. Titan uses the exact
+  shared AWS catalog rate for the configured Bedrock region and rejects missing/unsupported
+  regions rather than borrowing a rate. `boto3` and `httpx` are lazily imported and their clients
+  cached only when selected, so a plain install runs offline end to end. These paths require live
+  credentials and are tested via injected clients.
 
 > **The generator is interchangeable; the guards are not.** Swapping in Claude raises fluency and
 > recall but cannot weaken groundedness, the never-certify-safe rule, or abstention — those are
@@ -196,8 +214,8 @@ These are the two behaviors that make Sprout honest about its limits.
 - Confidence is a transparent function of **retrieval evidence** — the best passage's cosine score,
   nudged by its margin over the runner-up, through a fixed logistic. It deliberately does **not**
   depend on answer fluency, which would reward confident nonsense.
-- Below `abstain_threshold` (default **0.25**) the assistant **refuses rather than guesses**. Below
-  `low_confidence_threshold` (default **0.50**) it answers but flags the answer for human review.
+- Below `abstain_threshold` (default **0.25**)<!-- claim:model-card-abstain-threshold --> the assistant **refuses rather than guesses**. Below
+  `low_confidence_threshold` (default **0.50**)<!-- claim:model-card-low-confidence-threshold --> it answers but flags the answer for human review.
   (Per [ADR-0012](../adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md), which
   supersedes ADR-0005; the earlier 0.45/0.62 figures never matched the shipped, calibrated
   values and are corrected here as of 2026-07-05.)
@@ -297,9 +315,18 @@ case set — are authoritative in the committed report, not here.
   in-corpus species can yield a correct, cited answer about the *wrong* plant (mitigated by the
   confidence gate and the "a visual match, not a cited fact" label; see ADR-0010). Care reminders
   are stored only on the user's device (`var/reminders.json`): no sync, no push delivery (ADR-0011).
+  A local review console for flagged/refused traces (`sprout review`) is opt-in and **off by
+  default**; enabling it stores question text on the maintainer's own machine
+  (`var/review/queue.json`) — see ADR-0020 and `RESPONSIBLE-TECH-AUDITS.md` §C before enabling it.
 - **Offline retrieval is a baseline.** The default `HashingEmbedding` is lexical, not semantic;
   paraphrased or synonym-heavy questions may under-retrieve and refuse where a semantic embedder
-  (Titan/Bedrock) would answer. This trades recall for zero-dependency reproducibility.
+  would answer. This trades recall for zero-dependency reproducibility. An opt-in offline
+  alternative, `StaticEmbedding` (`embedding_provider: static`), closes part of that gap with a
+  curated EN/ES vocabulary table while staying fully offline and deterministic — see ADR-0017 for
+  the measured eval delta (refusal 0.9118 → 0.9412, groundedness unchanged) and its remaining
+  limits (unknown-species and persona-override cases are not recall problems it can fix). It is
+  not yet the default; `Titan`/`Bedrock` remains the path for maximum recall when a network and
+  cloud account are available.
 - **Calibration is empirical and corpus-specific.** Confidence is derived from retrieval evidence
   and tuned to the bundled data; on a different corpus the thresholds should be re-calibrated and
   the reliability diagram re-checked.
@@ -312,8 +339,14 @@ case set — are authoritative in the committed report, not here.
   honest *source-attributed* statements ("the cited reference does not list X as toxic"). One
   residual remains: lexical (bag-of-token) verification can still admit a same-plant *recombination*
   (e.g. swapping which attribute applies), bounded in practice because retrieval is species-scoped to
-  one plant. A production deployment should add an NLI-grade entailment verifier on the cloud path;
-  the guards are the safety boundary, not the model's instruction-following.
+  one plant. An optional NLI-grade cross-encoder entailment verifier now exists behind the citation
+  guard for exactly this residual (`generation.support_verifier: nli`, cloud path only, ADR-0018) —
+  it is an *additional* gate, applied after the lexical check, that must also judge the cited chunk as
+  entailing the sentence. It defaults **off**; enabling it requires a pinned, hash-verified model
+  weight file (fail-closed on a hash mismatch) and is currently **EN-validated only** — off-the-shelf
+  NLI checkpoints are typically EN-strong/ES-weaker, and per-language false-reject rates have not yet
+  been measured, so do not assume ES parity for this gate. The guards remain the safety boundary
+  either way, not the model's instruction-following.
 - **Prompt-injection is handled structurally, not perfectly.** Injection attempts are *labeled* for
   the refusal suite and logs; the actual defense is that an injected instruction cannot produce a
   sentence entailed by a retrieved chunk. Novel attacks should be filed as eval cases.
@@ -326,7 +359,7 @@ facts, the same citations, and the same safety behavior as an English-speaking u
 - **Parity is a gate, not an aspiration.** The multilingual suite checks that each Spanish answer
   preserves the facts and citations of its English mirror, and the AI-evaluation gate enforces a
   pass-rate parity of **|EN − ES| ≤ 5 pp** (per
-  [`AI-EVALUATION-STANDARD`](../../../STANDARDS/AI-EVALUATION-STANDARD.md)); a wider gap fails CI.
+  `AI-EVALUATION-STANDARD`); a wider gap fails CI.
   Per-segment results are **disaggregated by language** in the report — no language is allowed to
   hide inside a macro average.
 - **Same guards in both languages.** The never-certify-"safe" deny-list, the safety-query detector,
@@ -343,16 +376,17 @@ facts, the same citations, and the same safety behavior as an English-speaking u
 
 **No training or fine-tuning is performed**, so there is no training-time compute or emissions to
 report. The default stack runs offline on CPU at negligible energy cost. The optional Claude seam
-incurs only ordinary third-party inference cost (single-digit dollars/month with a budget alarm);
-per-token inference emissions are governed by the provider, not this project. Per the AI-evaluation
+incurs ordinary third-party inference cost bounded by the per-answer preflight ceiling; per-token
+inference emissions are governed by the provider, not this project. Per the AI-evaluation
 standard, the environmental-footprint metric is **N/A-with-reason for this API-only / no-train repo**.
 
 ## How to cite / reproduce
 
 ```bash
-pipx install sprout
-sprout ingest                      # build the index from the bundled CC0 corpus
-sprout ask "Why are my Monstera's leaves yellowing?"
+git clone https://github.com/ChelseaKR/sprout.git && cd sprout
+uv sync
+uv run sprout ingest               # build the index from the bundled CC0 corpus
+uv run sprout ask "Why are my Monstera's leaves yellowing?"
 make eval                          # regenerate docs/audits/eval-report.* fully offline
 make verify                        # the full CI gate set: lint · type · test >=90% · security · a11y · eval
 ```
@@ -367,5 +401,5 @@ the same audit-as-artifact discipline applied across the portfolio.
   [`docs/THREAT-MODEL.md`](../THREAT-MODEL.md)
 - Eval report (authoritative scores): [`docs/audits/eval-report.md`](../audits/eval-report.md)
 - Data card (corpus datasheet): [`docs/cards/data-card-corpus.md`](data-card-corpus.md)
-- Cross-cutting standards: [`STANDARDS/AI-EVALUATION-STANDARD.md`](../../../STANDARDS/AI-EVALUATION-STANDARD.md),
-  [`STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`](../../../STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md)
+- Cross-cutting standards: `STANDARDS/AI-EVALUATION-STANDARD.md`,
+  `STANDARDS/RESPONSIBLE-TECH-FRAMEWORK.md`

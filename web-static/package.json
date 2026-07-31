@@ -1,0 +1,21 @@
+{
+  "name": "@sprout/web-static",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zero-server TypeScript port of Sprout's deterministic pipeline (hashing embedder, BM25, extractive generator, guards) over the exported index.json — EXP-08.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:site": "npm run build && node scripts/copy-site-assets.mjs",
+    "test": "npm run build && node --test dist/test/conformance.test.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^5.6.3"
+  }
+}

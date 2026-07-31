@@ -60,6 +60,14 @@ def test_citation_guard_rejects_polarity_inversion() -> None:
     assert out == []
 
 
+def test_citation_guard_rejects_antonym_flip_without_negation() -> None:
+    """ "Safe" vs "toxic" carries no explicit negation marker, but it is still a flat
+    polarity contradiction the citation guard must reject (not just high-coverage-passes)."""
+    rc = _chunk("Aloe vera is toxic to dogs and cats.")
+    out = citation_guard([("Aloe vera is safe for dogs and cats.", "c1")], [rc], 0.66)
+    assert out == []
+
+
 def test_citation_guard_rejects_contentless_fragment() -> None:
     rc = _chunk("Pothos is toxic to cats and dogs.")
     out = citation_guard([("No, it is not.", "c1")], [rc], 0.66)
@@ -101,7 +109,11 @@ class _CapturingGenerator:
         self.seen: list[str] = []
 
     def generate(
-        self, query: str, context: list[RetrievedChunk], max_sentences: int
+        self,
+        query: str,
+        context: list[RetrievedChunk],
+        max_sentences: int,
+        boost_terms: frozenset[str] = frozenset(),
     ) -> list[tuple[str, str]]:
         self.seen.append(query)
         return []
