@@ -26,6 +26,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read # required on private repos: codeql-action reads its own workflow-run metadata
     strategy:
       fail-fast: false
       matrix:
