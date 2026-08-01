@@ -39,6 +39,10 @@ _ALLOWED_FIELDS = frozenset(
         "status",
         "route",
         "index_size",
+        # An exception's *class name* only (see ``server._error_kind``) — never its
+        # message, which is free text that echoes caller input. Handlers that used to
+        # return ``str(exc)`` to the client log this instead.
+        "error_kind",
     }
 )
 
