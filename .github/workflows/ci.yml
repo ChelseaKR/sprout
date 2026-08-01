@@ -40,9 +40,19 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # gitleaks-action resolves a pull_request's commit range through
+      # `GET /repos/{owner}/{repo}/pulls/{n}/commits`, which 403s on a private repo
+      # without this scope. Least privilege: read on contents + pull requests, nothing
+      # else — no write anywhere.
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          # The PR-event scan is `git log <first-commit>^..<last-commit>`; those commits
+          # are not in a depth-1 checkout of the merge ref, so gitleaks needs real history.
+          fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Install (dev)
@@ -51,11 +61,19 @@ jobs:
         run: uvx --with 'setuptools<81' semgrep scan --config p/python --error src
       - name: pip-audit (blocking — not muted)
         run: uv run pip-audit
+      # Runs on pull_request too, as of 2026-08-01. It used to carry
+      # `if: github.event_name != 'pull_request'`, which meant a secret introduced in a
+      # PR was not caught until it had already been merged to main — the PR's own
+      # "security" check went green having scanned nothing for secrets. Blocking, no
+      # `|| true`, no continue-on-error.
       - name: gitleaks (secret scan)
-        if: github.event_name != 'pull_request'
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # On a PR finding the action would otherwise try to comment, which needs write
+          # scope. Turn the comment off rather than grant it — the failing step is the
+          # signal. (Same stance as trans-docs-navigator.)
+          GITLEAKS_ENABLE_COMMENTS: "false"
 
   eval-a11y:
     runs-on: ubuntu-latest
