@@ -46,3 +46,6 @@ site/
 # Claude Code (personal/local settings + runtime locks)
 .claude/settings.local.json
 .claude/*.lock
+
+# CodeQL writes its SARIF here (upload: never); scripts read it, git never should.
+sarif-results/
