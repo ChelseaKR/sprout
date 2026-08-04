@@ -1,0 +1,598 @@
+{
+  "non_llm": {
+    "n_items": 98,
+    "mean_context_precision": 0.9598214284999174,
+    "mean_context_recall": 1.0,
+    "mean_answer_similarity": 0.6352679414314765,
+    "per_item": [
+      {
+        "id": "calibration-001",
+        "non_llm_context_precision": 0.7499999999625,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.1171366594360087
+      },
+      {
+        "id": "calibration-002",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.06451612903225812
+      },
+      {
+        "id": "calibration-003",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.09459459459459463
+      },
+      {
+        "id": "calibration-004",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.13225806451612898
+      },
+      {
+        "id": "calibration-005",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.12957746478873244
+      },
+      {
+        "id": "calibration-006",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.15139442231075695
+      },
+      {
+        "id": "calibration-008",
+        "non_llm_context_precision": 0.8666666666377778,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.12112676056338023
+      },
+      {
+        "id": "calibration-009",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.180327868852459
+      },
+      {
+        "id": "calibration-010",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.12868632707774796
+      },
+      {
+        "id": "calibration-011",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.07476635514018692
+      },
+      {
+        "id": "calibration-012",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.18110236220472442
+      },
+      {
+        "id": "calibration-013",
+        "non_llm_context_precision": 0.9999999999666667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.13731343283582087
+      },
+      {
+        "id": "calibration-014",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.11676646706586824
+      },
+      {
+        "id": "calibration-015",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.1301939058171745
+      },
+      {
+        "id": "calibration-016",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.14084507042253525
+      },
+      {
+        "id": "calibration-019",
+        "non_llm_context_precision": 0.249999999975,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "groundedness-monstera-yellow-leaves",
+        "non_llm_context_precision": 0.9999999999666667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.029556650246305383
+      },
+      {
+        "id": "groundedness-pothos-watering-frequency",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05025125628140703
+      },
+      {
+        "id": "groundedness-snake-plant-light",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.053370786516853896
+      },
+      {
+        "id": "groundedness-peace-lily-drooping",
+        "non_llm_context_precision": 0.7499999999625,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.03735632183908044
+      },
+      {
+        "id": "groundedness-zz-plant-winter-watering",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05633802816901412
+      },
+      {
+        "id": "groundedness-spider-plant-brown-tips",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05384615384615388
+      },
+      {
+        "id": "groundedness-philodendron-light",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.061224489795918324
+      },
+      {
+        "id": "groundedness-fiddle-leaf-fig-dropping-leaves",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.0767123287671233
+      },
+      {
+        "id": "groundedness-aloe-watering-frequency",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.06870229007633588
+      },
+      {
+        "id": "groundedness-calathea-curling-leaves",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.029055690072639195
+      },
+      {
+        "id": "groundedness-rubber-plant-repotting",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.0561797752808989
+      },
+      {
+        "id": "groundedness-dracaena-yellow-leaves",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.032258064516129004
+      },
+      {
+        "id": "groundedness-english-ivy-light",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.07241379310344831
+      },
+      {
+        "id": "groundedness-jade-plant-watering",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.10404624277456642
+      },
+      {
+        "id": "groundedness-boston-fern-common-problems",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05014749262536877
+      },
+      {
+        "id": "groundedness-orchid-watering",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.02972972972972976
+      },
+      {
+        "id": "groundedness-monstera-repotting",
+        "non_llm_context_precision": 0.6999999999766667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.07322175732217573
+      },
+      {
+        "id": "groundedness-pothos-winter-watering",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.06030150753768848
+      },
+      {
+        "id": "groundedness-fiddle-leaf-fig-light",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05660377358490565
+      },
+      {
+        "id": "groundedness-snake-plant-watering-frequency",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.07228915662650603
+      },
+      {
+        "id": "groundedness-monstera-luz-es",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05913978494623651
+      },
+      {
+        "id": "groundedness-peace-lily-riego-es",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.061170212765957466
+      },
+      {
+        "id": "groundedness-aloe-riego-invierno-es",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.06103286384976525
+      },
+      {
+        "id": "groundedness-zz-plant-trasplante-es",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05070422535211272
+      },
+      {
+        "id": "multilingual-monstera-water-en",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-monstera-water-es",
+        "non_llm_context_precision": 0.9999999999666667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-pothos-light-en",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-pothos-light-es",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-snake-plant-overwater-en",
+        "non_llm_context_precision": 0.9999999999666667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-peace-lily-droop-en",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-peace-lily-droop-es",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-zz-plant-light-en",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-zz-plant-light-es",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-spider-plant-propagate-en",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-spider-plant-propagate-es",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-philodendron-fertilize-en",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-philodendron-fertilize-es",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-fiddle-leaf-fig-brown-en",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-fiddle-leaf-fig-brown-es",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-rubber-plant-repot-en",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-rubber-plant-repot-es",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-aloe-water-winter-en",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-aloe-water-winter-es",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-boston-fern-yellow-en",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "multilingual-boston-fern-yellow-es",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-010",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-017",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-018",
+        "non_llm_context_precision": 0.699999999965,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-019",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-020",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-021",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-023",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-024",
+        "non_llm_context_precision": 0.7499999999625,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-025",
+        "non_llm_context_precision": 0.8666666666377778,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "refusal-026",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-001",
+        "non_llm_context_precision": 0.7499999999625,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-002",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-003",
+        "non_llm_context_precision": 0.9999999999666667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-004",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-005",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-006",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-007",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-008",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-009",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-010",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-011",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-012",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-013",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-014",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-015",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-016",
+        "non_llm_context_precision": 0.9999999999666667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-017",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-018",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-019",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-020",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-021",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-022",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-023",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-025",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-026",
+        "non_llm_context_precision": 0.6791666666496875,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-027",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "safety-028",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      }
+    ]
+  }
+}
