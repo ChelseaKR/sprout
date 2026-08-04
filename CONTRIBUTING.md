@@ -157,6 +157,18 @@ failures** — never against results only visible from a private/local run. Mech
   passage whose sentences don't name the plant). It is advisory (does not fail CI) while the
   heuristics are tuned; `sprout corpus-report --gate` fails on any finding for maintainers who
   want to opt in early.
+- **Proposing a *new species*** (the SME path, research item E5): don't hand-edit `corpus/`.
+  Open a [corpus proposal issue](.github/ISSUE_TEMPLATE/corpus_proposal.yml) — the no-code door
+  — or run `sprout propose template > proposals/my-plant.yaml`, fill it in, and
+  `sprout propose check proposals/my-plant.yaml`. One file carries the passage in every
+  supported language, its provenance (source, license, `fetch_date`, topic), the eval case the
+  passage must satisfy, and a representational-harm checklist. The review is offline and
+  mechanical — provenance allowlist, EN/ES parity, corpus lint, the never-certify-"safe" guard
+  run over every proposed sentence, and an `expected_fact`-appears-verbatim check — and it is
+  merge-blocking (`make propose-check`, the `propose-check` step of the `eval-a11y` CI job). A
+  mechanically clean proposal that carries toxicity prose lands on `ready-for-expert-review`,
+  not `ready-to-merge`: safety copy still needs a licensed veterinary toxicologist (and Spanish
+  copy a native horticulture reviewer). See [`examples/corpus-proposal/`](examples/corpus-proposal/).
 - **New eval cases** go in `eval/suites/` as YAML (id, question, expected behavior, required
   citation/fact, language tag, rationale). Adding a hard case that currently fails is welcome —
   failures are shown, not hidden.

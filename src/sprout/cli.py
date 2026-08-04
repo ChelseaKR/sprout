@@ -12,6 +12,8 @@ on a held-out train split),
 ``toxicity coverage``/``toxicity check`` (the structured
 per-row-cited toxicity table — coverage report and table-vs-prose consistency gate),
 ``corpus-report`` (EXP-12 corpus workbench),
+``propose template``/``propose check`` (the SME corpus-contribution path: provenance,
+corpus lint, safety, and representational-harm review of an incoming passage + eval case),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
 (a scripted session). Everything runs offline by default.
 """
@@ -1077,6 +1079,88 @@ def review_export(
     out_path = out or default_out
     n = write_yaml(exporter(items), out_path)
     typer.echo(f"Wrote {n} {target} record(s) to {out_path}. Review before merging.")
+
+
+propose_app = typer.Typer(
+    add_completion=False,
+    help=(
+        "The SME corpus-contribution path (E5): propose a cited passage + an eval case, "
+        "and review it offline against provenance, corpus-lint, safety, and "
+        "representational-harm rules."
+    ),
+)
+app.add_typer(propose_app, name="propose")
+
+
+@propose_app.command("template")
+def propose_template() -> None:
+    """Print a fill-in-the-blanks proposal file (`sprout propose template > my-plant.yaml`)."""
+    from .propose import TEMPLATE
+
+    typer.echo(TEMPLATE, nl=False)
+
+
+@propose_app.command("check")
+def propose_check(
+    targets: Annotated[
+        list[str], typer.Argument(help="Proposal YAML files and/or directories of them.")
+    ],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    out: Annotated[
+        str | None,
+        typer.Option("--out", help="Directory to write corpus-proposal-review.{md,json} into."),
+    ] = None,
+    as_json: Annotated[
+        bool, typer.Option("--json", help="Print JSON instead of Markdown.")
+    ] = False,
+    today: Annotated[
+        str | None,
+        typer.Option("--today", help="ISO date to evaluate freshness against (default: today)."),
+    ] = None,
+    require_expert_review: Annotated[
+        bool,
+        typer.Option(
+            "--require-expert-review",
+            help="Also fail when a mechanically clean proposal still needs an expert sign-off.",
+        ),
+    ] = False,
+) -> None:
+    """Review corpus proposals offline: provenance, corpus lint, safety, harm checklist.
+
+    Exits non-zero when any proposal has an error finding (``changes-requested``). A
+    mechanically clean but safety-bearing proposal is reported as
+    ``ready-for-expert-review`` and exits 0 unless ``--require-expert-review`` is passed
+    — the tool cannot stand in for the veterinary-toxicologist / native-Spanish review
+    the research roadmap requires, and it does not pretend to.
+    """
+    from datetime import date as _date
+
+    from .propose import ProposalError, proposal_paths, render_json, render_markdown, review_files
+
+    cfg = _load(config)
+    try:
+        paths = proposal_paths(targets)
+        reviews = review_files(
+            paths, cfg, today=_date.fromisoformat(today) if today else _date.today()
+        )
+    except ProposalError as exc:
+        typer.echo(f"propose: {exc}", err=True)
+        raise typer.Exit(2) from exc
+
+    typer.echo(render_json(reviews) if as_json else render_markdown(reviews))
+    if out is not None:
+        out_dir = Path(out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "corpus-proposal-review.md").write_text(render_markdown(reviews), "utf-8")
+        (out_dir / "corpus-proposal-review.json").write_text(render_json(reviews), "utf-8")
+
+    blocked = [r for r in reviews if r.errors]
+    pending = [r for r in reviews if r.status == "ready-for-expert-review"]
+    typer.echo(
+        f"propose: {len(reviews)} proposal(s) — {len(blocked)} need changes, "
+        f"{len(pending)} awaiting expert review."
+    )
+    raise typer.Exit(1 if blocked or (require_expert_review and pending) else 0)
 
 
 @app.command()

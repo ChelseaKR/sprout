@@ -8,7 +8,8 @@ CONFIG ?= config/sprout.yaml
 RELEASE_TAG ?=
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        smoke a11y claims calibrate gate-inventory slo corpus-report freshness audits docs \
+        smoke a11y claims calibrate gate-inventory slo corpus-report propose-check \
+        freshness audits docs \
         workflow-lint ci-parity-check demo verify clean web-static-bundle \
         web-static-fixtures web-static-test web-static-build
 
@@ -79,6 +80,9 @@ slo: ## Schema-check the Tier-A SLO + burn-rate-alert files
 corpus-report: ## EXP-12: regenerate the corpus workbench report (advisory; --gate to enforce)
 	$(PY) sprout corpus-report --out docs/audits
 
+propose-check: ## E5: review the committed corpus proposals (provenance, lint, safety, harm)
+	$(PY) sprout propose check examples/corpus-proposal
+
 audits: eval calibrate gate-inventory corpus-report ## Regenerate the committed eval + calibration + gate-inventory + corpus audit artifacts
 
 docs: ## Build the docs site strictly (mirrors the CI docs gate)
@@ -106,7 +110,7 @@ web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conf
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
 	cd web-static && npm ci && npm run build:site
 
-verify: lint type test security eval smoke a11y claims calibrate gate-inventory slo corpus-report docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
+verify: lint type test security eval smoke a11y claims calibrate gate-inventory slo corpus-report propose-check docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts

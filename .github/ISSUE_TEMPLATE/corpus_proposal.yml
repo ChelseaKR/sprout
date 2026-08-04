@@ -1,0 +1,139 @@
+name: Corpus proposal (cited passage + eval case)
+description: Propose a new species for the corpus — a cited passage in every supported language, plus the eval case that proves it answers a real question.
+title: "corpus: <species>"
+labels: [corpus-proposal]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the **no-code** path for research item E5. Fill this in and a maintainer will
+        convert it into a proposal file that `sprout propose check` reviews mechanically —
+        or, if you are comfortable with YAML, run `sprout propose template > my-plant.yaml`,
+        fill that in, run `sprout propose check my-plant.yaml`, and open a PR instead.
+
+        Two things to know before you start:
+
+        - **Sprout never certifies a plant "safe."** Write what a cited source says (and where
+          it is silent), and route serious ingestion questions to a veterinarian or a
+          poison-control line. A passage that certifies safety is rejected automatically.
+        - **Toxicity prose needs an expert.** A proposal that touches toxicity or ingestion is
+          reviewed mechanically and then held for a licensed veterinary toxicologist /
+          poison-control clinician — and, for Spanish copy, a native horticulture reviewer.
+          That is a deliberate gate, not a backlog item.
+  - type: input
+    id: species
+    attributes:
+      label: Species slug
+      description: Lower-case and hyphenated, e.g. `parlor-palm`. This becomes the corpus filename.
+      placeholder: parlor-palm
+    validations:
+      required: true
+  - type: input
+    id: scientific_name
+    attributes:
+      label: Scientific name
+      placeholder: Chamaedorea elegans
+    validations:
+      required: true
+  - type: input
+    id: source_name
+    attributes:
+      label: Source name
+      description: The publisher or title a reader would cite.
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Source URL
+      description: Use `https://example.invalid/<species>` if the prose is original placeholder text.
+    validations:
+      required: true
+  - type: dropdown
+    id: license
+    attributes:
+      label: License
+      description: The passage must be redistributable under one of these.
+      options:
+        - CC0-1.0
+        - CC-BY-4.0
+        - CC-BY-SA-4.0
+        - CC-BY-3.0
+        - CC-BY-SA-3.0
+        - Apache-2.0
+        - public-domain
+    validations:
+      required: true
+  - type: input
+    id: fetch_date
+    attributes:
+      label: Fetch date (YYYY-MM-DD)
+      description: The date you took this snapshot of the source.
+      placeholder: "2026-05-01"
+    validations:
+      required: true
+  - type: dropdown
+    id: synthetic
+    attributes:
+      label: Is the prose original placeholder text?
+      description: "\"No\" means it is transcribed from a real source, which requires a committed expert sign-off."
+      options:
+        - "Yes — original placeholder prose (example.invalid citation)"
+        - "No — transcribed from a real source"
+    validations:
+      required: true
+  - type: textarea
+    id: passage_en
+    attributes:
+      label: English passage
+      description: Use the corpus section headings — `## Watering`, `## Light`, `## Toxicity`, `## Soil and repotting`, `## Common problems`. Name the plant in each sentence; that is what makes verbatim extraction unambiguous.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: passage_es
+    attributes:
+      label: Spanish passage
+      description: A translated mirror with translated headings and the same sections, in the same order.
+      render: markdown
+    validations:
+      required: true
+  - type: input
+    id: eval_question
+    attributes:
+      label: Eval question
+      description: A real question this passage should answer.
+      placeholder: How often should I water my Parlor palm?
+    validations:
+      required: true
+  - type: input
+    id: eval_expected_fact
+    attributes:
+      label: A phrase the answer must contain
+      description: It must appear verbatim in your passage — that is what makes the case checkable.
+      placeholder: top inch of soil has dried
+    validations:
+      required: true
+  - type: checkboxes
+    id: harm_checklist
+    attributes:
+      label: Representational-harm checklist
+      description: Every box must be ticked. The ones a machine can falsify are cross-checked against your text.
+      options:
+        - label: The common names used are regionally neutral, not one region's trade name presented as universal.
+          required: true
+        - label: The passage makes no medicinal, therapeutic, or edibility claim.
+          required: true
+        - label: Any traditional or Indigenous knowledge drawn on is attributed to its source.
+          required: true
+        - label: The passage is in plain language a beginner can act on.
+          required: true
+        - label: The passage contains no derogatory or stereotyped framing of any group.
+          required: true
+        - label: The passage never certifies the plant "safe"; it reports what the source says and routes serious ingestion questions to a veterinarian or poison-control line.
+          required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes for the reviewer
+      description: Anything a maintainer or an expert reviewer should know — coverage gaps, disputed facts, translation choices.

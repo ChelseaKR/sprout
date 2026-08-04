@@ -62,7 +62,7 @@ Priority: **P0** now · **P1** next · **P2** soon. Effort: **S** ≈ an afterno
 | E9 | **Standardized vet/poison-control escalation card** on every toxicity answer/refusal: ASPCA APCC (888-426-4435) + Pet Poison Helpline (855-764-7661) + "what to tell them: plant, amount, time", accessible + localized | B1,A2,D1 | P1 | S | EV4,EV5 · **[NET-NEW]** |
 | E3 | **External-suite comparison/ablation**: benchmark Sprout's grounding-by-construction + deterministic safety against ≥1 of Ragas/DeepEval/ALCE-style citation precision/recall; publish the (saturation-aware) result | C2 | P2 | L | EV6,EV7 · **[NET-NEW]** |
 | E4 | **Coverage-vs-risk (selective-prediction) curve** in the calibration report, beyond ECE: publish the coverage/risk tradeoff at the abstain threshold | C2,C1 | P2 | M | EV8 · **[NET-NEW]** |
-| E5 | **SME corpus-contribution workflow**: a low-/no-code "propose a cited passage + an eval case" path with provenance fields (source, license, fetch_date, lang, topic) enforced and a representational-harm checklist | B2,E1 | P2 | L | EV1,EV4 · **[NET-NEW]** |
+| E5 | **SME corpus-contribution workflow**: a low-/no-code "propose a cited passage + an eval case" path with provenance fields (source, license, fetch_date, lang, topic) enforced and a representational-harm checklist | B2,E1 | P2 | L | EV1,EV4 · **[NET-NEW]** · **[shipped: `sprout propose`]** |
 | E6 | **Language expansion beyond EN/ES** (the i18n seam is one module) — *gated* on parity: each new language must clear the multilingual suite, and ES/new-language copy is human-reviewed, never raw MT | A4,B2 | P2 | L | EV10 · partially **[corroborates I18N standard]** / **[NET-NEW]** for >2 langs |
 | E7 | **Citation freshness / link-liveness check**: flag when a cited source's `fetch_date` is stale or the URL no longer supports the claim — especially toxicity refs that get revised | C1,B1,E1 | P2 | M | EV6 · **[NET-NEW]** · **[shipped: `sprout freshness`]** |
 | E8 | **Photo-ID "show your work"**: top-N candidate species with scores + an explicit corpus-coverage gate; never auto-act on the match | A3,A1 | P2 | M | EV9 · **[corroborates ADR-0010]** (extend) |
@@ -184,3 +184,34 @@ state; the tested local CLI/API contract remains available for compatibility. Ve
 `uv run pytest tests/test_server.py::test_shipped_ui_is_a_stateless_reference_surface -q`.
 
 Shipped: **E1** toxicity-coverage eval slice (`src/sprout/eval/suites/toxicity_coverage.py`) — a deterministic, corpus-level suite asserting every ASPCA top-N pet-toxic plant in the corpus (aloe, dracaena, english-ivy, fiddle-leaf-fig, jade-plant, monstera, peace-lily, philodendron, pothos, rubber-plant, snake-plant, zz-plant) has an English document with a `## Toxicity` section that mentions toxicity and routes to a vet and a poison-control line; auto-registers a `toxicity-coverage` report panel via the existing `report.py` suite-iteration. Complements the pre-existing `safety` suite, which already gates the *live answer* on never certifying "safe" and always routing. Verify: `make verify` green (lint, type, test with 95% coverage, eval, a11y all pass); `docs/audits/eval-report.md` shows `toxicity-coverage` — ✅ PASS, n=12.
+
+## Implementation status — 2026-08-04
+
+Shipped: **E5** SME corpus-contribution workflow — `sprout propose template` emits a
+fill-in-the-blanks proposal (one YAML file carrying the passage in every supported language,
+its provenance, the eval case the passage must satisfy, and a representational-harm
+checklist), a matching no-code
+[corpus-proposal issue form](../.github/ISSUE_TEMPLATE/corpus_proposal.yml) maps onto the same
+fields, and `sprout propose check` (`src/sprout/propose.py`) reviews a proposal **offline and
+deterministically**: provenance/license allowlist, ISO dates, E7's citation-freshness SLA
+(stale is a warning, unusable an error), every-supported-language coverage with EN/ES
+structural parity, the corpus's canonical topic taxonomy, EXP-12's chunk lint reused rather
+than reimplemented, the shipped never-certify-"safe" guard run over every proposed sentence,
+an EN/ES medicinal/edibility claim scan that cross-checks the harm checklist rather than
+trusting it, and an eval case that must load as a `DatasetItem`, cite one of the proposed
+documents, and assert only facts that appear verbatim in the passage.
+
+The review lands on one of three statuses. `changes-requested` (any error) exits non-zero and
+is merge-blocking via `make propose-check` / the `propose-check` step of the `eval-a11y` CI
+job. `ready-for-expert-review` — mechanically clean but carrying toxicity/ingestion prose with
+no committed sign-off — exits **0** on purpose: this repo already states that safety copy
+needs a licensed veterinary toxicologist and that Spanish copy needs a native horticulture
+reviewer ("Validate with real users / risks", above), and a tool that cannot recruit either
+one must record that gate rather than fake it. `--require-expert-review` turns it into a
+failure for a maintainer about to merge. `ready-to-merge` requires an `expert_review` block
+whose sign-off artifact actually exists on disk.
+
+Worked example and full rule table: [`examples/corpus-proposal/`](../examples/corpus-proposal/README.md)
+(*Chamaedorea elegans*, EN + ES, zero findings, `ready-for-expert-review`). Nothing is written
+to `corpus/`: a proposal is reviewed, never auto-applied. Verify with
+`uv run sprout propose check examples/corpus-proposal` and `uv run pytest tests/test_propose.py -q`.
