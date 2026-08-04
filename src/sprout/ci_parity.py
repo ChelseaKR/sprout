@@ -48,6 +48,7 @@ JOB_TO_MAKE_TARGETS: dict[str, tuple[str, ...]] = {
         "gate-inventory",
         "slo",
         "corpus-report",
+        "propose-check",
     ),
     "smoke": ("ingest", "smoke"),
     "docs": ("docs",),

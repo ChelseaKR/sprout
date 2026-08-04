@@ -286,6 +286,46 @@ def _plant_name_lint_issues(documents: list[Document]) -> list[LintIssue]:
     return issues
 
 
+# --- public reuse surface ----------------------------------------------------------
+#
+# The SME contribution path (`sprout propose`, research item E5) reviews an *incoming*
+# species against exactly the checks this maintainer-QA workbench (EXP-12) already runs
+# over the *shipped* corpus. These thin wrappers exist so that reuse is a call, not a
+# copy: one implementation of "what a corpus document must look like", two entry points.
+
+
+def canonical_topic_order(documents: list[Document]) -> tuple[str, ...]:
+    """The corpus-wide canonical topic taxonomy (slugs, in canonical order)."""
+    return _canonical_topic_order(documents)
+
+
+def heading_slugs(text: str) -> tuple[str, ...]:
+    """The ``## `` section headings of a processed document, slugified, in order."""
+    return tuple(slugify(h) for h in _heading_lines(text))
+
+
+def species_of(source: str) -> str:
+    """The species slug for a corpus-relative path (``aloe.es.md`` -> ``aloe``)."""
+    return _species_of(source)
+
+
+def mirror_parity_issues(
+    species: str, en_doc: Document, es_doc: Document
+) -> tuple[ParityIssue, ...]:
+    """Structural EN/ES parity issues for one species that has both documents."""
+    return tuple(_mirror_parity_issues(species, en_doc, es_doc))
+
+
+def chunk_lint_issues(config: Config, documents: list[Document]) -> tuple[LintIssue, ...]:
+    """Over-length-chunk findings for ``documents`` under this config's chunker settings."""
+    return tuple(_chunk_lint_issues(config, documents))
+
+
+def plant_name_lint_issues(documents: list[Document]) -> tuple[LintIssue, ...]:
+    """Extraction-safety ("names its plant") findings, per document."""
+    return tuple(_plant_name_lint_issues(documents))
+
+
 def build_report(config: Config) -> CorpusReport:
     """Build the full corpus report from the corpus the given config points at."""
     documents = load_corpus(config)
