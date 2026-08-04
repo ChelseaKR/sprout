@@ -1,0 +1,105 @@
+# A worked corpus proposal (research item E5) — the shape an extension SME's
+# contribution takes, and the fixture the `propose-check` gate runs against.
+#
+#   uv run sprout propose check examples/corpus-proposal
+#
+# It reviews clean and lands on `ready-for-expert-review`: mechanically it is mergeable,
+# but it carries toxicity prose, so the veterinary-toxicologist review that
+# docs/RESEARCH-ROADMAP.md requires is still outstanding. That is the honest end state
+# for a tool that cannot conjure a clinician — see examples/corpus-proposal/README.md.
+schema_version: 1
+
+species: parlor-palm
+scientific_name: Chamaedorea elegans
+
+submitter: sprout-maintainers
+submitted_date: '2026-08-04'
+
+# Original placeholder prose, exactly like the rest of the shipped corpus: the citation
+# uses the example.invalid host and claims no real source's authority.
+synthetic: true
+
+provenance:
+  source_name: Synthetic Plant-Care Notes
+  url: https://example.invalid/parlor-palm
+  license: CC0-1.0
+  fetch_date: '2026-05-01'
+  topic: care
+
+documents:
+  - language: en
+    title: Parlor palm care
+    body: |
+      ## Watering
+
+      Water the Parlor palm when the top inch of soil has dried, which is roughly once every seven to ten days in spring and summer. Reduce watering for the Parlor palm in winter to about once every two or three weeks, since growth slows and the soil stays damp longer. The Parlor palm prefers evenly moist soil and browns at the frond tips when it dries out completely. Let excess water drain fully, because the Parlor palm will not tolerate sitting in a saturated saucer. Yellowing lower fronds on a Parlor palm usually point to too much water rather than too little.
+
+      ## Light
+
+      The Parlor palm grows best in low to bright indirect light, away from direct midday sun. Direct beams scorch the fronds, so keep the Parlor palm a few feet back from a south-facing window. The Parlor palm tolerates dim corners better than most palms, though its growth slows noticeably there. Rotate the Parlor palm a quarter turn every few weeks so it grows evenly toward the light. If the fronds of a Parlor palm stretch and thin out, move it to a brighter spot.
+
+      ## Toxicity
+
+      The cited reference does not list Parlor palm (Chamaedorea elegans) as toxic to cats or dogs. The cited reference says nothing about serious effects in people who chew Parlor palm foliage. Because the cited reference is silent on serious effects, treat any large ingestion of Parlor palm material as a question for a veterinarian or a poison-control line rather than something to manage at home. Any plant material, including Parlor palm fronds, can cause vomiting or stomach upset in an animal that chews enough of it. If your animal shows vomiting or distress after chewing a Parlor palm, contact a veterinarian or a poison-control service.
+
+      ## Soil and repotting
+
+      Plant the Parlor palm in a well-draining potting mix, such as a general houseplant blend amended with perlite. The Parlor palm grows slowly and resents disturbance, so repot it only every two or three years when roots crowd the surface. Choose a container for the Parlor palm that is one size larger, about two inches wider in diameter, with at least one drainage hole. Repot the Parlor palm in spring at the start of active growth for the fastest recovery. Feed the Parlor palm with a balanced, diluted liquid fertilizer about once a month during spring and summer, and pause feeding in winter.
+
+      ## Common problems
+
+      Brown frond tips are the most common complaint with the Parlor palm and usually trace to dry indoor air or irregular watering. Group the Parlor palm with other plants or set it on a pebble tray to raise the humidity around the fronds. Pale, stretched growth on a Parlor palm points to too little light, so move it nearer a window without putting it in direct sun. The Parlor palm attracts spider mites in dry indoor air, so inspect the undersides of the fronds and wipe them down regularly. Remove any fully browned frond from the Parlor palm at the base with clean shears to keep the plant tidy.
+  - language: es
+    title: Cuidado de la palmera de salón
+    body: |
+      ## Riego
+
+      Riega la palmera de salón cuando los primeros dos centímetros y medio de sustrato se hayan secado, lo que ocurre aproximadamente cada siete a diez días en primavera y verano. Reduce el riego de la palmera de salón en invierno a una vez cada dos o tres semanas, ya que el crecimiento se ralentiza y el sustrato permanece húmedo más tiempo. La palmera de salón prefiere un sustrato uniformemente húmedo y sus hojas se vuelven marrones en las puntas si se seca por completo. Deja que el exceso de agua drene por completo, porque la palmera de salón no tolera quedarse en un plato saturado. Las hojas inferiores amarillas de una palmera de salón suelen indicar exceso de riego más que falta de agua.
+
+      ## Luz
+
+      La palmera de salón crece mejor con luz indirecta, de baja a brillante, lejos del sol directo del mediodía. Los rayos directos queman las hojas, así que mantén la palmera de salón a un metro de una ventana orientada al sur. La palmera de salón tolera los rincones poco iluminados mejor que otras palmeras, aunque su crecimiento se ralentiza allí. Gira la palmera de salón un cuarto de vuelta cada pocas semanas para que crezca de manera uniforme hacia la luz. Si las hojas de una palmera de salón se estiran y se afinan, cámbiala a un lugar más luminoso.
+
+      ## Toxicidad
+
+      La referencia citada no incluye la palmera de salón (Chamaedorea elegans) como tóxica para gatos ni perros. La referencia citada tampoco describe efectos graves en personas que mastican las hojas de la palmera de salón. Dado que la referencia citada no describe efectos graves, trata cualquier ingestión abundante de material de la palmera de salón como una consulta para un veterinario o una línea de control de intoxicaciones, en lugar de algo que resolver en casa. Cualquier material vegetal, incluidas las hojas de la palmera de salón, provoca a veces vómitos o malestar estomacal en un animal que mastica una cantidad suficiente. Si tu animal presenta vómitos o malestar tras masticar una palmera de salón, comunícate con un veterinario o un servicio de control de intoxicaciones.
+
+      ## Sustrato y trasplante
+
+      Planta la palmera de salón en una mezcla para macetas con buen drenaje, como un sustrato general para plantas de interior enriquecido con perlita. La palmera de salón crece despacio y no tolera bien las molestias, así que trasplántala solo cada dos o tres años cuando las raíces saturen la superficie. Elige para la palmera de salón una maceta una talla más grande, unos cinco centímetros más ancha de diámetro, con al menos un orificio de drenaje. Trasplanta la palmera de salón en primavera, al inicio del crecimiento activo, para una recuperación más rápida. Abona la palmera de salón con un fertilizante líquido equilibrado y diluido aproximadamente una vez al mes durante la primavera y el verano, y suspende el abono en invierno.
+
+      ## Problemas comunes
+
+      Las puntas marrones de las hojas son la queja más común con la palmera de salón y suelen deberse al aire seco de interiores o a un riego irregular. Agrupa la palmera de salón con otras plantas o colócala sobre una bandeja de guijarros para elevar la humedad alrededor de las hojas. El crecimiento pálido y estirado de una palmera de salón indica poca luz, así que acércala a una ventana sin ponerla al sol directo. La palmera de salón atrae ácaros en el aire seco de interiores, así que inspecciona el envés de las hojas y límpialas con regularidad. Retira de la palmera de salón cualquier hoja completamente marrón cortándola en la base con tijeras limpias para mantener la planta ordenada.
+
+eval_case:
+  id: groundedness-parlor-palm-watering
+  question: How often should I water my Parlor palm?
+  expected_behavior: answer
+  language: en
+  sources:
+    - parlor-palm.md
+  expected_facts:
+    - top inch of soil has dried
+  rationale: >-
+    Pins the watering answer to the proposed passage's let-the-top-inch-dry guidance, so
+    the new species arrives with a case that fails if the passage is later weakened.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-08-04'
+
+harm_checklist:
+  reviewer: sprout-maintainers
+  reviewed_date: '2026-08-04'
+  common_names_regionally_neutral: true
+  no_medicinal_or_edibility_claims: true
+  traditional_knowledge_attributed: true
+  plain_language_reviewed: true
+  no_derogatory_or_stereotyped_framing: true
+  notes: >-
+    Common names are the widely used English and Spanish trade names; no traditional or
+    Indigenous knowledge is drawn on, and the prose makes no medicinal, edibility, or
+    safety claim. The toxicity section reports what the cited reference does and does not
+    say and routes to a veterinarian or poison-control line, per the never-certify-safe
+    rule.

@@ -102,6 +102,8 @@ jobs:
         run: uv run sprout slo-check
       - name: Corpus report (report-only — EXP-12 heuristics advisory until tuned)
         run: uv run sprout corpus-report --out docs/audits
+      - name: Corpus proposal review (E5 — every submitted proposal, merge-blocking on errors)
+        run: uv run sprout propose check
 
   smoke:
     # Phase 1: a dedicated CI smoke suite of corpus-derived questions, distinct from the
