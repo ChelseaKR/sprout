@@ -10,9 +10,15 @@ corpus growth; this is its **contributor-side** counterpart, and it deliberately
 that module rather than re-implementing its rules.
 
 A proposal is one self-contained YAML file (see :data:`TEMPLATE`, emitted by
-``sprout propose template``, and mirrored field-for-field by the
-``corpus_proposal`` GitHub issue form so a non-programmer never has to touch YAML or
-Python). ``sprout propose check`` reviews it **offline and deterministically** and emits
+``sprout propose template``). The ``corpus_proposal`` GitHub issue form is the same path
+for a contributor who never touches YAML or Python: it collects the parts only the
+contributor can supply — species, source, license, fetch date, the passages, the eval
+question and the phrase it must contain, and the harm checklist — which a maintainer then
+transcribes into a proposal file, filling in the mechanical remainder (schema version,
+submitter/date attribution, section titles, eval-case id/sources/provenance). It is a
+subset of the schema by design, not a field-for-field mirror of it.
+
+``sprout propose check`` reviews a proposal **offline and deterministically** and emits
 one of three statuses:
 
 ``changes-requested``
@@ -39,15 +45,24 @@ than it can leave through the answer path.
 
 Nothing here writes to ``corpus/``: review is a pure function of the proposal plus the
 corpus already on disk. Merging an accepted proposal stays a human, reviewed act.
+
+The gate is **discovery-based**, not example-based. ``sprout propose check`` with no
+arguments — the form ``make propose-check`` and the CI step use — walks the repository and
+reviews every file that *has the shape of a proposal*, wherever it was filed
+(:func:`discover_proposals`). A proposal outside the declared submission locations
+(:data:`PROPOSAL_DIRS`) is an **error**, not a silent skip, and discovering nothing at all
+is a hard failure: a gate that reviews nothing is not a gate.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
+from urllib.parse import urlsplit
 
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -93,6 +108,60 @@ LICENSE_ALLOWLIST: tuple[str, ...] = (
 #: ``corpus/manifest.yaml`` and ``corpus/toxicity.yaml`` already follow: synthetic
 #: content may never borrow a real domain's authority.
 SYNTHETIC_HOST = "example.invalid"
+
+#: Where a *submitted* proposal is expected to live, relative to the repo root — the
+#: locations ``CONTRIBUTING.md``, the issue form, and :data:`TEMPLATE` all point a
+#: contributor at. ``proposals/`` is where real submissions land; ``examples/corpus-
+#: proposal`` holds the committed worked example. Discovery itself is repo-wide and
+#: shape-based (:func:`discover_proposals`), so this tuple decides only whether a
+#: proposal's *location* is acceptable — anything outside it is an error finding, never a
+#: silent skip.
+PROPOSAL_DIRS: tuple[str, ...] = ("proposals", "examples/corpus-proposal")
+
+#: Where a committed expert sign-off artifact must live. Same reasoning as
+#: :data:`LICENSE_ALLOWLIST`: the strongest gate in this module may only be discharged by
+#: an artifact in the repo's audit trail, not by any path that happens to exist on disk.
+EXPERT_REVIEW_ARTIFACT_DIRS: tuple[str, ...] = ("docs/audits",)
+
+#: Directory names never descended into while discovering proposals: VCS metadata,
+#: virtualenvs, caches, build output, vendored trees. Pruning is a speed measure only —
+#: what makes a file a proposal is its shape, never its path.
+_PRUNED_DIR_NAMES: frozenset[str] = frozenset(
+    {
+        ".eggs",
+        ".git",
+        ".hg",
+        ".mypy_cache",
+        ".nox",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".svn",
+        ".tox",
+        ".uv-cache",
+        ".venv",
+        "__pycache__",
+        "build",
+        "dist",
+        "htmlcov",
+        "node_modules",
+        "site",
+        "venv",
+    }
+)
+
+#: Distinctive top-level keys of the proposal schema. A YAML file carrying at least
+#: :data:`_SIGNATURE_MIN` of them *is* a proposal for gate purposes — deliberately fewer
+#: than the full set, so an incomplete submission is caught by the schema check rather
+#: than waved through as "not a proposal".
+_SIGNATURE_KEYS: frozenset[str] = frozenset(
+    {"species", "documents", "provenance", "eval_case", "harm_checklist"}
+)
+_SIGNATURE_MIN = 3
+
+#: Cheap textual pre-filter before parsing a candidate file — the one schema key no other
+#: YAML in this repo uses. A file carrying it that then fails to parse is a *failure*, not
+#: a skip (see :func:`_is_proposal_file`).
+_SIGNATURE_MARKER = "harm_checklist"
 
 #: Topic slugs that make a proposal safety-bearing (see ``requires_expert_review``).
 SAFETY_TOPIC_SLUGS: frozenset[str] = frozenset({"toxicity", "toxicidad", "safety", "seguridad"})
@@ -259,12 +328,93 @@ def proposal_paths(targets: list[str]) -> list[Path]:
     for target in targets:
         p = Path(target)
         if p.is_dir():
-            paths.extend(sorted(q for q in p.glob("*.yaml") if q.is_file()))
+            paths.extend(sorted(q for q in p.rglob("*.yaml") if q.is_file()))
         elif p.exists():
             paths.append(p)
         else:
             raise ProposalError(f"no such proposal file or directory: {p}")
     return paths
+
+
+# --- discovery ---------------------------------------------------------------------
+#
+# The gate has to cover *a contributor's* proposal, not just the committed example, so
+# discovery is by shape and repo-wide rather than by a hard-coded directory. Every step
+# below fails closed: an unreadable proposal-shaped file raises, a proposal filed outside
+# the declared locations is an error finding, and discovering nothing is a hard failure.
+
+
+def _is_proposal_file(path: Path) -> bool:
+    """Does this YAML file have the shape of a corpus proposal?
+
+    Fails **closed**: a file whose text carries the proposal marker but which does not
+    parse raises :class:`ProposalError` rather than being skipped, so a broken submission
+    cannot drop out of the gate by being unreadable.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):  # pragma: no cover - unreadable file
+        return False
+    if _SIGNATURE_MARKER not in text:
+        return False
+    try:
+        raw = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise ProposalError(
+            f"{path}: reads as a corpus proposal ('{_SIGNATURE_MARKER}') but is not valid "
+            f"YAML, so it cannot be reviewed: {exc}"
+        ) from exc
+    return isinstance(raw, dict) and len(_SIGNATURE_KEYS & set(raw)) >= _SIGNATURE_MIN
+
+
+def discover_proposals(repo_root: Path) -> list[Path]:
+    """Every corpus proposal committed anywhere under ``repo_root``, sorted.
+
+    Location-independent on purpose. Whether a discovered proposal sits in one of
+    :data:`PROPOSAL_DIRS` is then a *finding* (:func:`_location_findings`), so a misfiled
+    proposal fails the gate loudly instead of never being looked at.
+    """
+    found: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(repo_root, followlinks=False):
+        dirnames[:] = sorted(d for d in dirnames if d not in _PRUNED_DIR_NAMES)
+        for name in sorted(filenames):
+            if not name.endswith((".yaml", ".yml")):
+                continue
+            path = Path(dirpath) / name
+            if _is_proposal_file(path):
+                found.append(path)
+    return sorted(found)
+
+
+def _repo_relative(path: Path, repo_root: Path) -> str | None:
+    """``path`` as a repo-root-relative POSIX string, or ``None`` if it escapes the root."""
+    try:
+        return path.resolve().relative_to(repo_root.resolve()).as_posix()
+    except (OSError, ValueError):
+        return None
+
+
+def _in_declared_dirs(relative: str, declared: tuple[str, ...]) -> bool:
+    return any(relative == d or relative.startswith(f"{d}/") for d in declared)
+
+
+def _location_findings(path: Path, repo_root: Path) -> list[Finding]:
+    """A proposal filed somewhere the workflow never names is ambiguous — fail closed."""
+    relative = _repo_relative(path, repo_root)
+    if relative is not None and _in_declared_dirs(relative, PROPOSAL_DIRS):
+        return []
+    return [
+        Finding(
+            code="proposal-location",
+            severity="error",
+            detail=(
+                f"'{relative or path.as_posix()}' is a corpus proposal filed outside the "
+                f"declared submission locations {list(PROPOSAL_DIRS)}; move it under "
+                "'proposals/' so it is unambiguous which files the merge-blocking review "
+                "covers"
+            ),
+        )
+    ]
 
 
 # --- individual checks -------------------------------------------------------------
@@ -335,7 +485,10 @@ def _provenance_findings(proposal: Proposal, today: date) -> list[Finding]:
                 detail=f"url '{prov.url}' is not an http(s) URL",
             )
         )
-    synthetic_host = SYNTHETIC_HOST in prov.url
+    # Host equality, not a substring test: `https://real.example.com/?q=example.invalid`
+    # is a real host. Same predicate `freshness.check_liveness` uses to decide which
+    # citations are placeholders.
+    synthetic_host = (urlsplit(prov.url).hostname or "") == SYNTHETIC_HOST
     if proposal.synthetic and not synthetic_host:
         findings.append(
             Finding(
@@ -403,6 +556,14 @@ def _freshness_findings(proposal: Proposal, config: Config, today: date) -> list
     evaluated. A merely *stale* citation is a warning: staleness of the corpus at large
     is the scheduled ``corpus-freshness`` workflow's job, and a hard failure here would
     turn every committed example proposal into a time bomb.
+
+    Each row's ``topic`` is derived from the passage, not copied from
+    ``provenance.topic``. ``freshness._is_toxicity`` only ever sees a manifest row's topic
+    and title, so a proposal left on the template's default ``topic: care`` with a title
+    like "Parlor palm care" would silently get the lax 365-day SLA even when the passage
+    is nothing but toxicity prose. Safety-bearing prose is exactly what the stricter
+    180-day SLA exists for, and it is the same predicate that decides whether the
+    proposal needs an expert sign-off — so the two cannot drift apart.
     """
     reference = config.languages.supported[0] if config.languages.supported else "en"
     manifest = {
@@ -414,7 +575,7 @@ def _freshness_findings(proposal: Proposal, config: Config, today: date) -> list
             license=proposal.provenance.license,
             fetch_date=proposal.provenance.fetch_date,
             language=doc.language,
-            topic=proposal.provenance.topic,
+            topic="toxicity" if is_safety_bearing(doc.body) else proposal.provenance.topic,
         )
         for doc in proposal.documents
     }
@@ -660,18 +821,113 @@ def _expert_review_findings(proposal: Proposal, repo_root: Path, today: date) ->
                     detail=f"expert_review.{field} is required",
                 )
             )
-    if not (repo_root / review.artifact).exists():
-        findings.append(
+    findings += _artifact_findings(proposal, review, repo_root)
+    return findings
+
+
+def _artifact_path_reason(raw: str, candidate: Path) -> str | None:
+    """Why this ``expert_review.artifact`` path is not admissible, or ``None`` if it is."""
+    if not raw:
+        return "is empty"
+    if candidate.is_absolute() or candidate.drive or raw.startswith("~"):
+        return "must be a repo-relative path, not an absolute or home-relative one"
+    if ".." in candidate.parts:
+        return "must not traverse out of the repository with '..'"
+    if candidate.suffix != ".md":
+        return "must be a Markdown sign-off document (.md)"
+    if not _in_declared_dirs(candidate.as_posix(), EXPERT_REVIEW_ARTIFACT_DIRS):
+        return (
+            "must live in the repository's audit trail — one of "
+            f"{list(EXPERT_REVIEW_ARTIFACT_DIRS)}"
+        )
+    return None
+
+
+def _artifact_findings(proposal: Proposal, review: ExpertReview, repo_root: Path) -> list[Finding]:
+    """The sign-off artifact must be *contained*, *located*, and *about this proposal*.
+
+    This is the strongest gate in the module — it is what turns
+    ``ready-for-expert-review`` into ``ready-to-merge`` for safety-bearing content — so a
+    bare ``exists()`` will not do: under that rule ``artifact: README.md`` discharges a
+    veterinary toxicologist's sign-off. Three constraints instead:
+
+    * **containment** — a repo-relative path under ``repo_root``, no absolute paths, no
+      ``..`` traversal, and no symlink that resolves back out of the tree;
+    * **location** — under :data:`EXPERT_REVIEW_ARTIFACT_DIRS`, the repo's audit trail,
+      so a sign-off is reviewed and dated like every other committed audit;
+    * **substance** — the file must actually name the species it signs off, the reviewer
+      who signed it, and the date they signed it.
+    """
+    raw = review.artifact.strip()
+    candidate = Path(raw)
+    reason = _artifact_path_reason(raw, candidate)
+    if reason is not None:
+        return [
+            Finding(
+                code="expert-review-artifact-path",
+                severity="error",
+                detail=f"expert_review.artifact '{review.artifact}' {reason}",
+            )
+        ]
+
+    resolved = repo_root / candidate
+    contained = _repo_relative(resolved, repo_root) is not None
+    if not contained:
+        return [
+            Finding(
+                code="expert-review-artifact-path",
+                severity="error",
+                detail=(
+                    f"expert_review.artifact '{review.artifact}' resolves outside the "
+                    "repository (a symlink out of the tree is not a committed sign-off)"
+                ),
+            )
+        ]
+    if not resolved.is_file():
+        return [
             Finding(
                 code="expert-review-artifact-missing",
                 severity="error",
                 detail=(
-                    f"expert_review.artifact '{review.artifact}' does not exist; the sign-off "
-                    "must be a committed, dated artifact, not a claim in a YAML field"
+                    f"expert_review.artifact '{review.artifact}' is not a committed file; the "
+                    "sign-off must be a committed, dated artifact, not a claim in a YAML field"
                 ),
             )
+        ]
+
+    try:
+        text = resolved.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:  # pragma: no cover - message shape only
+        return [
+            Finding(
+                code="expert-review-artifact-unsubstantiated",
+                severity="error",
+                detail=f"expert_review.artifact '{review.artifact}' is unreadable: {exc}",
+            )
+        ]
+    folded = strip_accents(text).lower()
+    missing = [
+        label
+        for label, needle in (
+            (f"the species '{proposal.species}'", proposal.species),
+            (f"the reviewer '{review.reviewer.strip()}'", review.reviewer.strip()),
+            (f"the sign-off date {review.reviewed_date}", review.reviewed_date),
         )
-    return findings
+        if not needle or strip_accents(needle).lower() not in folded
+    ]
+    if missing:
+        return [
+            Finding(
+                code="expert-review-artifact-unsubstantiated",
+                severity="error",
+                detail=(
+                    f"expert_review.artifact '{review.artifact}' does not mention "
+                    f"{', '.join(missing)}; a sign-off must be an artifact about *this* "
+                    "proposal, not any committed file that happens to exist"
+                ),
+            )
+        ]
+    return []
 
 
 def _eval_case_findings(
@@ -756,16 +1012,26 @@ def _expected_fact_findings(item: DatasetItem, documents: list[Document]) -> lis
     return findings
 
 
+def is_safety_bearing(text: str) -> bool:
+    """Does this passage carry toxicity/ingestion prose?
+
+    The single definition of "safety-bearing" in this module: it decides both which
+    proposals are gated on an expert sign-off (:func:`requires_expert_review`) and which
+    citations are held to the stricter toxicity freshness SLA
+    (:func:`_freshness_findings`), so the two cannot answer differently.
+    """
+    if SAFETY_TOPIC_SLUGS & set(heading_slugs(text)):
+        return True
+    folded = strip_accents(text).lower()
+    return any(marker in folded for marker in _SAFETY_MARKERS)
+
+
 def requires_expert_review(proposal: Proposal, documents: list[Document]) -> bool:
     """Is this proposal safety-bearing, and therefore gated on a clinician/SME sign-off?"""
     if proposal.expert_review is not None:
         return False
-    for doc in documents:
-        if SAFETY_TOPIC_SLUGS & set(heading_slugs(doc.text)):
-            return True
-        folded = strip_accents(doc.text).lower()
-        if any(marker in folded for marker in _SAFETY_MARKERS):
-            return True
+    if any(is_safety_bearing(doc.text) for doc in documents):
+        return True
     case = proposal.eval_case
     return bool(case.get("is_toxicity_query")) if isinstance(case, dict) else False
 
@@ -783,12 +1049,18 @@ def review_proposal(
     target_topics: tuple[str, ...],
     path: str = "<memory>",
     repo_root: Path = Path(),
+    extra_findings: tuple[Finding, ...] = (),
 ) -> ProposalReview:
-    """Review one proposal. A pure function of its arguments — no I/O beyond the
-    ``expert_review.artifact`` existence check, and no clock read."""
+    """Review one proposal. A pure function of its arguments — no I/O beyond reading the
+    ``expert_review.artifact`` sign-off, and no clock read.
+
+    ``extra_findings`` carries findings the caller established about the file itself
+    rather than its contents (today: where it was filed — see :func:`_location_findings`),
+    so they are sorted and severity-counted with everything else.
+    """
     reference = config.languages.supported[0] if config.languages.supported else "en"
     documents = _as_documents(proposal, config)
-    findings: list[Finding] = []
+    findings: list[Finding] = list(extra_findings)
     findings += _identity_findings(proposal, existing_species)
     findings += _provenance_findings(proposal, today)
     findings += _freshness_findings(proposal, config, today)
@@ -837,13 +1109,22 @@ def review_files(
     today: date,
     suites_dir: Path = Path("eval/suites"),
     repo_root: Path = Path(),
+    enforce_location: bool = False,
 ) -> list[ProposalReview]:
-    """Load and review every proposal file, failing closed on an unparseable one."""
+    """Load and review every proposal file, failing closed on an unparseable one.
+
+    ``enforce_location`` additionally requires each file to sit in one of
+    :data:`PROPOSAL_DIRS`. It is on for the discovery-driven gate (``make propose-check``
+    / CI), where an unexpected location means the gate's coverage is ambiguous, and off
+    when a human named the files explicitly — reviewing a draft in a scratch directory is
+    not a defect.
+    """
     species, target_topics = corpus_context(config)
     case_ids = existing_case_ids(suites_dir)
     reviews: list[ProposalReview] = []
     for path in paths:
         proposal = load_proposal(path)
+        extra = tuple(_location_findings(path, repo_root)) if enforce_location else ()
         reviews.append(
             review_proposal(
                 proposal,
@@ -854,6 +1135,7 @@ def review_files(
                 target_topics=target_topics,
                 path=path.as_posix(),
                 repo_root=repo_root,
+                extra_findings=extra,
             )
         )
     return reviews
@@ -915,7 +1197,11 @@ TEMPLATE = """\
 # eval case that proves the passage answers a real question.
 #
 #   sprout propose template > proposals/my-plant.yaml   # start here
-#   sprout propose check proposals/my-plant.yaml        # review it offline
+#   sprout propose check proposals/my-plant.yaml        # review this one file
+#   sprout propose check                                # what CI runs: every proposal
+#
+# Commit it under `proposals/` — that is where the merge-blocking gate looks, and a
+# proposal filed anywhere else is reported as an error rather than skipped.
 #
 # Every field below is required unless marked optional. Nothing here is merged
 # automatically: `check` tells you whether a maintainer *could* merge it.
@@ -992,7 +1278,10 @@ harm_checklist:
   no_derogatory_or_stereotyped_framing: true
   notes: ''
 
-# Optional, and required for non-synthetic or already-reviewed safety content.
+# Optional, and required for non-synthetic or already-reviewed safety content. The
+# artifact must be a committed Markdown sign-off under docs/audits/ that names this
+# species, the reviewer, and the date they signed — pointing at any file that happens to
+# exist does not discharge this gate.
 # expert_review:
 #   reviewer: Name
 #   credential: DVM, DABVT

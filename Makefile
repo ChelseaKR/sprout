@@ -80,8 +80,8 @@ slo: ## Schema-check the Tier-A SLO + burn-rate-alert files
 corpus-report: ## EXP-12: regenerate the corpus workbench report (advisory; --gate to enforce)
 	$(PY) sprout corpus-report --out docs/audits
 
-propose-check: ## E5: review the committed corpus proposals (provenance, lint, safety, harm)
-	$(PY) sprout propose check examples/corpus-proposal
+propose-check: ## E5: review every committed corpus proposal, wherever it was filed
+	$(PY) sprout propose check
 
 audits: eval calibrate gate-inventory corpus-report ## Regenerate the committed eval + calibration + gate-inventory + corpus audit artifacts
 

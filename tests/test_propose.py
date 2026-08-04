@@ -129,6 +129,32 @@ def _codes(review: ProposalReview) -> set[str]:
     return {f.code for f in review.findings}
 
 
+#: A complete, committed-artifact-backed sign-off for `_BASE` (see `_signoff`).
+_EXPERT_REVIEW: dict[str, str] = {
+    "reviewer": "A Reviewer",
+    "credential": "DVM, DABVT",
+    "reviewed_date": "2026-05-02",
+    "scope": "toxicity prose EN + ES",
+    "artifact": "docs/audits/corpus-proposal-test-plant-review.md",
+}
+
+
+def _signoff(root: Path, body: str | None = None) -> Path:
+    """Write the sign-off artifact `_EXPERT_REVIEW` points at, under a fake repo root."""
+    path = root / _EXPERT_REVIEW["artifact"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        body
+        if body is not None
+        else (
+            "# Expert review — test-plant\n\n"
+            "Reviewer: A Reviewer (DVM, DABVT). Signed 2026-05-02.\n"
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 # --- the happy path ----------------------------------------------------------------
 
 
@@ -211,25 +237,39 @@ def test_synthetic_content_must_use_the_placeholder_host() -> None:
     assert "synthetic-url-must-be-placeholder" in codes
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://extension.example.edu/plants?ref=example.invalid",  # placeholder in the query
+        "https://example.invalid.example.edu/test-plant",  # placeholder as a domain prefix
+        "https://example.edu/example.invalid/test-plant",  # placeholder in the path
+    ],
+)
+def test_the_placeholder_check_matches_the_host_not_the_url_text(url: str) -> None:
+    """`example.invalid` *somewhere in the string* is not a placeholder citation.
+
+    ``freshness.check_liveness`` already decides this with `urlsplit(...).hostname ==
+    "example.invalid"`; a substring test here would let a real domain pass as synthetic
+    (and, worse, let a real citation dodge the expert-sign-off gate by mentioning the
+    placeholder host anywhere in its URL).
+    """
+    synthetic = copy.deepcopy(_BASE)
+    synthetic["provenance"]["url"] = url
+    assert "synthetic-url-must-be-placeholder" in _codes(_review(synthetic))
+
+    real = _mutate(synthetic=False, expert_review=_EXPERT_REVIEW)
+    real["provenance"]["url"] = url
+    assert "real-url-must-not-be-placeholder" not in _codes(_review(real))
+
+
 def test_real_content_needs_a_real_host_and_an_expert_signoff(tmp_path: Path) -> None:
     raw = _mutate(synthetic=False)
     codes = _codes(_review(raw))
     assert "real-url-must-not-be-placeholder" in codes
     assert "real-content-needs-expert-review" in codes
 
-    artifact = tmp_path / "docs" / "audits" / "signoff.md"
-    artifact.parent.mkdir(parents=True)
-    artifact.write_text("signed off", encoding="utf-8")
-    raw = _mutate(
-        synthetic=False,
-        expert_review={
-            "reviewer": "A Reviewer",
-            "credential": "DVM, DABVT",
-            "reviewed_date": "2026-05-02",
-            "scope": "toxicity prose EN + ES",
-            "artifact": "docs/audits/signoff.md",
-        },
-    )
+    _signoff(tmp_path)
+    raw = _mutate(synthetic=False, expert_review=_EXPERT_REVIEW)
     raw["provenance"]["url"] = "https://extension.example.edu/test-plant"
     review = _review(raw, repo_root=tmp_path)
     assert review.findings == ()
@@ -239,16 +279,69 @@ def test_real_content_needs_a_real_host_and_an_expert_signoff(tmp_path: Path) ->
 def test_expert_review_artifact_must_exist_and_be_complete() -> None:
     raw = _mutate(
         expert_review={
-            "reviewer": "A Reviewer",
+            **_EXPERT_REVIEW,
             "credential": "  ",
-            "reviewed_date": "2026-05-02",
-            "scope": "toxicity prose",
             "artifact": "docs/audits/does-not-exist.md",
         }
     )
     codes = _codes(_review(raw))
     assert "expert-review-artifact-missing" in codes
     assert "expert-review-incomplete" in codes
+
+
+@pytest.mark.parametrize(
+    "artifact",
+    [
+        "README.md",  # exists, but is not a sign-off — the fail-open this gate had
+        "docs/audits/../../README.md",  # traversal out of the audit trail
+        "/etc/hosts",  # absolute
+        "docs/audits/signoff.txt",  # not a Markdown sign-off document
+        "",  # nothing at all
+    ],
+)
+def test_the_signoff_artifact_must_be_contained_in_the_audit_trail(
+    tmp_path: Path, artifact: str
+) -> None:
+    """The strongest gate in the module may not be discharged by any path that exists.
+
+    Every case here names something a bare ``(repo_root / artifact).exists()`` would have
+    accepted (or, for the traversal case, resolved happily outside the repo).
+    """
+    (tmp_path / "README.md").write_text("# test-plant A Reviewer 2026-05-02\n", encoding="utf-8")
+    _signoff(tmp_path)
+    (tmp_path / "docs" / "audits" / "signoff.txt").write_text("signed", encoding="utf-8")
+    review = _review(
+        _mutate(expert_review={**_EXPERT_REVIEW, "artifact": artifact}), repo_root=tmp_path
+    )
+    assert "expert-review-artifact-path" in _codes(review)
+    assert review.status == "changes-requested"
+
+
+def test_a_signoff_artifact_symlinked_out_of_the_repo_is_not_contained(tmp_path: Path) -> None:
+    """Containment is checked after resolution, so a symlink cannot smuggle the gate out."""
+    outside = tmp_path / "outside" / "signoff.md"
+    outside.parent.mkdir(parents=True)
+    outside.write_text("# test-plant\n\nA Reviewer, 2026-05-02.\n", encoding="utf-8")
+    root = tmp_path / "repo"
+    (root / "docs" / "audits").mkdir(parents=True)
+    (root / _EXPERT_REVIEW["artifact"]).symlink_to(outside)
+
+    review = _review(_mutate(expert_review=_EXPERT_REVIEW), repo_root=root)
+    detail = next(f.detail for f in review.findings if f.code == "expert-review-artifact-path")
+    assert "resolves outside the repository" in detail
+
+
+def test_the_signoff_artifact_must_be_about_this_proposal(tmp_path: Path) -> None:
+    _signoff(tmp_path, "# Expert review\n\nLooks fine to me.\n")
+    review = _review(_mutate(expert_review=_EXPERT_REVIEW), repo_root=tmp_path)
+    detail = next(
+        f.detail for f in review.findings if f.code == "expert-review-artifact-unsubstantiated"
+    )
+    for expected in ("test-plant", "A Reviewer", "2026-05-02"):
+        assert expected in detail
+
+    _signoff(tmp_path, "# test-plant sign-off\n\nA Reviewer, 2026-05-02.\n")
+    assert _review(_mutate(expert_review=_EXPERT_REVIEW), repo_root=tmp_path).findings == ()
 
 
 def test_future_and_unparseable_dates_are_errors() -> None:
@@ -268,6 +361,33 @@ def test_unusable_fetch_date_is_an_error_but_staleness_is_only_a_warning() -> No
     assert "citation-stale" in _codes(stale)
     assert stale.errors == ()
     assert stale.warnings
+
+
+def test_toxicity_prose_gets_the_strict_freshness_sla_under_the_default_topic() -> None:
+    """The stricter toxicity SLA must key off the *passage*, not `provenance.topic`.
+
+    ``freshness._is_toxicity`` only ever sees a manifest row's topic and title. A proposal
+    left on the template's default ``topic: care`` with a title like "Test plant care"
+    therefore looked like general care copy no matter what the passage said, and toxicity
+    prose silently got the lax 365-day SLA instead of the 180-day one.
+    """
+    care = _review(_BASE, today=date(2026, 12, 1))  # 214d old, care copy
+    assert "citation-stale" not in _codes(care)
+
+    raw = copy.deepcopy(_BASE)
+    raw["documents"][0]["body"] += (
+        "\n## Toxicity\n\nThe cited reference does not list Test plant as toxic to cats. "
+        "Contact a veterinarian if your Test plant is chewed.\n"
+    )
+    raw["documents"][1]["body"] += (
+        "\n## Toxicidad\n\nLa referencia citada no incluye la planta de prueba como toxica "
+        "para gatos. Consulta a un veterinario si mastican la planta de prueba.\n"
+    )
+    toxic = _review(raw, today=date(2026, 12, 1))  # same 214d, safety-bearing copy
+    stale = [f for f in toxic.findings if f.code == "citation-stale"]
+    assert stale, "toxicity prose must be held to the 180d citation SLA"
+    assert "toxicity citation" in stale[0].detail
+    assert toxic.errors == ()
 
 
 # --- languages, topics, corpus lint -------------------------------------------------
@@ -461,6 +581,137 @@ def test_a_refusal_case_needs_no_expected_facts() -> None:
     assert "eval-case-no-assertion" not in _codes(_review(raw))
 
 
+# --- discovery: what the gate actually covers ------------------------------------------
+#
+# The gate's whole value is that a *submitted* proposal is reviewed. When `make
+# propose-check` and CI only ever pointed at `examples/corpus-proposal`, a contributor's
+# proposal anywhere else was never looked at and the merge-blocking claim was false. These
+# tests pin the coverage, not the example.
+
+
+#: The committed worked example, reused as the fixture for the discovery gate so these
+#: tests exercise the same shipped corpus taxonomy the gate does.
+_EXAMPLE = Path("examples/corpus-proposal/parlor-palm.yaml")
+
+
+def _write(path: Path, raw: dict[str, Any]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(raw, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    return path
+
+
+def _copy_example(path: Path, **changes: Any) -> Path:
+    raw = yaml.safe_load(_EXAMPLE.read_text(encoding="utf-8"))
+    raw.update(changes)
+    return _write(path, raw)
+
+
+def _fake_repo(root: Path) -> Path:
+    """A repo-shaped tree with a clean committed worked example already in place."""
+    _copy_example(root / "examples" / "corpus-proposal" / "parlor-palm.yaml")
+    return root
+
+
+@pytest.mark.integration
+def test_a_proposal_outside_the_examples_directory_is_checked(tmp_path: Path) -> None:
+    """A contributor's proposal in `proposals/` is gated exactly as hard as the example.
+
+    This is the coverage the gate was missing: pointed at `examples/corpus-proposal`, it
+    reviewed one committed file and reported green while a broken submission sat
+    unreviewed one directory over.
+    """
+    root = _fake_repo(tmp_path / "repo")
+    submitted = _copy_example(root / "proposals" / "contribution.yaml", species="Not A Slug")
+
+    result = runner.invoke(
+        app, ["propose", "check", "--repo-root", str(root), "--today", "2026-08-04"]
+    )
+
+    assert result.exit_code == 1, result.output
+    assert submitted.name in result.output
+    assert "species-slug" in result.output
+    assert "1 need changes" in result.output  # the example is clean; the submission is not
+
+
+@pytest.mark.integration
+def test_a_proposal_filed_somewhere_undeclared_fails_closed(tmp_path: Path) -> None:
+    root = _fake_repo(tmp_path / "repo")
+    _copy_example(root / "docs" / "my-proposal.yaml")
+
+    result = runner.invoke(
+        app, ["propose", "check", "--repo-root", str(root), "--today", "2026-08-04"]
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "proposal-location" in result.output
+    assert "docs/my-proposal.yaml" in result.output
+
+
+@pytest.mark.integration
+def test_discovering_no_proposals_at_all_is_a_failure(tmp_path: Path) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    result = runner.invoke(app, ["propose", "check", "--repo-root", str(empty)])
+    assert result.exit_code == 2, result.output
+    assert "no corpus proposals found" in result.output
+
+
+@pytest.mark.integration
+def test_a_proposal_shaped_file_that_does_not_parse_fails_closed(tmp_path: Path) -> None:
+    root = _fake_repo(tmp_path / "repo")
+    (root / "proposals").mkdir(parents=True, exist_ok=True)
+    (root / "proposals" / "broken.yaml").write_text(
+        "species: test-plant\ndocuments: [\nharm_checklist: {}\n", encoding="utf-8"
+    )
+    result = runner.invoke(app, ["propose", "check", "--repo-root", str(root)])
+    assert result.exit_code == 2, result.output
+    assert "not valid YAML" in result.output
+
+
+def test_discovery_finds_proposals_by_shape_and_ignores_other_yaml(tmp_path: Path) -> None:
+    from sprout.propose import discover_proposals
+
+    root = tmp_path / "repo"
+    _write(root / "examples" / "corpus-proposal" / "parlor-palm.yaml", _BASE)
+    _write(root / "proposals" / "nested" / "deep.yaml", _BASE)
+    # Neither of these is a proposal: one is the issue form (it names `harm_checklist` as a
+    # field id but carries none of the schema's top-level keys), the other is a corpus
+    # manifest. Shape decides, so neither is dragged into the gate.
+    _write(
+        root / ".github" / "ISSUE_TEMPLATE" / "corpus_proposal.yml",
+        {"name": "Corpus proposal", "body": [{"type": "checkboxes", "id": "harm_checklist"}]},
+    )
+    _write(root / "corpus" / "manifest.yaml", {"documents": [{"file": "aloe.md"}]})
+    _write(root / ".venv" / "lib" / "vendored.yaml", _BASE)  # pruned: not part of the repo
+
+    found = [p.relative_to(root).as_posix() for p in discover_proposals(root)]
+    assert found == [
+        "examples/corpus-proposal/parlor-palm.yaml",
+        "proposals/nested/deep.yaml",
+    ]
+
+
+@pytest.mark.integration
+def test_explicitly_named_files_are_reviewed_without_policing_their_location(
+    tmp_path: Path,
+) -> None:
+    """Naming a draft explicitly is not a defect — only the discovery gate enforces layout."""
+    from sprout.propose import review_files
+
+    draft = _copy_example(tmp_path / "scratch" / "draft.yaml")
+    reviews = review_files([draft], Config(), today=TODAY, repo_root=tmp_path)
+    assert "proposal-location" not in _codes(reviews[0])
+    gated = review_files([draft], Config(), today=TODAY, repo_root=tmp_path, enforce_location=True)
+    assert "proposal-location" in _codes(gated[0])
+
+    # A file that is not under the repo root at all is still named, not swallowed.
+    elsewhere = review_files(
+        [draft], Config(), today=TODAY, repo_root=tmp_path / "repo", enforce_location=True
+    )
+    detail = next(f.detail for f in elsewhere[0].findings if f.code == "proposal-location")
+    assert draft.as_posix() in detail
+
+
 # --- loading, rendering, and the CLI --------------------------------------------------
 
 
@@ -531,6 +782,15 @@ def test_cli_reviews_the_committed_example() -> None:
     result = runner.invoke(app, ["propose", "check", "examples/corpus-proposal"])
     assert result.exit_code == 0, result.output
     assert "parlor-palm" in result.output
+    assert "0 need changes" in result.output
+
+
+@pytest.mark.integration
+def test_the_gate_as_ci_runs_it_covers_this_repo() -> None:
+    """`sprout propose check` with no arguments — exactly what `make propose-check` runs."""
+    result = runner.invoke(app, ["propose", "check"])
+    assert result.exit_code == 0, result.output
+    assert "examples/corpus-proposal/parlor-palm.yaml" in result.output
     assert "0 need changes" in result.output
 
 

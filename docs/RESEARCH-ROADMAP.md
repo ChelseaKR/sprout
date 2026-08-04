@@ -190,10 +190,14 @@ Shipped: **E1** toxicity-coverage eval slice (`src/sprout/eval/suites/toxicity_c
 Shipped: **E5** SME corpus-contribution workflow — `sprout propose template` emits a
 fill-in-the-blanks proposal (one YAML file carrying the passage in every supported language,
 its provenance, the eval case the passage must satisfy, and a representational-harm
-checklist), a matching no-code
-[corpus-proposal issue form](../.github/ISSUE_TEMPLATE/corpus_proposal.yml) maps onto the same
-fields, and `sprout propose check` (`src/sprout/propose.py`) reviews a proposal **offline and
+checklist), a no-code
+[corpus-proposal issue form](../.github/ISSUE_TEMPLATE/corpus_proposal.yml) collects the parts
+only a contributor can supply for a maintainer to transcribe into that same file (a deliberate
+subset of the schema, not a field-for-field mirror of it),
+and `sprout propose check` (`src/sprout/propose.py`) reviews a proposal **offline and
 deterministically**: provenance/license allowlist, ISO dates, E7's citation-freshness SLA
+applied against the topic the *passage* carries rather than the manifest field, so toxicity
+prose is held to the stricter SLA even under the template's default `topic: care`
 (stale is a warning, unusable an error), every-supported-language coverage with EN/ES
 structural parity, the corpus's canonical topic taxonomy, EXP-12's chunk lint reused rather
 than reimplemented, the shipped never-certify-"safe" guard run over every proposed sentence,
@@ -203,15 +207,25 @@ documents, and assert only facts that appear verbatim in the passage.
 
 The review lands on one of three statuses. `changes-requested` (any error) exits non-zero and
 is merge-blocking via `make propose-check` / the `propose-check` step of the `eval-a11y` CI
-job. `ready-for-expert-review` — mechanically clean but carrying toxicity/ingestion prose with
+job. Both run `sprout propose check` with **no arguments**, which is the gate proper: it
+discovers every proposal-shaped file committed anywhere in the repository — so a contributor's
+submission is covered, not only the committed example — and fails closed three ways. A proposal
+filed outside the declared submission locations (`proposals/`, `examples/corpus-proposal/`) is
+an error rather than a silent skip; a file that reads as a proposal but does not parse is a
+failure rather than a skip; and discovering no proposals at all is a failure, because a gate
+that reviews nothing is not a gate.
+
+`ready-for-expert-review` — mechanically clean but carrying toxicity/ingestion prose with
 no committed sign-off — exits **0** on purpose: this repo already states that safety copy
 needs a licensed veterinary toxicologist and that Spanish copy needs a native horticulture
 reviewer ("Validate with real users / risks", above), and a tool that cannot recruit either
 one must record that gate rather than fake it. `--require-expert-review` turns it into a
 failure for a maintainer about to merge. `ready-to-merge` requires an `expert_review` block
-whose sign-off artifact actually exists on disk.
+whose sign-off artifact is a committed Markdown document under `docs/audits/` that names the
+species, the reviewer, and the date they signed — contained in the repository, so the strongest
+gate in the module cannot be discharged by pointing the field at any file that happens to exist.
 
 Worked example and full rule table: [`examples/corpus-proposal/`](../examples/corpus-proposal/README.md)
 (*Chamaedorea elegans*, EN + ES, zero findings, `ready-for-expert-review`). Nothing is written
 to `corpus/`: a proposal is reviewed, never auto-applied. Verify with
-`uv run sprout propose check examples/corpus-proposal` and `uv run pytest tests/test_propose.py -q`.
+`uv run sprout propose check` and `uv run pytest tests/test_propose.py -q`.
