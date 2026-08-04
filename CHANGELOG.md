@@ -23,19 +23,29 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 - **The SME corpus-contribution path (research item E5): `sprout propose`.** A contributor
   proposes a new species as one self-contained YAML file — the passage in every supported
   language, its provenance (source, license, `fetch_date`, topic), the eval case the passage
-  must satisfy, and a representational-harm checklist — from `sprout propose template` or the
-  new no-code **corpus proposal issue form**. `sprout propose check` reviews it offline and
-  deterministically: license allowlist, ISO dates, E7's citation-freshness SLA, every-language
+  must satisfy, and a representational-harm checklist — from `sprout propose template`, or via
+  the new no-code **corpus proposal issue form**, which collects the parts only a contributor
+  can supply and which a maintainer transcribes into a proposal file (a deliberate subset of
+  the schema, not a field-for-field mirror of it). `sprout propose check` reviews it offline and
+  deterministically: license allowlist, ISO dates, E7's citation-freshness SLA applied against
+  the topic the *passage* carries so toxicity prose gets the stricter SLA, every-language
   coverage with EN/ES structural parity, the corpus's canonical topic taxonomy, EXP-12's chunk
   lint reused rather than reimplemented, the shipped never-certify-"safe" guard run over every
   proposed sentence, an EN/ES medicinal-or-edibility claim scan that *cross-checks* the harm
   checklist instead of trusting it, and an eval case that must load, cite one of the proposed
   documents, and assert only facts appearing verbatim in the passage. Merge-blocking on errors
-  (`make propose-check`; a `propose-check` step in the `eval-a11y` CI job). A mechanically
+  for **every submitted proposal, not only the committed example**: `make propose-check` and the
+  `propose-check` step of the `eval-a11y` CI job run `sprout propose check` with no arguments,
+  which discovers every proposal-shaped file in the repository, reports one filed outside the
+  declared submission locations (`proposals/`, `examples/corpus-proposal/`) as an error rather
+  than skipping it, and fails rather than passing if it discovers nothing at all. A mechanically
   clean proposal carrying toxicity prose reports `ready-for-expert-review` — the veterinary
   toxicologist / native-Spanish review this repo already requires, recorded as a machine-checked
-  state rather than assumed. Worked example: `examples/corpus-proposal/` (*Chamaedorea
-  elegans*, EN + ES, zero findings). Nothing is ever written to `corpus/`.
+  state rather than assumed; the `expert_review` sign-off that clears it must be a committed
+  Markdown artifact under `docs/audits/` naming the species, reviewer, and sign-off date, so the
+  strongest gate cannot be discharged by pointing at any file that happens to exist. Worked
+  example: `examples/corpus-proposal/` (*Chamaedorea elegans*, EN + ES, zero findings). Nothing
+  is ever written to `corpus/`.
 - Deploy-grade app-level server hardening (FIX-10): security headers (CSP, HSTS,
   anti-framing/sniffing), a streaming-safe request-size cap, per-client-IP token-bucket rate
   limits (with a stricter bucket and a concurrency bound on `/api/identify`), all pure-stdlib

@@ -1103,9 +1103,22 @@ def propose_template() -> None:
 @propose_app.command("check")
 def propose_check(
     targets: Annotated[
-        list[str], typer.Argument(help="Proposal YAML files and/or directories of them.")
-    ],
+        list[str] | None,
+        typer.Argument(
+            help=(
+                "Proposal YAML files and/or directories. Omit to review every proposal "
+                "committed anywhere under --repo-root (what `make propose-check` and CI run)."
+            )
+        ),
+    ] = None,
     config: ConfigOpt = _DEFAULT_CONFIG,
+    repo_root: Annotated[
+        str,
+        typer.Option(
+            "--repo-root",
+            help="Repository root to discover proposals under and resolve sign-off artifacts in.",
+        ),
+    ] = ".",
     out: Annotated[
         str | None,
         typer.Option("--out", help="Directory to write corpus-proposal-review.{md,json} into."),
@@ -1127,6 +1140,12 @@ def propose_check(
 ) -> None:
     """Review corpus proposals offline: provenance, corpus lint, safety, harm checklist.
 
+    With no ``targets`` this is the merge-blocking gate: it discovers every proposal
+    committed anywhere under ``--repo-root`` — not just the worked example — and requires
+    each to sit in one of the declared submission locations. Discovering none is a hard
+    failure, because a gate that reviews nothing is not a gate. Naming files explicitly
+    reviews exactly those and does not police where they live.
+
     Exits non-zero when any proposal has an error finding (``changes-requested``). A
     mechanically clean but safety-bearing proposal is reported as
     ``ready-for-expert-review`` and exits 0 unless ``--require-expert-review`` is passed
@@ -1135,13 +1154,36 @@ def propose_check(
     """
     from datetime import date as _date
 
-    from .propose import ProposalError, proposal_paths, render_json, render_markdown, review_files
+    from .propose import (
+        PROPOSAL_DIRS,
+        ProposalError,
+        discover_proposals,
+        proposal_paths,
+        render_json,
+        render_markdown,
+        review_files,
+    )
 
     cfg = _load(config)
+    root = Path(repo_root)
     try:
-        paths = proposal_paths(targets)
+        discovering = not targets
+        if discovering:
+            paths = discover_proposals(root)
+            if not paths:
+                raise ProposalError(
+                    f"no corpus proposals found anywhere under '{root}' — expected at least "
+                    f"the committed example in {list(PROPOSAL_DIRS)}. Refusing to report a "
+                    "green gate over nothing."
+                )
+        else:
+            paths = proposal_paths(targets or [])
         reviews = review_files(
-            paths, cfg, today=_date.fromisoformat(today) if today else _date.today()
+            paths,
+            cfg,
+            today=_date.fromisoformat(today) if today else _date.today(),
+            repo_root=root,
+            enforce_location=discovering,
         )
     except ProposalError as exc:
         typer.echo(f"propose: {exc}", err=True)

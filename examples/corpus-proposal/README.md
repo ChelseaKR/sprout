@@ -11,17 +11,38 @@ runs into, and unsourced plant-care text is exactly what goes wrong in this doma
 EV4). So contribution is not a free-text form: a proposal is reviewed mechanically before a
 human spends attention on it.
 
-## Two doors, one schema
+## Two doors, one review
 
-**No code.** Open a [corpus proposal issue](../../.github/ISSUE_TEMPLATE/corpus_proposal.yml);
-its fields map one-to-one onto the YAML below, and a maintainer converts it.
+**No code.** Open a [corpus proposal issue](../../.github/ISSUE_TEMPLATE/corpus_proposal.yml).
+It collects the parts only you can supply — species, source, license, fetch date, the
+passages, the eval question and the phrase the answer must contain, and the harm checklist
+— and a maintainer transcribes it into a proposal file, filling in the mechanical remainder
+(schema version, submitter and date attribution, section titles, the eval case's id,
+sources, and provenance). It is a deliberate *subset* of the YAML below, not a
+field-for-field mirror of it; the review both doors end at is the same.
 
 **YAML.** Start from the template, fill it in, and review it locally — all offline:
 
 ```bash
 uv run sprout propose template > proposals/my-plant.yaml
-uv run sprout propose check proposals/my-plant.yaml
+uv run sprout propose check proposals/my-plant.yaml   # review just this one
+uv run sprout propose check                           # what CI runs: every proposal
 ```
+
+## What the gate covers
+
+`sprout propose check` with no arguments walks the repository and reviews **every file
+with the shape of a proposal, wherever it was filed** — not just this directory. That is
+what `make propose-check` and the `propose-check` CI step run, so a contributor's proposal
+in [`proposals/`](../../proposals/) is gated exactly as hard as this example. Three ways it
+fails closed:
+
+- a proposal outside the declared submission locations (`proposals/`,
+  `examples/corpus-proposal/`) is an **error** — a misfiled proposal is reported, never
+  skipped;
+- a file that reads as a proposal but does not parse is a **failure**, not a skip;
+- discovering *no* proposals at all is a **failure**, because a gate that reviews nothing
+  is not a gate.
 
 ## What the review checks
 
@@ -32,9 +53,10 @@ contribution is held to exactly the standard the shipped corpus is held to:
 
 | Area | Enforced |
 |---|---|
+| Location | the file sits in a declared submission location; anything else is an error, not a skip |
 | Identity | slugified species, not already in the corpus, botanical name present |
-| Provenance | license on the contribution allowlist, http(s) URL, synthetic prose confined to the `example.invalid` placeholder host, non-synthetic content gated on an expert sign-off |
-| Dates | ISO-8601, never in the future; E7's citation-freshness SLA (stale is a *warning*, unusable is an error) |
+| Provenance | license on the contribution allowlist, http(s) URL, synthetic prose confined to the `example.invalid` placeholder *host* (host equality, not a substring of the URL), non-synthetic content gated on an expert sign-off |
+| Dates | ISO-8601, never in the future; E7's citation-freshness SLA against the topic the *passage* carries, so toxicity prose gets the stricter SLA even under the template's default `topic: care` (stale is a *warning*, unusable is an error) |
 | Languages | every `languages.supported` language proposed together; EN/ES section-count parity; no heading left untranslated |
 | Topics | the reference-language passage covers the corpus's canonical topic taxonomy |
 | Chunk quality | no sentence longer than `chunk.max_words`; the "names its plant" extraction-safety heuristic |
@@ -52,12 +74,14 @@ contribution is held to exactly the standard the shipped corpus is held to:
   [`docs/RESEARCH-ROADMAP.md`](../../docs/RESEARCH-ROADMAP.md) requires, and it does not
   pretend to. Recording the gate as a machine-checked state is the point.
 - **`ready-to-merge`** — mechanically clean and either not safety-bearing or carrying an
-  `expert_review` block whose sign-off artifact is committed.
+  `expert_review` block whose sign-off artifact is a committed Markdown document under
+  `docs/audits/` that names this species, its reviewer, and the date they signed. Pointing
+  the field at some other file that happens to exist does not discharge the gate.
 
 `propose check` exits non-zero only on `changes-requested`, so the merge-blocking CI step
-(`propose-check`, inside the `eval-a11y` job and `make verify`) catches real defects without
-manufacturing a clinician's approval. `--require-expert-review` tightens it for a maintainer
-about to merge.
+(`propose-check`, inside the `eval-a11y` job and `make verify`) catches real defects — in
+any submitted proposal, not only this one — without manufacturing a clinician's approval.
+`--require-expert-review` tightens it for a maintainer about to merge.
 
 ## This example
 
