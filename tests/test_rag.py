@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -37,7 +39,13 @@ from sprout.lexical import BM25Index
 from sprout.models import AnswerSentence, Chunk, Citation, RetrievedChunk
 from sprout.providers.deterministic import ExtractiveGenerator, HashingEmbedding
 from sprout.store import VectorStore
-from sprout.text import extract_cadences, extract_facets, has_negation
+from sprout.text import (
+    _FACET_SPLIT_RE,
+    extract_cadences,
+    extract_facets,
+    has_negation,
+    token_set,
+)
 
 
 def _chunk(chunk_id: str, source: str, title: str, text: str, topic: str) -> Chunk:
@@ -886,6 +894,66 @@ def test_extract_facets_single_part_question_is_one_facet() -> None:
 
 def test_extract_facets_empty_query_has_no_facets() -> None:
     assert extract_facets("the a of") == []
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "How often should I water my pothos?",
+        "How often should I water, and does that change in winter?",
+        "Is it toxic to cats or dogs, and how do I repot it?",
+        "sun as well as shade",
+        "a and b but c or d y e pero f o g",
+        "¿Con qué frecuencia riego, y cambia en invierno?",
+        "a  and  b",
+        "  leading and trailing  ",
+        "a,,,b;;c??d",
+        "trailing comma,",
+        ",leading comma",
+        "she doesn't and won't",
+        "no delimiters here",
+        "   ",
+    ],
+)
+def test_facet_split_is_unchanged_by_the_redos_hardening(query: str) -> None:
+    """The rewrite of ``_FACET_SPLIT_RE`` must be observably equivalent.
+
+    The pattern no longer swallows the whitespace around a delimiter, so the raw ``split``
+    pieces differ — but ``extract_facets`` strips and tokenises every piece, so the facets it
+    yields must be identical to those of the original, quadratic pattern.
+    """
+    ambiguous = re.compile(
+        r"\s*(?:[,;?]+|(?<=\w)\s+(?:and|but|or|as well as|y|pero|o)\s+(?=\w))\s*",
+        re.IGNORECASE,
+    )
+    expected = [
+        toks
+        for clause in ambiguous.split(query.strip())
+        if clause.strip() and (toks := token_set(clause))
+    ]
+    assert extract_facets(query) == expected
+
+
+def test_facet_split_cost_is_linear_in_a_whitespace_run() -> None:
+    """`py/polynomial-redos` (CodeQL, 2026-08-01) at ``text.py:295``. ``query`` is caller-supplied
+    (``POST /api/chat``), so the split's cost must not depend on how the caller shapes it.
+
+    The old pattern's leading ``\\s*`` overlapped both alternatives, so a run of n whitespace
+    characters cost O(n) backtracks at each of n start positions. Quadratic growth here is
+    ~16x per 4x input; the assertion allows 6x, which is far above interpreter noise and far
+    below quadratic. Fails against the pre-fix pattern.
+    """
+
+    def elapsed(n: int) -> float:
+        payload = " " * n + "!"
+        start = time.perf_counter()
+        for _ in range(3):
+            _FACET_SPLIT_RE.split(payload)
+        return time.perf_counter() - start
+
+    elapsed(4_000)  # warm up the pattern cache
+    small, large = elapsed(8_000), elapsed(32_000)
+    assert large < max(small * 6, 0.05), f"{small=} {large=} — growth looks super-linear"
 
 
 def _fern_chunk(text: str, chunk_id: str) -> Chunk:

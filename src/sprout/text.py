@@ -203,8 +203,19 @@ _NEG_NT_RE = re.compile(r"\b\w+n't\b", re.IGNORECASE)
 # both languages. Deliberately conservative (a fixed conjunction list, not an NLP parser)
 # so clause boundaries stay auditable: "How often should I water, and does that change in
 # winter?" splits into two clauses; "How often should I water my pothos?" stays one.
+# py/polynomial-redos: the pattern used to open with a shared ``\s*``, so on a run of n
+# whitespace characters the engine consumed the rest of the run at *every* one of the n start
+# positions before failing — O(n²) in a value the caller supplies (`POST /api/chat`, capped at
+# `server.max_question_chars`). Dropping the surrounding ``\s*`` makes both branches start on a
+# character class that whitespace cannot satisfy, so a non-delimiter position fails in O(1).
+#
+# Equivalent for this module's only consumer: the pieces now keep their surrounding whitespace,
+# and ``extract_facets`` feeds every piece through ``.strip()`` and ``token_set`` (which
+# tokenises with ``_TOKEN_RE``), so leading/trailing whitespace on a clause is not observable.
+# ``\s++`` is possessive because no conjunction begins with whitespace, so a whitespace run
+# never had a match to give back.
 _FACET_SPLIT_RE = re.compile(
-    r"\s*(?:[,;?]+|(?<=\w)\s+(?:and|but|or|as well as|y|pero|o)\s+(?=\w))\s*",
+    r"(?:[,;?]+|(?<=\w)\s++(?:and|but|or|as well as|y|pero|o)\s++(?=\w))",
     re.IGNORECASE,
 )
 

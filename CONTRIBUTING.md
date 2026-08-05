@@ -157,6 +157,26 @@ failures** — never against results only visible from a private/local run. Mech
   passage whose sentences don't name the plant). It is advisory (does not fail CI) while the
   heuristics are tuned; `sprout corpus-report --gate` fails on any finding for maintainers who
   want to opt in early.
+- **Proposing a *new species*** (the SME path, research item E5): don't hand-edit `corpus/`.
+  Open a [corpus proposal issue](.github/ISSUE_TEMPLATE/corpus_proposal.yml) — the no-code door,
+  which collects what only you can supply and which a maintainer transcribes into a proposal
+  file — or run `sprout propose template > proposals/my-plant.yaml`, fill it in, and
+  `sprout propose check proposals/my-plant.yaml`. One file carries the passage in every
+  supported language, its provenance (source, license, `fetch_date`, topic), the eval case the
+  passage must satisfy, and a representational-harm checklist. The review is offline and
+  mechanical — provenance allowlist, EN/ES parity, corpus lint, the never-certify-"safe" guard
+  run over every proposed sentence, and an `expected_fact`-appears-verbatim check.
+  It is merge-blocking for **every submitted proposal, not just the committed example**:
+  `make propose-check` and the `propose-check` step of the `eval-a11y` CI job run
+  `sprout propose check` with no arguments, which discovers every proposal-shaped file in the
+  repository and reviews it. Commit yours under [`proposals/`](proposals/) — a proposal filed
+  outside the declared locations is reported as an error, an unparseable one is a failure, and
+  discovering none at all fails the gate rather than passing it. A mechanically clean proposal
+  that carries toxicity prose lands on `ready-for-expert-review`, not `ready-to-merge`: safety
+  copy still needs a licensed veterinary toxicologist (and Spanish copy a native horticulture
+  reviewer), and the `expert_review` sign-off that clears it must be a committed Markdown
+  artifact under `docs/audits/` naming the species, the reviewer, and the date. See
+  [`examples/corpus-proposal/`](examples/corpus-proposal/).
 - **New eval cases** go in `eval/suites/` as YAML (id, question, expected behavior, required
   citation/fact, language tag, rationale). Adding a hard case that currently fails is welcome —
   failures are shown, not hidden.
