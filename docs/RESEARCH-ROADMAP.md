@@ -198,6 +198,15 @@ abstention exactly as before, per ADR-0021's reasoning. Verify: `pytest tests/te
 with the new `coverage≥…` segment rows under `calibration`, and the baseline regression check
 (`diff_against_baseline`) reports no issues — purely additive.
 
+Tuning-scope justification (`src/sprout/confidence.py` is tunable surface per
+`docs/ROADMAP.md` Phase 3): the curve is read directly against the committed calibration
+failures it makes legible — `calibration-003/004/006/008/009/013/014/015/016`, all
+overconfident-and-wrong cases in `docs/audits/eval-baseline.json`. Coverage-vs-risk at each
+threshold is what tells a maintainer, mechanically, whether raising `abstain_threshold` above
+one of these cases's stated confidence would have caught it, and at what coverage cost — the
+question a future *threshold* change (a separate, still-gated PR) would need answered before
+touching the constant. No threshold, weight, or scoring path changes here.
+
 ## Implementation status — 2026-08-04
 
 Shipped: **E5** SME corpus-contribution workflow — `sprout propose template` emits a
