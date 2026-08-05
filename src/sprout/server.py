@@ -64,6 +64,18 @@ from .reminders import Reminder, ReminderError, ReminderStore
 _MAX_SESSION_ID_CHARS = 128
 
 
+def _error_kind(exc: BaseException) -> str:
+    """The exception's class name — and only that.
+
+    Handlers log this instead of ``str(exc)``. An exception *message* is free text that
+    routinely echoes caller input and internal detail, so it can go neither to the client
+    (CWE-209) nor into ``obs.Logger``, which is PII-free by construction. A class name is
+    low-cardinality, author-controlled, and enough to tell a malformed body apart from a
+    capacity limit.
+    """
+    return type(exc).__name__
+
+
 def _valid_session_id(raw: object) -> str | None:
     if not isinstance(raw, str):
         return None
@@ -197,9 +209,15 @@ def _register_family_greenhouse(app: FastAPI, engine: Assistant, log: Logger) ->
                 return JSONResponse({"error": "invalid integration signature"}, status_code=401)
             payload = FamilyGreenhouseRequest.model_validate(raw_payload)
         except (ValidationError, ValueError, json.JSONDecodeError) as exc:
-            return JSONResponse(
-                {"error": "invalid integration payload", "detail": str(exc)}, status_code=400
-            )
+            # CWE-209: never return ``str(exc)``. Two of the three raise sites above run
+            # *before* the HMAC check, so an unauthenticated caller reached this branch —
+            # and a pydantic ValidationError renders the model class name, every field
+            # path, the offending input echoed back, and a versioned errors.pydantic.dev
+            # URL. The client gets the same fixed string every other branch in this file
+            # returns; the exception *class* (low-cardinality, never its message) is the
+            # operator's triage signal.
+            log.event("request_rejected", route="family_greenhouse", error_kind=_error_kind(exc))
+            return JSONResponse({"error": "invalid integration payload"}, status_code=400)
 
         answer = engine.answer(selector_query(payload), payload.language)
         log.event(
@@ -466,7 +484,12 @@ def _register_reminders(app: FastAPI, config: Config, log: Logger) -> None:
         except (ReminderError, TypeError, ValueError) as exc:
             # TypeError: a non-numeric ``interval_days`` (e.g. a list) must be a 400,
             # not an unhandled 500.
-            return JSONResponse({"error": str(exc)}, status_code=400)
+            # CWE-209: never return ``str(exc)``. ``int(interval)`` raises CPython's own
+            # "int() argument must be a string, a bytes-like object or a real number, not
+            # 'list'", and ReminderStore leaks the configured cap ("reminder limit reached
+            # (200)") and the on-disk format version. This route is unauthenticated.
+            log.event("request_rejected", route="reminders_create", error_kind=_error_kind(exc))
+            return JSONResponse({"error": "invalid reminder request"}, status_code=400)
         log.event("reminder_added", status="ok")
         return JSONResponse(_reminder_dump(reminder), status_code=201)
 
@@ -475,7 +498,11 @@ def _register_reminders(app: FastAPI, config: Config, log: Logger) -> None:
         try:
             reminder = _store().complete(reminder_id)
         except ReminderError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=404)
+            # CWE-209: never return ``str(exc)``. It reflects the caller's own id back
+            # ("no reminder with id '<script>'") and, when the store fails to load, the
+            # internal "unsupported reminders format: ..." detail.
+            log.event("request_rejected", route="reminders_complete", error_kind=_error_kind(exc))
+            return JSONResponse({"error": "reminder not found"}, status_code=404)
         return JSONResponse(_reminder_dump(reminder))
 
     @app.delete("/api/reminders/{reminder_id}")
