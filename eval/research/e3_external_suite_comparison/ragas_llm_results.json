@@ -1,0 +1,415 @@
+{
+  "non_llm": {
+    "n_items": 30,
+    "mean_context_precision": 0.9316666666012593,
+    "mean_context_recall": 1.0,
+    "mean_answer_similarity": 0.12273059186480838,
+    "per_item": [
+      {
+        "id": "calibration-001",
+        "non_llm_context_precision": 0.7499999999625,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.1171366594360087
+      },
+      {
+        "id": "calibration-002",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.06451612903225812
+      },
+      {
+        "id": "calibration-003",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.09459459459459463
+      },
+      {
+        "id": "calibration-004",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.13225806451612898
+      },
+      {
+        "id": "calibration-005",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.12957746478873244
+      },
+      {
+        "id": "calibration-006",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.15139442231075695
+      },
+      {
+        "id": "calibration-008",
+        "non_llm_context_precision": 0.8666666666377778,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.12112676056338023
+      },
+      {
+        "id": "calibration-009",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.180327868852459
+      },
+      {
+        "id": "calibration-010",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.12868632707774796
+      },
+      {
+        "id": "calibration-011",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.07476635514018692
+      },
+      {
+        "id": "calibration-012",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.18110236220472442
+      },
+      {
+        "id": "calibration-013",
+        "non_llm_context_precision": 0.9999999999666667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.13731343283582087
+      },
+      {
+        "id": "calibration-014",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.11676646706586824
+      },
+      {
+        "id": "calibration-015",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.1301939058171745
+      },
+      {
+        "id": "calibration-016",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.14084507042253525
+      },
+      {
+        "id": "calibration-019",
+        "non_llm_context_precision": 0.249999999975,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 1.0
+      },
+      {
+        "id": "groundedness-monstera-yellow-leaves",
+        "non_llm_context_precision": 0.9999999999666667,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.029556650246305383
+      },
+      {
+        "id": "groundedness-pothos-watering-frequency",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05025125628140703
+      },
+      {
+        "id": "groundedness-snake-plant-light",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.053370786516853896
+      },
+      {
+        "id": "groundedness-peace-lily-drooping",
+        "non_llm_context_precision": 0.7499999999625,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.03735632183908044
+      },
+      {
+        "id": "groundedness-zz-plant-winter-watering",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05633802816901412
+      },
+      {
+        "id": "groundedness-spider-plant-brown-tips",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.05384615384615388
+      },
+      {
+        "id": "groundedness-philodendron-light",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.061224489795918324
+      },
+      {
+        "id": "groundedness-fiddle-leaf-fig-dropping-leaves",
+        "non_llm_context_precision": 0.8333333332916666,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.0767123287671233
+      },
+      {
+        "id": "groundedness-aloe-watering-frequency",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.06870229007633588
+      },
+      {
+        "id": "groundedness-calathea-curling-leaves",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.029055690072639195
+      },
+      {
+        "id": "groundedness-rubber-plant-repotting",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.0561797752808989
+      },
+      {
+        "id": "groundedness-dracaena-yellow-leaves",
+        "non_llm_context_precision": 0.99999999995,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.032258064516129004
+      },
+      {
+        "id": "groundedness-english-ivy-light",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.07241379310344831
+      },
+      {
+        "id": "groundedness-jade-plant-watering",
+        "non_llm_context_precision": 0.9999999999,
+        "non_llm_context_recall": 1.0,
+        "non_llm_answer_similarity": 0.10404624277456642
+      }
+    ]
+  },
+  "llm_tier": {
+    "model": "qwen2.5:3b",
+    "elapsed_s": 866.2,
+    "n_items": 30,
+    "mean_faithfulness": 0.9857142857142858,
+    "n_scored_faithfulness": 28,
+    "mean_context_precision": 0.604166666640625,
+    "n_scored_context_precision": 4,
+    "mean_context_recall": 0.9166666666666666,
+    "n_scored_context_recall": 30,
+    "mean_answer_relevancy": 0.7434619787552449,
+    "n_scored_answer_relevancy": 30,
+    "per_item": [
+      {
+        "id": "calibration-001",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8806829489119065
+      },
+      {
+        "id": "calibration-002",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.5570772168567016
+      },
+      {
+        "id": "calibration-003",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.6406347960978027
+      },
+      {
+        "id": "calibration-004",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.6736477513028597
+      },
+      {
+        "id": "calibration-005",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.813723941145074
+      },
+      {
+        "id": "calibration-006",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.7210288238554137
+      },
+      {
+        "id": "calibration-008",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8082742093352205
+      },
+      {
+        "id": "calibration-009",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.5497692126613692
+      },
+      {
+        "id": "calibration-010",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.7811312381430007
+      },
+      {
+        "id": "calibration-011",
+        "faithfulness": null,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.5641684893868665
+      },
+      {
+        "id": "calibration-012",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8983637461279659
+      },
+      {
+        "id": "calibration-013",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.6436914523237265
+      },
+      {
+        "id": "calibration-014",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8859623792671801
+      },
+      {
+        "id": "calibration-015",
+        "faithfulness": 0.6,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.6409863088782463
+      },
+      {
+        "id": "calibration-016",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 0.0,
+        "answer_relevancy": 0.549076854333033
+      },
+      {
+        "id": "calibration-019",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.3740711340627343
+      },
+      {
+        "id": "groundedness-monstera-yellow-leaves",
+        "faithfulness": null,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.5834400462028416
+      },
+      {
+        "id": "groundedness-pothos-watering-frequency",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8828970514305844
+      },
+      {
+        "id": "groundedness-snake-plant-light",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 0.0,
+        "answer_relevancy": 0.6510930363852558
+      },
+      {
+        "id": "groundedness-peace-lily-drooping",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8061989792570378
+      },
+      {
+        "id": "groundedness-zz-plant-winter-watering",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.7586419485151561
+      },
+      {
+        "id": "groundedness-spider-plant-brown-tips",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8842733375033477
+      },
+      {
+        "id": "groundedness-philodendron-light",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.6518982866784544
+      },
+      {
+        "id": "groundedness-fiddle-leaf-fig-dropping-leaves",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8776047627706113
+      },
+      {
+        "id": "groundedness-aloe-watering-frequency",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.976398270040788
+      },
+      {
+        "id": "groundedness-calathea-curling-leaves",
+        "faithfulness": 1.0,
+        "context_precision": null,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.61351570633541
+      },
+      {
+        "id": "groundedness-rubber-plant-repotting",
+        "faithfulness": 1.0,
+        "context_precision": 0.6666666666333333,
+        "context_recall": 0.5,
+        "answer_relevancy": 0.9134777717646964
+      },
+      {
+        "id": "groundedness-dracaena-yellow-leaves",
+        "faithfulness": 1.0,
+        "context_precision": 0.0,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.9093569165642984
+      },
+      {
+        "id": "groundedness-english-ivy-light",
+        "faithfulness": 1.0,
+        "context_precision": 0.7499999999625,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.8738260540727997
+      },
+      {
+        "id": "groundedness-jade-plant-watering",
+        "faithfulness": 1.0,
+        "context_precision": 0.9999999999666667,
+        "context_recall": 1.0,
+        "answer_relevancy": 0.9389466924469613
+      }
+    ]
+  }
+}
