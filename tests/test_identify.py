@@ -18,7 +18,9 @@ from sprout.identify import (
     PhotoCareService,
     PlantCandidate,
     build_identifier,
+    format_candidates,
     parse_plantnet,
+    photo_candidates_intro_for,
     resolve_species,
 )
 
@@ -124,6 +126,29 @@ def test_parse_plantnet_sorts_and_skips_malformed() -> None:
 
 def test_parse_plantnet_empty_on_missing_results() -> None:
     assert parse_plantnet({}, top_k=5).candidates == ()
+
+
+def test_format_candidates_ranks_best_first_and_respects_limit() -> None:
+    ident = _ident(
+        PlantCandidate(scientific_name="Ficus lyrata", score=0.20),
+        PlantCandidate(scientific_name="Ficus elastica", score=0.42),
+        PlantCandidate(scientific_name="Ficus benjamina", score=0.31),
+    )
+    assert format_candidates(ident, limit=2) == [
+        "Ficus elastica (0.42)",
+        "Ficus benjamina (0.31)",
+    ]
+
+
+def test_format_candidates_empty_when_no_candidates() -> None:
+    assert format_candidates(_ident()) == []
+
+
+def test_photo_candidates_intro_for_en_and_es_and_unknown_falls_back_to_en() -> None:
+    en = photo_candidates_intro_for("en")
+    es = photo_candidates_intro_for("es")
+    assert en and es and en != es
+    assert photo_candidates_intro_for("xx") == en
 
 
 def test_photo_care_grounded_and_routes_safety(assistant: Assistant, config: Config) -> None:

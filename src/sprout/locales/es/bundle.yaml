@@ -36,6 +36,9 @@ prompts:
   photo_identified: >-
     Identificado en tu foto como {name}: una coincidencia visual, no un hecho
     citado. La siguiente orientación proviene del corpus citado.
+  photo_candidates_intro: >-
+    Coincidencias visuales más cercanas de la foto, sin confianza suficiente
+    para usarlas:
 
 guards:
   forbidden_safe_phrases:
