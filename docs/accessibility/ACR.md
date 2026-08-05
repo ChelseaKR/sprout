@@ -8,12 +8,13 @@ columns used here).
 **Author / contact:** Chelsea Kelly-Reif · ckellyreif@gmail.com.
 **Evaluation methods used:** the repo's deterministic structural a11y self-check
 (`sprout a11y-check`, source `src/sprout/a11y.py`) — genuinely merge-blocking — plus automated
-tooling (axe-core via pa11y, and pa11y-ci itself) run in CI today as **advisory only**
-(`continue-on-error: true`, excluded from the required `ci-gate` check; gap tracked to make
-blocking). Lighthouse CI is **not yet wired**. Manual keyboard walkthrough and manual
-screen-reader review (NVDA + Firefox on Windows, VoiceOver + Safari on macOS/iOS) are **planned
-per release but have not yet been performed** — no dated AT-pairing artifact exists yet. (Corrected
-2026-07-05: this paragraph previously claimed all of the above were performed/blocking and cited a
+tooling (axe-core via pa11y, and pa11y-ci itself), and Lighthouse's accessibility category
+(`--only-categories=accessibility`, threshold 0.95), all **merge-blocking** in CI as of
+2026-07-08 (part of the required `ci-gate` check; corrected from the prior advisory-only /
+not-wired state — see `docs/ROADMAP.md`). Manual keyboard walkthrough and manual screen-reader
+review (NVDA + Firefox on Windows, VoiceOver + Safari on macOS/iOS) are **planned per release but
+have not yet been performed** — no dated AT-pairing artifact exists yet. (Corrected 2026-07-05:
+this paragraph previously claimed all of the above were performed/blocking and cited a
 `docs/a11y/screen-reader-walkthrough-2026-06-22.md` file that was never created.)
 
 > **Why VPAT 2.5 / 508, not federal scope.** A houseplant app is not federal ICT, so Section 508
@@ -187,22 +188,16 @@ Notes apply to all three surfaces unless a surface is named.
    single-page artifacts.
 3. **302.9 / readability of answer prose** — grounded answers are extracted verbatim from the
    corpus and are not readability-graded; review-gated, not auto-gated.
-4. **Automated-tooling enforcement gap (corrected 2026-07-05).** axe-core and pa11y-ci run today
-   only inside the advisory `pa11y` CI job (`continue-on-error: true`, not in the required
-   `ci-gate`); Lighthouse CI is not wired at all; and no screen-reader walkthrough has yet been
-   performed. Everywhere in this report that says a criterion is "Gated by axe `<rule>`," read
-   that as "checked by axe today, advisory, not yet merge-blocking" until this gap closes. Only
-   `sprout a11y-check` (the structural self-check) is genuinely merge-blocking right now.
+4. **Manual assistive-technology review remains outstanding.** The automated structural,
+   axe/pa11y, and Lighthouse checks are merge-blocking; no dated screen-reader walkthrough has
+   yet been performed.
 
 ## What backs the "Supports" claims
 
-- **Auto-gated (merge-blocking) today:** the deterministic structural self-check
-  (`sprout a11y-check`) on both the chat UI and `docs/audits/eval-report.html`, wired through
-  `make verify` and the required `ci-gate` check.
-- **Automated, advisory only (not yet merge-blocking):** axe-core and pa11y-ci
-  (`WCAG2AA`) — both run in the `pa11y` CI job, which is `continue-on-error: true` and excluded
-  from `ci-gate`. Gap tracked to flip to blocking.
-- **Not yet wired:** Lighthouse CI accessibility scoring.
+- **Auto-gated (merge-blocking) today:** the deterministic structural self-check on the chat UI
+  and HTML report, axe-core plus pa11y-ci (`WCAG2AA`) on the served UI, and Lighthouse
+  accessibility scoring (minimum 0.95) on both browser surfaces. All feed the required
+  `ci-gate` check.
 - **Review-gated, planned but not yet performed:** the screen-reader walkthrough
   (NVDA + Firefox, VoiceOver + Safari) and the keyboard-only walkthrough — no dated artifact
   exists yet; a prior version of this report cited

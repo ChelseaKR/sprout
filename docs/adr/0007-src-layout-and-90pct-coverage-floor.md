@@ -7,8 +7,8 @@
 
 ## Context
 
-Sprout is published to PyPI (`pipx install sprout`) and is meant to be `pip install`-ed by
-strangers. That changes the bar in two specific ways a script or an app does not face:
+Sprout is intended for a future PyPI release and is meant to be installed by strangers.
+That changes the bar in two specific ways a script or an app does not face:
 
 1. **Import correctness.** A flat layout (package importable directly from the repo root)
    lets tests pass against the *source tree* while the *installed wheel* is subtly broken —

@@ -12,9 +12,11 @@ from __future__ import annotations
 import html
 import json
 import xml.sax.saxutils as sax
+from collections.abc import Sequence
 from pathlib import Path
 
 from ..a11y import assert_accessible
+from .history import HistoryEntry
 from .runner import RunResult
 from .suite import SuiteResult, Verdict
 
@@ -62,7 +64,7 @@ def _suite_md(s: SuiteResult) -> str:
     return "\n".join(lines)
 
 
-def render_markdown(result: RunResult) -> str:
+def render_markdown(result: RunResult, history: Sequence[HistoryEntry] = ()) -> str:
     fp = result.fingerprint
     board = ["| Suite | Verdict | Score | Threshold | n |", "|---|---|---|---|---|"]
     board += [
@@ -71,33 +73,135 @@ def render_markdown(result: RunResult) -> str:
         for s in result.suite_results
     ]
     suites = "\n\n".join(_suite_md(s) for s in result.suite_results)
-    return "\n".join(
-        [
-            "# Sprout Evaluation Report",
-            "",
-            f"**Overall verdict:** {_verdict_label(result.overall_verdict)}",
-            "",
-            "| | |",
-            "|---|---|",
-            f"| Run fingerprint | `{fp.digest[:16]}` |",
-            f"| Harness version | {fp.harness_version} |",
-            f"| Seed | {fp.seed} |",
-            f"| Dataset hash | `{fp.dataset_hash[:16]}` |",
-            f"| Judge config hash | `{fp.judge_config_hash[:12]}` |",
-            f"| Target (answer model) | {fp.target} |",
-            f"| Suites | {', '.join(fp.suite_names)} |",
-            "",
-            f"> {_DISCLAIMER}",
-            "",
-            "## Scoreboard",
-            "",
-            *board,
-            "",
-            "## Suites",
-            "",
-            suites,
-            "",
-        ]
+    sections = [
+        "# Sprout Evaluation Report",
+        "",
+        f"**Overall verdict:** {_verdict_label(result.overall_verdict)}",
+        "",
+        "| | |",
+        "|---|---|",
+        f"| Run fingerprint | `{fp.digest[:16]}` |",
+        f"| Harness version | {fp.harness_version} |",
+        f"| Seed | {fp.seed} |",
+        f"| Dataset hash | `{fp.dataset_hash[:16]}` |",
+        f"| Judge config hash | `{fp.judge_config_hash[:12]}` |",
+        f"| Target (answer model) | {fp.target} |",
+        f"| Suites | {', '.join(fp.suite_names)} |",
+        "",
+        f"> {_DISCLAIMER}",
+        "",
+        "## Scoreboard",
+        "",
+        *board,
+        "",
+        "## Suites",
+        "",
+        suites,
+        "",
+    ]
+    if history:
+        sections += ["## Score trend across releases", "", render_trend_markdown(history), ""]
+    return "\n".join(sections)
+
+
+# --- score trend across releases --------------------------------------------------
+# The trend is *not* part of RunResult, so it is deliberately kept out of render_markdown's
+# and render_html's default signature — passing ``history`` is opt-in and additive, so the
+# byte-identical-for-identical-inputs property of a bare `RunResult` render is unaffected.
+_SPARK_BLOCKS = "▁▂▃▄▅▆▇█"
+
+
+def _sparkline(scores: Sequence[float]) -> str:
+    """A compact text sparkline; degrades to a flat line for a single point or no spread."""
+    if not scores:
+        return ""
+    lo, hi = min(scores), max(scores)
+    if hi == lo:
+        return _SPARK_BLOCKS[0] * len(scores)
+    span = hi - lo
+    return "".join(
+        _SPARK_BLOCKS[min(len(_SPARK_BLOCKS) - 1, int((v - lo) / span * (len(_SPARK_BLOCKS) - 1)))]
+        for v in scores
+    )
+
+
+def render_trend_markdown(history: Sequence[HistoryEntry]) -> str:
+    """Per-suite trajectory table + sparkline across every release in ``history``."""
+    if not history:
+        return "_No release history recorded yet._"
+    suite_names = sorted({s.suite for entry in history for s in entry.suites})
+    lines = [
+        f"Releases: {', '.join(e.release for e in history)}",
+        "",
+        "| Suite | Trend | Latest | Threshold | Releases (n) |",
+        "|---|---|---|---|---|",
+    ]
+    for name in suite_names:
+        points = [(e.release, e.score_for(name)) for e in history]
+        present = [(rel, sc) for rel, sc in points if sc is not None]
+        if not present:
+            continue
+        scores = [sc.score for _, sc in present]
+        latest = present[-1][1]
+        spark = _sparkline(scores)
+        lines.append(
+            f"| `{name}` | `{spark}` | {latest.score:.3f} "
+            f"| {latest.threshold:.3f} | {len(present)} |"
+        )
+    lines += ["", "<details><summary>Trend data table (sparkline equivalent)</summary>", ""]
+    lines += ["| Suite | Release | Date | Score | Verdict |", "|---|---|---|---|---|"]
+    for entry in history:
+        for s in entry.suites:
+            lines.append(
+                f"| `{s.suite}` | {entry.release} | {entry.recorded_date} "
+                f"| {s.score:.3f} | {_verdict_label(s.verdict)} |"
+            )
+    lines += ["", "</details>"]
+    return "\n".join(lines)
+
+
+def render_trend_html(history: Sequence[HistoryEntry]) -> str:
+    """Accessible trend section: an ``aria-hidden`` sparkline plus its required data-table
+    equivalent (WCAG 1.1.1 non-text-content — the sparkline conveys nothing a screen-reader
+    user cannot get from the table right beneath it)."""
+    if not history:
+        return (
+            "<section><h2>Score trend across releases</h2><p>No release history yet.</p></section>"
+        )
+    suite_names = sorted({s.suite for entry in history for s in entry.suites})
+    spark_rows = ""
+    for name in suite_names:
+        present = [(e, e.score_for(name)) for e in history if e.score_for(name) is not None]
+        if not present:
+            continue
+        scores = [sc.score for _, sc in present if sc is not None]
+        spark_rows += (
+            f"<tr><td><code>{html.escape(name)}</code></td>"
+            f'<td aria-hidden="true">{html.escape(_sparkline(scores))}</td>'
+            f"<td>{scores[-1]:.3f}</td><td>{len(present)}</td></tr>"
+        )
+    detail_rows = "".join(
+        f"<tr><td><code>{html.escape(s.suite)}</code></td><td>{html.escape(entry.release)}</td>"
+        f"<td>{html.escape(entry.recorded_date)}</td><td>{s.score:.3f}</td>"
+        f"<td>{'PASS' if s.verdict is Verdict.PASS else 'FAIL'}</td></tr>"
+        for entry in history
+        for s in entry.suites
+    )
+    return (
+        '<section aria-labelledby="score-trend">'
+        '<h2 id="score-trend">Score trend across releases</h2>'
+        f"<p>Releases recorded: {html.escape(', '.join(e.release for e in history))}.</p>"
+        "<table><caption>Per-suite trend (sparkline is decorative; see the data table for "
+        "the same values)</caption><thead><tr>"
+        '<th scope="col">Suite</th><th scope="col">Trend</th>'
+        '<th scope="col">Latest score</th><th scope="col">Releases (n)</th></tr></thead>'
+        f"<tbody>{spark_rows}</tbody></table>"
+        "<table><caption>Trend data table — every recorded release, per suite</caption>"
+        '<thead><tr><th scope="col">Suite</th><th scope="col">Release</th>'
+        '<th scope="col">Date</th><th scope="col">Score</th>'
+        '<th scope="col">Verdict</th></tr></thead>'
+        f"<tbody>{detail_rows}</tbody></table>"
+        "</section>"
     )
 
 
@@ -125,7 +229,7 @@ def _suite_html(s: SuiteResult) -> str:
     )
 
 
-def render_html(result: RunResult) -> str:
+def render_html(result: RunResult, history: Sequence[HistoryEntry] = ()) -> str:
     fp = result.fingerprint
     board = "".join(
         f"<tr><td><code>{html.escape(s.suite)}</code></td>"
@@ -135,6 +239,7 @@ def render_html(result: RunResult) -> str:
     )
     suites = "".join(_suite_html(s) for s in result.suite_results)
     overall = "PASS" if result.overall_verdict is Verdict.PASS else "FAIL"
+    trend = render_trend_html(history) if history else ""
     doc = (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -151,6 +256,7 @@ def render_html(result: RunResult) -> str:
         '<th scope="col">Threshold</th><th scope="col">Items</th></tr></thead>'
         f"<tbody>{board}</tbody></table>"
         f"<h2>Suites</h2>{suites}"
+        f"{trend}"
         "</main></body></html>"
     )
     assert_accessible(doc)  # fail closed: never emit an inaccessible report
@@ -278,17 +384,24 @@ def write_reports(
     result: RunResult,
     out_dir: str | Path,
     formats: tuple[str, ...] = ("json", "md", "html", "junit", "sarif"),
+    history: Sequence[HistoryEntry] = (),
 ) -> list[Path]:
+    """Write the requested report formats. ``history``, if non-empty, adds a release-trend
+    section to the Markdown and HTML reports only (the other formats are CI-tool artifacts
+    with no notion of "across releases")."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     # Always run the HTML self-a11y check, even if HTML is not among the requested
     # formats, so "we never emit an inaccessible accessibility tool" is an unconditional
     # invariant rather than a property of the default argument (render_html raises on fail).
-    render_html(result)
+    render_html(result, history)
     written: list[Path] = []
     for fmt in formats:
         renderer, filename = _RENDERERS[fmt]
         path = out / filename
-        path.write_text(renderer(result), encoding="utf-8")
+        content = (
+            renderer(result, history) if fmt in ("md", "html") else renderer(result)  # type: ignore[call-arg]
+        )
+        path.write_text(content, encoding="utf-8")
         written.append(path)
     return written

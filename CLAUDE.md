@@ -69,7 +69,7 @@ sprout/
 │   ├── runner.py                # deterministic checks + LLM-as-judge
 │   ├── judges.py                # judge prompts; judge model ≠ answer model
 │   └── report.py                # EVALS.md + accessible HTML + JUnit/SARIF
-├── web/                         # framework-free wcag 2.2 AAA chat UI
+├── web/                         # framework-free wcag 2.2 AA chat UI
 ├── infra/                       # optional serverless deploy (CDK), scale-to-zero, budget alarm
 └── docs/                        # ARCHITECTURE, THREAT-MODEL, ACCESSIBILITY, MODEL-CARD, ADRs, audits/
 ```
@@ -90,6 +90,7 @@ Target 120+ cases in YAML, each carrying id, question, expected behavior
 | **calibration** | Do stated confidences track correctness? (reliability diagram, ECE; abstains below threshold) |
 | **refusal** | Out-of-scope, "just tell me it's fine," and prompt-injection embedded in questions |
 | **multilingual** | Spanish answers preserve the facts and citations of their English mirror |
+| **conversation** | Do follow-ups resolve species/topic from a bounded turn history (selector), and can a history-injection case ever change which chunks ground the answer? (must lose) |
 
 Scoring blends **deterministic checks** (citation resolves to corpus; forbidden "safe"
 certifications absent; "as of" date shown; language matches) with **LLM-as-judge** for
@@ -105,7 +106,7 @@ This section works through the full system-quality-attribute list and ties each 
 decision. Grouped for readability; every attribute is named.
 
 ### Usability, learnability, reach
-**Accessibility** — wcag 2.2 AAA enforced as a merge gate (axe + full-page checks; non-chat
+**Accessibility** — wcag 2.2 AA enforced as a merge gate<!-- claim:claude-md-wcag-merge-gate --> (axe + full-page checks; non-chat
 transcript view). **Usability** and **convenience** — one question box, copyable citations, no
 account. **Learnability**, **familiarity**, **intuitiveness** — a plain chat metaphor; first answer
 within one screen. **Interactivity** and **responsiveness** — SSE token streaming with a 200 ms
@@ -172,7 +173,7 @@ without funding.
 ### Compatibility, interoperability, standards, verification
 **Compatibility** and **interoperability** — JSON/SSE API; reports in JUnit and SARIF for any CI.
 **Interchangeability** — providers and embedding models swap without touching callers. **Standards
-compliance** — wcag 2.2 AAA, semver, conventional commits, SPDX license headers. **Inspectability** —
+compliance** — wcag 2.2 AA<!-- claim:claude-md-wcag-standards -->, semver, conventional commits, SPDX license headers. **Inspectability** —
 raw retrieval and judge traces are viewable. **Testability** — deterministic offline mode makes
 everything unit-testable. (Verification attributes — provability, repeatability, reproducibility,
 traceability, demonstrability — are covered above and exercised by the eval harness itself.)
@@ -181,7 +182,7 @@ traceability, demonstrability — are covered above and exercised by the eval ha
 
 ## Accessibility and Section 508 conformance
 
-Sprout targets **WCAG 2.2 Level AA** and conformance with the **Revised Section 508 Standards**
+Sprout targets **WCAG 2.2 Level AA**<!-- claim:claude-md-wcag-target --> and conformance with the **Revised Section 508 Standards**
 (36 CFR Part 1194), which incorporate WCAG 2.0 A/AA by reference for web content and add the
 functional performance criteria of Chapter 3. A houseplant app is not federal ICT, so 508 is not
 required here; building to it anyway is the point — it demonstrates the assistant's accessibility
@@ -299,3 +300,22 @@ Conventional commits; pinned, SLSA-friendly GitHub Actions; Dependabot.
 A fresh user can `pipx install sprout`, ask a plant question offline, get a cited answer (or an honest
 refusal), run `make eval` to regenerate the committed report with no cloud account, and read a model
 card that states the limits plainly — with every CI gate green.
+
+---
+
+## Agent contract (moved from the README, 2026-07-19)
+
+Per DOCUMENTATION-STANDARD §7/§9, agent-facing instructions live here, not in a README
+section.
+
+- **Build from:** this file (the spec), `docs/ROADMAP.md` (phased plan and metric
+  values), and the README's standards-conformance table.
+- **Entry points:** the `sprout` CLI (`src/sprout/cli.py`) and the eval harness (`src/sprout/eval/`).
+- **Hard guardrails — change only behind an ADR + CODEOWNERS review:** the citation guard
+  and never-certify-safe guard (`src/sprout/guards.py`), the abstention thresholds
+  (`src/sprout/confidence.py`), and the fail-closed eval loader (`src/sprout/eval/dataset.py`).
+- **The one command that proves it:** `make verify` reproduces the full CI gate set locally
+  (lint · type · test ≥90% · security · a11y · eval). A phase is not "done" until it is green.
+- **Definition of done:** install Sprout, ask a question offline, get a cited answer
+  or an honest refusal, run `make eval` to regenerate the committed report with no cloud
+  account, and read a model card that states the limits plainly — with every gate green.

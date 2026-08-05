@@ -1,0 +1,61 @@
+# Local-dev telemetry parity — STANDARDS/OBSERVABILITY-STANDARD.md §7. Brings up an OTel
+# Collector plus the LGM stack (Tempo for traces, Grafana for viewing, Mimir for metrics),
+# so a developer running the optional serverless surface locally sees their own traces
+# and RED metrics without needing a hosted backend. Entirely optional and unrelated to
+# the offline CLI/eval harness, which needs none of this.
+#
+# Deliberately three of the standard's four LGTM legs, not all four: Loki (logs) is
+# skipped because Sprout's structured logs already ship as stdout JSON
+# (`observability.log_format: json`, src/sprout/obs.py) that any log pipeline can pick
+# up directly — adding a `filelog`-receiver hop buys nothing extra locally. Pyroscope
+# (continuous profiling) is skipped because nothing in Sprout is profiler-instrumented;
+# add both if that ever changes.
+#
+# Usage:
+#   docker compose -f docker-compose.observability.yml up
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+#     SPROUT_OBSERVABILITY_TIER=A uv run sprout serve
+#   # Grafana at http://localhost:3000 (admin/admin)
+name: sprout-observability
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./infra/observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    depends_on:
+      - tempo
+      - mimir
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro
+    ports:
+      - "3200:3200" # Tempo query API
+
+  mimir:
+    image: grafana/mimir:2.14.0
+    command: ["-config.file=/etc/mimir.yaml"]
+    volumes:
+      - ./infra/observability/mimir-config.yaml:/etc/mimir.yaml:ro
+    ports:
+      - "9009:9009"
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - ./infra/observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - tempo
+      - mimir

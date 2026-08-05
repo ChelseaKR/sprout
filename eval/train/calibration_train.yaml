@@ -1,0 +1,308 @@
+# Held-out TRAIN split for `sprout fit-confidence` (FIX-08, ADR-0016).
+#
+# This file is deliberately *outside* `eval/suites/` and is never loaded, hashed, or
+# scored by `sprout eval` -- it exists only so `sprout fit-confidence` has evidence to
+# fit against that is disjoint from the eval set. Fitting the confidence logistic
+# against `eval/suites/calibration.yaml` would let the fit "know" the very cases the
+# calibration suite grades it on, turning the ECE gate into a check of nothing (the
+# anti-tuning-to-test discipline `docs/ROADMAP.md` Phase 3 already commits to for
+# retrieval/prompt tuning; this applies the same discipline to confidence fitting).
+#
+# Questions here mirror the corpus's per-species topic sections but deliberately probe a
+# *different* topic (soil/repotting) than the eval suite's watering/light/toxicity/
+# common-problems questions for the same 16 species, plus a disjoint set of out-of-scope
+# species and non-plant questions for the refuse-and-redirect negatives. Same schema as
+# `eval/suites/*.yaml` (`sprout.eval.dataset.DatasetItem`), reused as-is.
+cases:
+- id: train-001
+  question: How often should I repot a Monstera deliciosa, and what should the new pot look like?
+  expected_behavior: answer
+  expected_facts:
+  - repot the monstera every 1 to 2 years in spring
+  language: en
+  rationale: Monstera repotting cadence is a strongly-in-corpus soil/repotting fact, a
+    different topic than the eval suite's watering question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-002
+  question: What kind of pot and soil mix does a Pothos need when it's time to repot?
+  expected_behavior: answer
+  expected_facts:
+  - repot a pothos every one to two years
+  language: en
+  rationale: Pothos repotting/soil is a corpus-covered fact distinct from the eval
+    suite's light-preference question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-003
+  question: Does a snake plant need a big pot, and how often should it be repotted?
+  expected_behavior: answer
+  expected_facts:
+  - only needs repotting every three to four years
+  language: en
+  rationale: Snake plant repotting cadence is a distinct, strongly-in-corpus fact from
+    the eval suite's overwatering/rot question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-004
+  question: What size container should I move my peace lily into when I repot it?
+  expected_behavior: answer
+  expected_facts:
+  - repot the peace lily every one to two years in spring
+  language: en
+  rationale: Peace lily repotting is distinct from the eval suite's drooping-leaves
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-005
+  question: Should I repot a ZZ plant often, and how should I handle the rhizomes?
+  expected_behavior: answer
+  expected_facts:
+  - prefers to be slightly root-bound and only needs repotting every two to three years
+  language: en
+  rationale: ZZ plant repotting/rhizome handling is distinct from the eval suite's
+    drought-tolerance watering question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-006
+  question: When do the roots of a spider plant outgrow its pot, and how big should the
+    next one be?
+  expected_behavior: answer
+  expected_facts:
+  - repot it every one to two years
+  language: en
+  rationale: Spider plant repotting cadence is distinct from the eval suite's plantlet
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-007
+  question: What soil mix and pot size does a Philodendron need at repotting time?
+  expected_behavior: answer
+  expected_facts:
+  - repot a philodendron every one to two years
+  language: en
+  rationale: Philodendron soil/repotting is distinct from the eval suite's humidity
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-008
+  question: How often does a fiddle-leaf fig need repotting, and how much bigger should
+    the new pot be?
+  expected_behavior: answer
+  expected_facts:
+  - repot the fiddle-leaf fig every 1 to 2 years in spring
+  language: en
+  rationale: Fiddle-leaf fig repotting cadence is distinct from the eval suite's
+    leaf-drop question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-009
+  question: What kind of soil does an aloe vera need, and how soon can I water it after
+    repotting?
+  expected_behavior: answer
+  expected_facts:
+  - repot aloe vera every two to three years
+  language: en
+  rationale: Aloe vera soil/repotting is distinct from the eval suite's sunlight
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-010
+  question: How often should I repot my Calathea, and how gently do I need to handle
+    the roots?
+  expected_behavior: answer
+  expected_facts:
+  - repot your calathea every one to two years in spring
+  language: en
+  rationale: Calathea repotting/root handling is distinct from the eval suite's
+    curling-leaves question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-011
+  question: How often does a rubber plant need repotting, and what size pot should I
+    move it into?
+  expected_behavior: answer
+  expected_facts:
+  - typically repotted every two to three years
+  language: en
+  rationale: Rubber plant repotting cadence is distinct from the eval suite's dusty-leaves
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-012
+  question: What's the right soil and repotting schedule for a Dracaena?
+  expected_behavior: answer
+  expected_facts:
+  - repot dracaena every 2 to 3 years
+  language: en
+  rationale: Dracaena soil/repotting is distinct from the eval suite's brown-tips
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-013
+  question: How often should I repot English ivy, and does it like a snug pot?
+  expected_behavior: answer
+  expected_facts:
+  - repot english ivy every one to two years in spring
+  language: en
+  rationale: English ivy repotting is distinct from the eval suite's growth/pruning
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-014
+  question: What soil does a jade plant need, and how often should it be repotted?
+  expected_behavior: answer
+  expected_facts:
+  - repot the jade plant every two to three years
+  language: en
+  rationale: Jade plant soil/repotting is distinct from the eval suite's watering-schedule
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-015
+  question: How often should a Boston fern be repotted, and can I divide it at the same
+    time?
+  expected_behavior: answer
+  expected_facts:
+  - repot the boston fern every one to two years in spring
+  language: en
+  rationale: Boston fern repotting/division is distinct from the eval suite's dry-fronds
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-016
+  question: What medium should I repot a Phalaenopsis orchid into, and when's the best
+    time to do it?
+  expected_behavior: answer
+  expected_facts:
+  - repot the orchid every one to two years
+  language: en
+  rationale: Orchid repotting medium/timing is distinct from the eval suite's reblooming
+    question for the same species.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-017
+  question: How do I propagate an Echeveria succulent from a leaf, and how often should
+    it be watered?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: Echeveria is not in the corpus, so the engine should abstain at low
+    confidence rather than guess at propagation specifics.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-018
+  question: How often should I mist an air plant (Tillandsia), and does it need soil at
+    all?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: Tillandsia is outside the corpus, so the engine should record low
+    confidence and redirect rather than invent care specifics.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-019
+  question: What temperature and humidity does an indoor banana plant (Musa) need to
+    fruit?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: Indoor banana plant is not among the corpus species, so the engine should
+    abstain at low confidence rather than diagnose fruiting conditions.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-020
+  question: How hard should I prune a bonsai juniper, and how often does it need
+    repotting?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: Bonsai juniper is not covered by the corpus, so the engine should abstain
+    rather than fabricate pruning/repotting specifics.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-021
+  question: What's the correct tire pressure for a road bike in cold weather?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: A non-plant cycling question is entirely out of scope, so the engine
+    should record very low confidence and refuse.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-022
+  question: How long should sourdough bread dough proof before baking?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: A baking question is wholly out of scope for a plant-care corpus, so the
+    engine should abstain and refuse.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-023
+  question: What's a safe ibuprofen dosage for a 60-pound dog?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: A veterinary medication-dosage question is out of scope for a plant-care
+    corpus (and not a toxicity-reference lookup), so the engine should abstain and
+    redirect to a vet.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: train-024
+  question: How often should I change the oil in a diesel pickup truck?
+  expected_behavior: refuse-and-redirect
+  should_refuse: true
+  language: en
+  rationale: A vehicle-maintenance question is entirely out of scope, so the engine
+    should record very low confidence and refuse.
+  provenance:
+    source: synthetic-train
+    license: CC0-1.0
+    added: '2026-07-08'

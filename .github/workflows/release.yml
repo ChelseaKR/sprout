@@ -1,59 +1,83 @@
 name: release
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing signed stable SemVer tag (vX.Y.Z)"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
+  authorize:
+    uses: ChelseaKR/.github/.github/workflows/release-authorize.yml@315a513ff3b4e7c5c0628428909052d947f4f1ab
+    permissions:
+      contents: read
+    with:
+      tag: ${{ inputs.tag }}
+
   verify:
+    needs: authorize
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ needs.authorize.outputs.release-commit }}
           persist-credentials: false
-          fetch-depth: 0 # full history + tag objects, needed to verify the tag signature below
-      - name: Verify the pushed tag is a signed, annotated tag (REL-08)
-        # `git tag -v` needs the signer's public key (GPG) or gitsign's Sigstore/OIDC trust
-        # config already available on the runner — neither is provisioned by this workflow
-        # today, so this step will need that key/config added before the first real release
-        # (tracked; see the 2026-07-05 remediation execution log). It still fails closed: an
-        # unsigned or unverifiable tag stops the release here rather than silently publishing.
-        run: git tag -v "$GITHUB_REF_NAME"
       # No caching here either: this whole workflow triggers on `push: tags`, i.e. a
       # release event, so a cache poisoned by an earlier, less-trusted run could be
       # consumed here even though this job itself holds no write credentials (zizmor
       # `cache-poisoning`, high severity — found 2026-07-05, applies workflow-wide on a
       # tag-push trigger, not just to the job holding OIDC/attestation permissions).
-      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: false
       - name: Re-run the full gate set at the tagged commit
-        run: uv sync --frozen --extra serve && uv run sprout ingest && make verify
+        # RELEASE_TAG makes `make eval` (inside `make verify`) append this release's scores to
+        # docs/audits/eval-history.jsonl and run the consecutive-decline drift gate (EXP-13),
+        # gating on whatever ledger is committed at the tagged commit. This job has
+        # `contents: read` only and cannot push, so the actual append-and-commit happens the
+        # same way `docs/audits/eval-baseline.json` already does: the maintainer runs
+        # `make eval RELEASE_TAG=<tag>` locally and commits the updated ledger before tagging;
+        # this step is the fail-closed re-verification at the tagged commit, not the writer.
+        env:
+          TAG: ${{ needs.authorize.outputs.release-tag }}
+        run: uv sync --frozen --extra serve && uv run sprout ingest && make verify RELEASE_TAG="${TAG}"
 
-  build-and-publish:
-    needs: verify
+      - name: Require tag, package, and changelog versions to match
+        env:
+          TAG: ${{ needs.authorize.outputs.release-tag }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          PACKAGE_VERSION="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          test "${VERSION}" = "${PACKAGE_VERSION}"
+          grep -Fq "## [${VERSION}]" CHANGELOG.md
+
+  build:
+    needs: [authorize, verify]
     runs-on: ubuntu-latest
-    environment: pypi
     permissions:
-      id-token: write # PyPI Trusted Publishing (OIDC) — no stored token
+      id-token: write
       attestations: write
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ needs.authorize.outputs.release-commit }}
           persist-credentials: false
       # No caching in the OIDC signing/publish job: this job holds id-token: write +
       # attestations: write, and a poisoned/stale cache is the standard's canonical
       # cache-poisoning exposure for a provenance job (SEC-30, CICD-24). The `verify`
       # job above has no credentials and may cache freely.
-      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: false
       - name: Build sdist + wheel
@@ -63,13 +87,66 @@ jobs:
       - name: Generate SBOM (CycloneDX)
         run: uvx cyclonedx-py environment --output-format json --outfile sbom.cdx.json
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom
           path: sbom.cdx.json
+      - name: Upload verified distributions
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error
       - name: Attest build provenance (SLSA)
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           subject-path: "dist/*"
-      - name: Publish to PyPI (Trusted Publishing)
+  publish-pypi:
+    needs: [authorize, build]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: distributions
+          path: dist
+      - name: Recheck immutable tag object before PyPI publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.authorize.outputs.release-tag }}
+          TAG_OBJECT_SHA: ${{ needs.authorize.outputs.tag-object-sha }}
+        run: |
+          set -euo pipefail
+          LIVE_TAG_OBJECT="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)"
+          test "${LIVE_TAG_OBJECT}" = "${TAG_OBJECT_SHA}"
+      - name: Publish to PyPI through Trusted Publishing
         uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdf1 # v1.12.4
+
+  publish-release:
+    needs: [authorize, build, publish-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: distributions
+          path: dist
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sbom
+          path: dist
+      - name: Recheck immutable tag object and create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.authorize.outputs.release-tag }}
+          TAG_OBJECT_SHA: ${{ needs.authorize.outputs.tag-object-sha }}
+        run: |
+          set -euo pipefail
+          LIVE_TAG_OBJECT="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)"
+          test "${LIVE_TAG_OBJECT}" = "${TAG_OBJECT_SHA}"
+          gh release create "${TAG}" dist/* \
+            --title "sprout ${TAG}" --generate-notes --verify-tag

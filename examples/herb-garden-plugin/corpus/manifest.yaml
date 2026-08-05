@@ -1,0 +1,29 @@
+_note: Synthetic, CC0-1.0 second-domain corpus for the EXP-14 worked example (ADR-0019).
+  Prose is original and written for this example; not authoritative horticulture — same
+  provenance bar as the primary corpus/manifest.yaml, deliberately in a different care
+  domain (culinary herbs, not houseplants) to prove the runner is corpus-agnostic.
+documents:
+- file: basil.md
+  title: Basil care
+  language: en
+  source_name: Synthetic Herb-Garden Notes
+  url: https://example.invalid/herb-garden/basil
+  license: CC0-1.0
+  fetch_date: '2026-07-08'
+  topic: care
+- file: mint.md
+  title: Mint care
+  language: en
+  source_name: Synthetic Herb-Garden Notes
+  url: https://example.invalid/herb-garden/mint
+  license: CC0-1.0
+  fetch_date: '2026-07-08'
+  topic: care
+- file: rosemary.md
+  title: Rosemary care
+  language: en
+  source_name: Synthetic Herb-Garden Notes
+  url: https://example.invalid/herb-garden/rosemary
+  license: CC0-1.0
+  fetch_date: '2026-07-08'
+  topic: care

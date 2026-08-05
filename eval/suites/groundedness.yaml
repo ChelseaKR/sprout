@@ -311,3 +311,99 @@ cases:
     source: synthetic
     license: CC0-1.0
     added: '2026-06-22'
+- id: groundedness-pothos-watering-and-winter-multifacet
+  question: How often should I water my pothos, and does that change in winter?
+  expected_behavior: answer
+  expected_facts:
+  - top inch of soil has dried out
+  - less often in winter
+  language: en
+  rationale: EXP-01 facet-coverage case — a two-part question must surface both the
+    baseline watering cadence and the seasonal change, not just whichever ranks first
+    (docs/ideation/03-expansions.md). Feeds the completeness suite (>=2 expected_facts).
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: groundedness-calathea-watering-no-selector
+  question: How much water does my Calathea need?
+  expected_behavior: answer
+  expected_facts:
+  - once every five to seven days
+  language: en
+  rationale: EXP-05 baseline half of a pair with groundedness-calathea-watering-winter-selector.
+    Without a season stated, the default growing-season cadence is expected to surface
+    (the winter clause is a real corpus sentence too, but nothing selects it).
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: groundedness-zz-plant-watering-and-winter-multifacet
+  question: How often should I water my ZZ plant, and does that change in winter?
+  expected_behavior: answer
+  expected_facts:
+  - top 2 inches of soil have dried out
+  - needs even less in winter
+  language: en
+  rationale: EXP-01 facet-coverage case — checks both the ZZ plant's normal watering
+    cadence and its winter reduction surface in the same answer, not a repeated fact.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: groundedness-calathea-watering-winter-selector
+  question: How much water does my Calathea need?
+  season: winter
+  expected_behavior: answer
+  expected_facts:
+  - reduce watering for the calathea in winter to roughly every ten to fourteen days
+  language: en
+  rationale: EXP-05 — the identical question, only with season=winter stated as an
+    explicit, non-persisted selector, must surface the corpus's winter watering-cadence
+    sentence instead of (or ahead of) the growing-season default. Pairs with
+    groundedness-calathea-watering-no-selector to prove the selector — not the
+    question text — is what changed.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: groundedness-orchid-watering-and-winter-multifacet
+  question: How often should I water my Phalaenopsis orchid, and does that change in
+    winter?
+  expected_behavior: answer
+  expected_facts:
+  - once every seven to ten days
+  - less water in winter
+  language: en
+  rationale: EXP-01 facet-coverage case — checks both the orchid's normal watering
+    cadence and its winter reduction surface in the same answer, not a repeated fact.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: groundedness-pothos-light-no-selector
+  question: What kind of light does my Pothos need?
+  expected_behavior: answer
+  expected_facts:
+  - grows best in bright indirect light
+  language: en
+  rationale: EXP-05 baseline half of a pair with groundedness-pothos-light-low-light-selector.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'
+- id: groundedness-pothos-light-low-light-selector
+  question: What kind of light does my Pothos need?
+  light: low light
+  expected_behavior: answer
+  expected_facts:
+  - survive in low light
+  language: en
+  rationale: EXP-05 — the identical question, only with light="low light" stated as an
+    explicit, non-persisted selector, must surface the corpus's low-light-tolerance
+    sentence, which the unselected baseline case does not surface within
+    generation.max_sentences. Pairs with groundedness-pothos-light-no-selector.
+  provenance:
+    source: synthetic
+    license: CC0-1.0
+    added: '2026-07-08'

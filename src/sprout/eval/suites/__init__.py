@@ -6,6 +6,15 @@ entry-point group; importing here covers the in-tree ones.
 
 from __future__ import annotations
 
-from . import calibration, groundedness, multilingual, refusal, safety
+from . import calibration, completeness, conversation, groundedness, multilingual, refusal, safety
+from . import toxicity_coverage as _toxicity_coverage  # noqa: F401
 
-__all__ = ["calibration", "groundedness", "multilingual", "refusal", "safety"]
+__all__ = [
+    "calibration",
+    "completeness",
+    "conversation",
+    "groundedness",
+    "multilingual",
+    "refusal",
+    "safety",
+]
