@@ -1,4 +1,4 @@
-# 12. Deny-list homoglyph folding and zero-width normalization hardening
+# 14. Deny-list homoglyph folding and zero-width normalization hardening
 
 - Status: Accepted
 - Date: 2026-07-03

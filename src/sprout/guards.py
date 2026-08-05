@@ -6,23 +6,32 @@ ungrounded sentence is *structurally impossible* to render, not merely discourag
 safety-assertion guard drops any sentence that certifies a plant "safe"/"non-toxic" in
 either language. Scope is enforced upstream by the retrieval threshold; PII redaction and
 injection detection guard the (optional) network path and the logs.
+
+On the cloud (non-deterministic) generation path, ``citation_guard`` can additionally take
+an ``entailment_verifier`` (EXP-04, ``verifiers.py``) — a cross-encoder NLI model that must
+also agree the cited chunk entails the sentence. It is a strictly *additional* gate applied
+after the lexical check below, never a replacement for it. The offline extractive path
+never passes one, so its by-construction groundedness guarantee is unchanged (ADR-0018).
 """
 
 from __future__ import annotations
 
 import re
 
+from . import locales
 from .config import GuardsConfig
 from .models import AnswerSentence, Citation, RetrievedChunk
 from .text import (
     contains_phrase,
     coverage,
+    has_antonym_conflict,
     has_negation,
     normalize,
     strip_accents,
     token_set,
     tokenize,
 )
+from .verifiers import EntailmentVerifier
 
 # --- input classification --------------------------------------------------------
 
@@ -38,6 +47,61 @@ def is_safety_query(query: str, language: str, cfg: GuardsConfig) -> bool:
             elif kw in q_tokens or any(kw in t for t in q_tokens):
                 return True
     return False
+
+
+def _matches_any(
+    query: str, q_tokens: set[str], language: str, keywords: dict[str, list[str]]
+) -> bool:
+    """Exact-token (or exact-phrase) match against an audience keyword list.
+
+    Deliberately stricter than ``is_safety_query``'s substring pass: substring matching
+    is a safe over-trigger for *whether* something is a safety query, but for *audience
+    routing* it misclassifies -- "cat" is inside "identification", "pet" inside "petal",
+    "kid" inside "kidney", and "son" (a keyword we need) inside "poison". Exposure
+    keyword lists therefore carry their inflected forms explicitly and match whole
+    tokens only; ``tokenize`` has already lower-cased and accent-folded the query, and
+    single-word keywords are folded here so accented list entries compare equal.
+    """
+    for lang in {language, "en"}:
+        for kw in keywords.get(lang, []):
+            if " " in kw:
+                if contains_phrase(query, kw):
+                    return True
+            elif strip_accents(kw.lower()) in q_tokens:
+                return True
+    return False
+
+
+def detect_exposure_type(query: str, language: str, cfg: GuardsConfig) -> str:
+    """Classify a safety query's exposure audience (research item FIX-13).
+
+    Splits the audience terms into a child/human subset
+    (``GuardsConfig.child_exposure_keywords``) and an animal subset
+    (``GuardsConfig.animal_exposure_keywords``) so the escalation card can be routed to
+    the audience the query actually names, instead of always defaulting to the animal
+    lines. Matching is exact-token/exact-phrase (see ``_matches_any``), not the
+    substring pass ``is_safety_query`` uses, so audience routing never keys off word
+    fragments. Deterministic and eval-gated -- it never infers an audience the query
+    did not name.
+
+    Returns one of:
+      - ``"child"``: only child/human terms matched ("my toddler chewed a leaf").
+      - ``"animal"``: only animal terms matched ("is this toxic to my cat?").
+      - ``"both"``: both matched (ambiguous household query, e.g. "toxic to kids or
+        pets?").
+      - ``"unspecified"``: a safety/toxicity term matched but no audience was named
+        ("is this plant poisonous?").
+    """
+    q_tokens = set(tokenize(query))
+    is_child = _matches_any(query, q_tokens, language, cfg.child_exposure_keywords)
+    is_animal = _matches_any(query, q_tokens, language, cfg.animal_exposure_keywords)
+    if is_child and is_animal:
+        return "both"
+    if is_child:
+        return "child"
+    if is_animal:
+        return "animal"
+    return "unspecified"
 
 
 _INJECTION_PATTERNS: dict[str, re.Pattern[str]] = {
@@ -90,7 +154,7 @@ def redact_pii(text: str) -> str:
 # substituted for Latin a/e/o, e.g. "safe" with the "a" swapped for U+0430). Deliberately
 # small and auditable rather than a full confusables table; keys are written as \u escapes
 # (not literal glyphs) so the confusable pair stays visually explicit in the source — see
-# docs/adr/0012-deny-list-homoglyph-folding.md.
+# docs/adr/0014-deny-list-homoglyph-folding.md.
 _HOMOGLYPHS: dict[str, str] = {
     "\u0430": "a",  # CYRILLIC SMALL LETTER A
     "\u0435": "e",  # CYRILLIC SMALL LETTER IE
@@ -137,44 +201,16 @@ def asserts_safety(text: str, language: str, cfg: GuardsConfig) -> bool:
     return False
 
 
-# Toxicity/harm terms whose negation amounts to a safety certification (EN + ES, folded).
+# Toxicity/harm terms whose negation amounts to a safety certification (EN + ES,
+# folded). Authored per-language in src/sprout/locales/<lang>/bundle.yaml (FIX-09) and
+# unioned here — the folding across languages stays, only the authoring surface moved.
 _HARM_TOKENS = frozenset(
-    {
-        "toxic",
-        "toxico",
-        "toxica",
-        "poison",
-        "poisonous",
-        "venenosa",
-        "veneno",
-        "harm",
-        "harmful",
-        "danger",
-        "dangerous",
-        "risk",
-        "riesgo",
-        "hurt",
-    }
+    locales.merged_list("guards", "harm_tokens", locales.available_languages())
 )
 # Source-attribution markers: their presence means the sentence reports what the cited
-# source says (or does not say), not a bare certification.
+# source says (or does not say), not a bare certification. Same per-language authoring.
 _SOURCE_MARKERS = frozenset(
-    {
-        "cited",
-        "reference",
-        "source",
-        "list",
-        "listed",
-        "according",
-        "states",
-        "fuente",
-        "citada",
-        "indica",
-        "lista",
-        "listada",
-        "menciona",
-        "segun",
-    }
+    locales.merged_list("guards", "source_markers", locales.available_languages())
 )
 
 
@@ -183,7 +219,9 @@ def _supported_by(sentence: str, chunk_text: str, support_overlap: float) -> boo
     its negation polarity matches the source.
 
     The polarity gate is load-bearing for the cloud generators: token coverage strips
-    negations, so "X is not toxic" would otherwise score as covered by "X is toxic". A
+    negations, so "X is not toxic" would otherwise score as covered by "X is toxic".
+    ``has_antonym_conflict`` catches the same failure mode when no negation marker is
+    present at all ("X is safe" against a source that says "X is toxic"). A
     content-free fragment is never supported (it must carry at least one content token).
     """
     if contains_phrase(chunk_text, sentence):
@@ -192,6 +230,8 @@ def _supported_by(sentence: str, chunk_text: str, support_overlap: float) -> boo
         return False
     if has_negation(sentence) != has_negation(chunk_text):
         return False
+    if has_antonym_conflict(sentence, chunk_text):
+        return False
     return coverage(sentence, chunk_text) >= support_overlap
 
 
@@ -199,12 +239,15 @@ def citation_guard(
     candidates: list[tuple[str, str]],
     retrieved: list[RetrievedChunk],
     support_overlap: float,
+    entailment_verifier: EntailmentVerifier | None = None,
 ) -> list[AnswerSentence]:
     """Re-verify each candidate sentence against its cited chunk; drop the unsupported.
 
     This is why ungrounded generation is structurally impossible. A candidate survives
-    only if (a) its ``chunk_id`` was actually retrieved and (b) the chunk's text supports
-    the sentence. Survivors become :class:`AnswerSentence` objects tagged ``corpus``.
+    only if (a) its ``chunk_id`` was actually retrieved, (b) the chunk's text supports the
+    sentence lexically, and (c) — when ``entailment_verifier`` is configured (cloud path
+    only, EXP-04) — the verifier also agrees the chunk entails the sentence. Survivors
+    become :class:`AnswerSentence` objects tagged ``corpus``.
     """
     by_id = {rc.chunk.chunk_id: rc.chunk for rc in retrieved}
     out: list[AnswerSentence] = []
@@ -214,6 +257,9 @@ def citation_guard(
         if chunk is None:
             continue
         if not _supported_by(text, chunk.text, support_overlap):
+            continue
+        entailed = entailment_verifier is None or entailment_verifier.entails(chunk.text, text)
+        if not entailed:
             continue
         key = normalize(text)
         if key in seen:

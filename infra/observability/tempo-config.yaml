@@ -1,0 +1,23 @@
+# Minimal single-binary Tempo config for local dev (in-memory/local-disk only — not a
+# production Tempo deployment). Receives spans over OTLP HTTP from the Collector.
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/traces
+    wal:
+      path: /tmp/tempo/wal
+
+compactor:
+  compaction:
+    block_retention: 24h

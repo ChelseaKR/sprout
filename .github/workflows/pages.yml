@@ -1,0 +1,62 @@
+name: docs-pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false # never cancel an in-flight deploy (CI-CD-STANDARD §8b)
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # No caching in this deploy job: it holds pages: write + id-token: write, and a
+      # poisoned/stale cache is the standard's canonical cache-poisoning exposure for a
+      # credentialed deploy job (CI-CD-STANDARD §8c, CICD-24) — same reasoning as release.yml.
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+      - name: Install documentation dependencies
+        run: uv sync --frozen --group docs
+      - name: Build the deterministic corpus index
+        run: uv run sprout ingest
+      - name: Export the browser corpus bundle
+        run: uv run python scripts/export_web_bundle.py
+      - name: Build the zero-server reference surface
+        run: npm ci --prefix web-static && npm run build:site --prefix web-static
+      - name: Build documentation
+        run: uv run mkdocs build --strict
+      - name: Publish the reference surface at the site root
+        run: cp -R web-static/public/. site/
+      - name: Check the published root structure
+        run: uv run sprout a11y-check site/index.html
+      - name: Verify linked documentation routes
+        run: |
+          test -s site/ARCHITECTURE/index.html
+          test -s site/ADAPT/index.html
+          test -s site/audits/eval-report/index.html
+          test -s site/cards/model-card/index.html
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

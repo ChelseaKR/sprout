@@ -1,32 +1,87 @@
-"""Accessible chat server: a small FastAPI app over the Assistant.
+"""Accessible reference server: a small FastAPI app over the Assistant.
 
 Endpoints: ``/livez`` (liveness, no deps), ``/readyz`` (index loaded), ``/health`` (index
 size), ``/api/disclosure``, ``POST /api/chat`` (JSON), and ``GET /api/chat/stream`` (SSE).
 The SSE stream is sentence-grained on purpose: each ``sentence`` event is already
 citation-verified, so the live region never announces ungrounded text and then retracts it.
-Handlers are sync ``def`` so FastAPI runs the synchronous pipeline in its threadpool;
-rate-limiting/CORS/auth are left to the proxy layer.
+Handlers are sync ``def`` so FastAPI runs the synchronous pipeline in its threadpool.
+
+CORS/TLS termination/proxy-level rate limiting are still expected from the deploy target's
+reverse proxy, but per FIX-10 (``docs/ideation/02-large-scale-fixes.md``) the controls that
+must hold even if that proxy is misconfigured or absent — security headers, a request-size
+cap, per-IP rate limits, and a concurrency bound on the heaviest route — are app-level, wired
+below via ``sprout.hardening``. See ``docs/audits/asvs-l2-delta.md`` for the ASVS L2 delta
+this closes.
+
+Both chat endpoints accept an optional ``session_id`` (JSON body field / query param). When
+present, it selects a bounded, in-memory-only conversation window (EXP-07,
+``conversation.SessionMemory``) so a follow-up question can resolve the species/topic an
+earlier turn in the *same* session named. The window holds only {species-slug, topic,
+language} per turn — never question or answer text — and it is process-memory only: nothing
+is written to disk, and it is empty again after a restart.
 """
 
 from __future__ import annotations
 
 import base64
 import binascii
+import contextlib
 import json
-from collections.abc import Iterator
+import os
+from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 
 from .answer import Assistant
 from .config import Config
+from .conversation import SessionMemory, extract_turn
+from .hardening import (
+    ConcurrencyLimiter,
+    RateLimitMiddleware,
+    RequestSizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 from .identify import PhotoCareService, PlantIdentifier, build_identifier
+from .integrations import (
+    FamilyGreenhouseRequest,
+    canonical_payload,
+    household_observations,
+    selector_query,
+    verify_signature,
+)
 from .models import Answer
 from .obs import Logger
+from .otel import REDMiddleware, configure_observability
 from .reminders import Reminder, ReminderError, ReminderStore
+
+# A caller-supplied session id is an opaque correlation token only — never parsed, never
+# logged. Bound its length so a pathological client can't inflate SessionMemory's key space.
+_MAX_SESSION_ID_CHARS = 128
+
+
+def _error_kind(exc: BaseException) -> str:
+    """The exception's class name — and only that.
+
+    Handlers log this instead of ``str(exc)``. An exception *message* is free text that
+    routinely echoes caller input and internal detail, so it can go neither to the client
+    (CWE-209) nor into ``obs.Logger``, which is PII-free by construction. A class name is
+    low-cardinality, author-controlled, and enough to tell a malformed body apart from a
+    capacity limit.
+    """
+    return type(exc).__name__
+
+
+def _valid_session_id(raw: object) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    sid = raw.strip()
+    return sid if sid and len(sid) <= _MAX_SESSION_ID_CHARS else None
+
 
 _FALLBACK_HTML = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">'
@@ -55,6 +110,8 @@ def _sse_events(answer: Answer) -> Iterator[dict[str, str]]:
         }
     if answer.safety_notice:
         yield {"event": "safety", "data": json.dumps({"text": answer.safety_notice})}
+    for notice in answer.disagreement_notices:
+        yield {"event": "disagreement", "data": json.dumps({"text": notice})}
     yield {
         "event": "done",
         "data": json.dumps(
@@ -62,12 +119,29 @@ def _sse_events(answer: Answer) -> Iterator[dict[str, str]]:
                 "refused": answer.refused,
                 "low_confidence": answer.low_confidence,
                 "confidence": answer.confidence,
+                "confidence_band": answer.confidence_band,
+                "confidence_band_label": answer.confidence_band_label,
                 "language": answer.language,
                 "as_of": answer.as_of,
                 "disclosure": answer.disclosure,
+                "context_note": answer.context_note,
             }
         ),
     }
+
+
+# Season/light qualifiers are short selector words ("winter", "low light"), never prose;
+# cap them well below the question cap so an oversized qualifier can't become a cheap
+# tokenization amplifier on either the JSON or the GET path.
+_MAX_CONTEXT_QUALIFIER_CHARS = 50
+
+
+def _optional_str(value: Any) -> str | None:
+    """Coerce and bound an untyped season/light qualifier to ``str | None`` (EXP-05)."""
+    if value is None:
+        return None
+    text = str(value).strip()[:_MAX_CONTEXT_QUALIFIER_CHARS]
+    return text or None
 
 
 def _register_health(app: FastAPI, engine: Assistant) -> None:
@@ -77,15 +151,101 @@ def _register_health(app: FastAPI, engine: Assistant) -> None:
 
     @app.get("/readyz")
     def readyz() -> JSONResponse:
-        ready = len(engine._store) > 0
+        size = len(engine._store)
+        ready = size > 0
         return JSONResponse(
-            {"status": "ok" if ready else "no_index", "index_size": len(engine._store)},
+            {"status": "ok" if ready else "no_index", "index_size": size},
             status_code=200 if ready else 503,
         )
 
     @app.get("/health")
     def health() -> dict[str, Any]:
         return {"status": "ok", "index_size": len(engine._store)}
+
+
+def _register_hardening(app: FastAPI, config: Config) -> None:
+    """Wire the FIX-10 app-level guards; see ``sprout.hardening`` for what each one does.
+
+    Middleware is added innermost-first (Starlette wraps the *last*-added instance
+    outermost), so security headers land on every response — including ones rejected by
+    the size/rate-limit layers beneath them.
+    """
+    server = config.server
+    app.add_middleware(
+        RateLimitMiddleware,
+        capacity=server.identify_rate_limit_requests,
+        window_s=server.identify_rate_limit_window_s,
+        path_prefix="/api/identify",
+    )
+    app.add_middleware(
+        RateLimitMiddleware,
+        capacity=server.rate_limit_requests,
+        window_s=server.rate_limit_window_s,
+        path_prefix="/api/",
+    )
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=server.max_body_bytes)
+    app.add_middleware(SecurityHeadersMiddleware)
+
+
+def _register_family_greenhouse(app: FastAPI, engine: Assistant, log: Logger) -> None:
+    @app.post("/api/integrations/family-greenhouse/chat")
+    async def family_greenhouse_chat(request: Request) -> JSONResponse:
+        """First-party, read-only integration with minimized household context."""
+        secret = os.environ.get("SPROUT_FAMILY_GREENHOUSE_SECRET", "")
+        if not secret:
+            return JSONResponse({"error": "integration is not configured"}, status_code=503)
+        try:
+            raw_body = await request.body()
+            if len(raw_body) > 65_536:
+                return JSONResponse({"error": "integration payload is too large"}, status_code=413)
+            raw_payload = json.loads(raw_body)
+            if not isinstance(raw_payload, dict):
+                raise ValueError("payload must be an object")
+            body = canonical_payload(raw_payload)
+            timestamp = request.headers.get("x-sprout-timestamp", "")
+            signature = request.headers.get("x-sprout-signature", "")
+            if not verify_signature(secret, timestamp, body, signature):
+                log.event("request_rejected")
+                return JSONResponse({"error": "invalid integration signature"}, status_code=401)
+            payload = FamilyGreenhouseRequest.model_validate(raw_payload)
+        except (ValidationError, ValueError, json.JSONDecodeError) as exc:
+            # CWE-209: never return ``str(exc)``. Two of the three raise sites above run
+            # *before* the HMAC check, so an unauthenticated caller reached this branch —
+            # and a pydantic ValidationError renders the model class name, every field
+            # path, the offending input echoed back, and a versioned errors.pydantic.dev
+            # URL. The client gets the same fixed string every other branch in this file
+            # returns; the exception *class* (low-cardinality, never its message) is the
+            # operator's triage signal.
+            log.event("request_rejected", route="family_greenhouse", error_kind=_error_kind(exc))
+            return JSONResponse({"error": "invalid integration payload"}, status_code=400)
+
+        answer = engine.answer(selector_query(payload), payload.language)
+        log.event(
+            "answer",
+            language=answer.language,
+            refused=answer.refused,
+            refusal_reason=answer.refusal_reason,
+            is_safety_query=answer.is_safety_query,
+            confidence=answer.confidence,
+        )
+        return JSONResponse(
+            {
+                "answer": {
+                    "display_text": answer.display_text,
+                    "citations": [citation.model_dump() for citation in answer.citations],
+                    "safety_notice": answer.safety_notice,
+                    "confidence": answer.confidence,
+                    "low_confidence": answer.low_confidence,
+                    "refused": answer.refused,
+                    "as_of": answer.as_of,
+                    "disclosure": answer.disclosure,
+                    "language": answer.language,
+                    "provenance": "corpus",
+                },
+                "household_observations": household_observations(payload),
+                "context_policy": "household-data-selects-corpus-facts",
+            }
+        )
 
 
 def _mount_ui(app: FastAPI) -> None:
@@ -106,10 +266,41 @@ def create_app(
 ) -> FastAPI:
     engine = assistant or Assistant.from_config(config)
     log = Logger(config.observability)
-    app = FastAPI(title="Sprout", version="0.1.0")
 
-    def _resolve(question: str, language: str | None) -> Answer:
-        answer = engine.answer(question, language)
+    # Tier A only (observability.tier: "A"): OTel traces + RED metrics per endpoint,
+    # STANDARDS/OBSERVABILITY-STANDARD.md §§1-2. `configure_observability` returns None
+    # (no middleware added, zero overhead) for Tier B/C or if the `observability` extra
+    # isn't installed — see src/sprout/otel.py. Built *before* the FastAPI app so its
+    # shutdown can be wired into the app's lifespan (Starlette dropped `add_event_handler`
+    # in favor of the lifespan context manager).
+    handles = configure_observability(config.observability)
+
+    @contextlib.asynccontextmanager
+    async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
+        yield
+        if handles is not None:
+            handles.shutdown()
+
+    # EXP-07: a bounded, in-memory-only turn window per (opaque) session id, holding only
+    # {species-slug, topic, language} — never answer text. Cleared on process restart, same
+    # as every other piece of Sprout's mutable state (docs/RESPONSIBLE-TECH-AUDITS.md §C).
+    sessions = SessionMemory(max_turns=config.conversation.session_memory)
+    app = FastAPI(title="Sprout", version="0.1.0", lifespan=_lifespan)
+    _register_hardening(app, config)
+    if handles is not None:
+        app.add_middleware(REDMiddleware, handles=handles)
+
+    def _resolve(
+        question: str,
+        language: str | None,
+        session_id: str | None = None,
+        season: str | None = None,
+        light: str | None = None,
+    ) -> Answer:
+        history = sessions.context_for(session_id) if session_id else None
+        answer = engine.answer(question, language, history=history, season=season, light=light)
+        if session_id:
+            sessions.record(session_id, extract_turn(answer))
         log.event(
             "answer",
             language=answer.language,
@@ -121,6 +312,21 @@ def create_app(
         return answer
 
     _register_health(app, engine)
+    _register_family_greenhouse(app, engine, log)
+    _register_chat(app, config, log, _resolve)
+    _register_identify(app, engine, config, log, identifier)
+    _register_reminders(app, config, log)
+    _mount_ui(app)
+    return app
+
+
+def _register_chat(
+    app: FastAPI,
+    config: Config,
+    log: Logger,
+    resolve: Callable[..., Answer],
+) -> None:
+    """The disclosure + chat endpoints (JSON and SSE), split out of ``create_app``."""
 
     @app.get("/api/disclosure")
     def disclosure(language: str = "en") -> dict[str, str]:
@@ -133,25 +339,39 @@ def create_app(
         if error is not None:
             log.event("request_rejected")
             return JSONResponse({"error": error}, status_code=400)
-        answer = _resolve(question, payload.get("language"))
+        session_id = _valid_session_id(payload.get("session_id"))
+        answer = resolve(
+            question,
+            payload.get("language"),
+            session_id,
+            _optional_str(payload.get("season")),
+            _optional_str(payload.get("light")),
+        )
         data = answer.model_dump()
         data["display_text"] = answer.display_text
         data["citations"] = [c.model_dump() for c in answer.citations]
         return JSONResponse(data)
 
     @app.get("/api/chat/stream")
-    def chat_stream(q: str, language: str | None = None) -> Any:
+    def chat_stream(
+        q: str,
+        language: str | None = None,
+        session_id: str | None = None,
+        season: str | None = None,
+        light: str | None = None,
+    ) -> Any:
         from sse_starlette.sse import EventSourceResponse
 
         error = _question_error(q.strip(), config)
         if error is not None:
             return JSONResponse({"error": error}, status_code=400)
-        return EventSourceResponse(_sse_events(_resolve(q.strip(), language)))
-
-    _register_identify(app, engine, config, log, identifier)
-    _register_reminders(app, config, log)
-    _mount_ui(app)
-    return app
+        sid = _valid_session_id(session_id)
+        # Normalize + bound the GET qualifiers exactly like the JSON path does.
+        return EventSourceResponse(
+            _sse_events(
+                resolve(q.strip(), language, sid, _optional_str(season), _optional_str(light))
+            )
+        )
 
 
 def _register_identify(
@@ -162,47 +382,66 @@ def _register_identify(
     identifier: PlantIdentifier | None = None,
 ) -> None:
     service = PhotoCareService(engine, identifier or build_identifier(config), config)
+    concurrency = ConcurrencyLimiter(config.server.identify_max_concurrency)
 
     @app.post("/api/identify")
     def identify(payload: dict[str, Any]) -> JSONResponse:
-        raw = str(payload.get("image_b64", ""))
-        if not raw:
-            return JSONResponse({"error": "image_b64 is required"}, status_code=400)
+        # Bounded worker concurrency (FIX-10): this route decodes and runs a vision call
+        # over a large photo payload, so an unbounded burst can starve the threadpool the
+        # rest of the API shares. Reject fast rather than queue behind a full pool.
+        if not concurrency.try_acquire():
+            return JSONResponse(
+                {"error": "identify is at capacity, try again shortly"},
+                status_code=503,
+                headers={"Retry-After": "1"},
+            )
         try:
-            image = base64.b64decode(raw, validate=True)
-        except (binascii.Error, ValueError):
-            return JSONResponse({"error": "image_b64 is not valid base64"}, status_code=400)
-        question = payload.get("question")
-        result = service.identify_and_answer(
-            image, question=question, language=payload.get("language")
-        )
-        log.event(
-            "identify",
-            status="identified" if result.identified else "fallback",
-            refused=result.answer.refused if result.answer else None,
-        )
-        data: dict[str, Any] = {
-            "identified": result.identified,
-            "species_slug": result.species_slug,
-            "display_name": result.display_name,
-            "label": result.label,
-            "message": result.message,
-        }
-        if result.identification is not None:
-            data["identification"] = result.identification.model_dump()
-        if result.answer is not None:
-            ans = result.answer
-            data["answer"] = {
-                "display_text": ans.display_text,
-                "citations": [c.model_dump() for c in ans.citations],
-                "safety_notice": ans.safety_notice,
-                "confidence": ans.confidence,
-                "low_confidence": ans.low_confidence,
-                "as_of": ans.as_of,
-                "disclosure": ans.disclosure,
-                "language": ans.language,
+            raw = str(payload.get("image_b64", ""))
+            if not raw:
+                return JSONResponse({"error": "image_b64 is required"}, status_code=400)
+            try:
+                image = base64.b64decode(raw, validate=True)
+            except (binascii.Error, ValueError):
+                return JSONResponse({"error": "image_b64 is not valid base64"}, status_code=400)
+            raw_question = payload.get("question")
+            # Coerce like /api/chat does: a non-string ``question`` (e.g. a number) must not
+            # crash the language/answer pipeline with an unhandled 500.
+            question = str(raw_question) if raw_question is not None else None
+            result = service.identify_and_answer(
+                image, question=question, language=payload.get("language")
+            )
+            log.event(
+                "identify",
+                status="identified" if result.identified else "fallback",
+                refused=result.answer.refused if result.answer else None,
+            )
+            data: dict[str, Any] = {
+                "identified": result.identified,
+                "species_slug": result.species_slug,
+                "display_name": result.display_name,
+                "label": result.label,
+                "message": result.message,
             }
-        return JSONResponse(data)
+            if result.identification is not None:
+                data["identification"] = result.identification.model_dump()
+            if result.answer is not None:
+                ans = result.answer
+                data["answer"] = {
+                    "display_text": ans.display_text,
+                    "citations": [c.model_dump() for c in ans.citations],
+                    "safety_notice": ans.safety_notice,
+                    "confidence": ans.confidence,
+                    "low_confidence": ans.low_confidence,
+                    "as_of": ans.as_of,
+                    "disclosure": ans.disclosure,
+                    "language": ans.language,
+                    "confidence_band": ans.confidence_band,
+                    "confidence_band_label": ans.confidence_band_label,
+                    "disagreements": [d.model_dump() for d in ans.disagreements],
+                }
+            return JSONResponse(data)
+        finally:
+            concurrency.release()
 
 
 def _reminder_dump(r: Reminder) -> dict[str, Any]:
@@ -227,7 +466,12 @@ def _register_reminders(app: FastAPI, config: Config, log: Logger) -> None:
         kind = str(payload.get("kind", "water"))
         if not plant:
             return JSONResponse({"error": "plant is required"}, status_code=400)
-        interval = payload.get("interval_days") or config.reminders.default_intervals.get(kind, 7)
+        supplied_interval = payload.get("interval_days")
+        interval = (
+            config.reminders.default_intervals.get(kind, 7)
+            if supplied_interval is None
+            else supplied_interval
+        )
         try:
             reminder = _store().add(
                 plant=plant,
@@ -237,8 +481,15 @@ def _register_reminders(app: FastAPI, config: Config, log: Logger) -> None:
                 note=str(payload.get("note", "")),
                 source=payload.get("source"),
             )
-        except (ReminderError, ValueError) as exc:
-            return JSONResponse({"error": str(exc)}, status_code=400)
+        except (ReminderError, TypeError, ValueError) as exc:
+            # TypeError: a non-numeric ``interval_days`` (e.g. a list) must be a 400,
+            # not an unhandled 500.
+            # CWE-209: never return ``str(exc)``. ``int(interval)`` raises CPython's own
+            # "int() argument must be a string, a bytes-like object or a real number, not
+            # 'list'", and ReminderStore leaks the configured cap ("reminder limit reached
+            # (200)") and the on-disk format version. This route is unauthenticated.
+            log.event("request_rejected", route="reminders_create", error_kind=_error_kind(exc))
+            return JSONResponse({"error": "invalid reminder request"}, status_code=400)
         log.event("reminder_added", status="ok")
         return JSONResponse(_reminder_dump(reminder), status_code=201)
 
@@ -247,7 +498,11 @@ def _register_reminders(app: FastAPI, config: Config, log: Logger) -> None:
         try:
             reminder = _store().complete(reminder_id)
         except ReminderError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=404)
+            # CWE-209: never return ``str(exc)``. It reflects the caller's own id back
+            # ("no reminder with id '<script>'") and, when the store fails to load, the
+            # internal "unsupported reminders format: ..." detail.
+            log.event("request_rejected", route="reminders_complete", error_kind=_error_kind(exc))
+            return JSONResponse({"error": "reminder not found"}, status_code=404)
         return JSONResponse(_reminder_dump(reminder))
 
     @app.delete("/api/reminders/{reminder_id}")

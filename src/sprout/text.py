@@ -191,13 +191,33 @@ _NEGATIONS: frozenset[str] = frozenset(
         "ningun",
         "ningún",
         "ninguna",
-        "noun",
+        "non",
     }
 )
 
 _TOKEN_RE = re.compile(r"[0-9]+(?:\.[0-9]+)?|[^\W\d_]+", re.UNICODE)
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 _NEG_NT_RE = re.compile(r"\b\w+n't\b", re.IGNORECASE)
+
+# Splits a query into clauses on coordinating conjunctions and clause punctuation, in
+# both languages. Deliberately conservative (a fixed conjunction list, not an NLP parser)
+# so clause boundaries stay auditable: "How often should I water, and does that change in
+# winter?" splits into two clauses; "How often should I water my pothos?" stays one.
+# py/polynomial-redos: the pattern used to open with a shared ``\s*``, so on a run of n
+# whitespace characters the engine consumed the rest of the run at *every* one of the n start
+# positions before failing — O(n²) in a value the caller supplies (`POST /api/chat`, capped at
+# `server.max_question_chars`). Dropping the surrounding ``\s*`` makes both branches start on a
+# character class that whitespace cannot satisfy, so a non-delimiter position fails in O(1).
+#
+# Equivalent for this module's only consumer: the pieces now keep their surrounding whitespace,
+# and ``extract_facets`` feeds every piece through ``.strip()`` and ``token_set`` (which
+# tokenises with ``_TOKEN_RE``), so leading/trailing whitespace on a clause is not observable.
+# ``\s++`` is possessive because no conjunction begins with whitespace, so a whitespace run
+# never had a match to give back.
+_FACET_SPLIT_RE = re.compile(
+    r"(?:[,;?]+|(?<=\w)\s++(?:and|but|or|as well as|y|pero|o)\s++(?=\w))",
+    re.IGNORECASE,
+)
 
 
 def strip_accents(token: str) -> str:
@@ -272,11 +292,79 @@ def token_set(text: str) -> frozenset[str]:
     return frozenset(content_tokens(text))
 
 
+def extract_facets(query: str) -> list[frozenset[str]]:
+    """Split a query into per-clause content-token sets ("facets").
+
+    A single-part question ("How often should I water my pothos?") yields one facet —
+    its whole content-token set — so single-part behaviour is unchanged downstream. A
+    multi-part question ("How often should I water, and does that change in winter?")
+    yields one facet per clause, so a caller can require each clause's topic to surface
+    in the answer instead of ranking every candidate against one pooled bag of tokens
+    (which lets the dominant clause crowd out the others). Empty/stop-word-only clauses
+    are dropped; a query with no content tokens at all yields an empty list.
+    """
+    clauses = [c for c in _FACET_SPLIT_RE.split(query.strip()) if c.strip()]
+    facets = [toks for c in clauses if (toks := token_set(c))]
+    return facets
+
+
 def has_negation(text: str) -> bool:
     """True if ``text`` contains an explicit negation marker (either language)."""
     if _NEG_NT_RE.search(text):
         return True
     return any(tok in _NEGATIONS for tok in tokenize(text))
+
+
+# Safety-relevant antonym pairs (bilingual, gender/number-inflected). Deliberately a
+# small, curated, domain-specific list — this project's whole safety surface is the
+# toxic/non-toxic axis — rather than a general antonym dictionary, so it stays auditable
+# and cannot introduce false contradictions on unrelated vocabulary. ``has_negation``
+# catches "is not toxic"; this catches the polarity flip that carries no negation marker
+# at all, e.g. "is safe" asserted against a source that says "is toxic".
+_ANTONYM_PAIRS: frozenset[frozenset[str]] = frozenset(
+    {
+        frozenset({"safe", "toxic"}),
+        frozenset({"safe", "poisonous"}),
+        frozenset({"nontoxic", "toxic"}),
+        frozenset({"harmless", "toxic"}),
+        frozenset({"harmless", "poisonous"}),
+        frozenset({"harmless", "dangerous"}),
+        frozenset({"edible", "toxic"}),
+        frozenset({"edible", "poisonous"}),
+        frozenset({"seguro", "toxico"}),
+        frozenset({"segura", "toxica"}),
+        frozenset({"seguros", "toxicos"}),
+        frozenset({"seguras", "toxicas"}),
+        frozenset({"seguro", "venenoso"}),
+        frozenset({"segura", "venenosa"}),
+        frozenset({"inofensivo", "toxico"}),
+        frozenset({"inofensiva", "toxica"}),
+        frozenset({"comestible", "venenoso"}),
+        frozenset({"comestible", "venenosa"}),
+        frozenset({"comestible", "toxico"}),
+        frozenset({"comestible", "toxica"}),
+    }
+)
+
+
+def has_antonym_conflict(a: str, b: str) -> bool:
+    """True if ``a`` and ``b`` assert opposite sides of a known safety antonym pair.
+
+    "Aloe is safe for dogs" flatly contradicts a source that says "Aloe is toxic to
+    dogs" even though neither sentence contains an explicit negation marker, so
+    ``has_negation`` alone cannot catch it. Only flags a conflict when each text
+    contains exactly one, differing side of a pair — a text that mentions both sides
+    (rare, e.g. quoting a contrast) is left to the coverage/negation checks instead of
+    being guessed at here.
+    """
+    toks_a = set(tokenize(a))
+    toks_b = set(tokenize(b))
+    for pair in _ANTONYM_PAIRS:
+        side_a = toks_a & pair
+        side_b = toks_b & pair
+        if side_a and side_b and not (side_a & side_b):
+            return True
+    return False
 
 
 def split_sentences(text: str) -> list[str]:
@@ -329,3 +417,83 @@ def normalize(text: str) -> str:
 def contains_phrase(haystack: str, phrase: str) -> bool:
     """Case-insensitive, whitespace-insensitive substring test."""
     return normalize(phrase) in normalize(haystack)
+
+
+# --- numeric-cadence extraction (source-disagreement probe, EXP-02) --------------
+#
+# Bilingual "every N day(s)/week(s)" / "cada N día(s)/semana(s)" cadence mentions,
+# anchored to a small, explicit care-action vocabulary so a cadence is only ever
+# compared against another cadence about the *same* action. This is deliberately
+# narrower than a general contradiction probe: the ideation note for this feature
+# (EXP-02, docs/ideation/03-expansions.md) calls out that naive polarity/number
+# checks over-fire on legitimate seasonal or per-action variation, so extraction
+# starts and stays scoped to numeric-cadence conflicts only.
+_CADENCE_RE = re.compile(
+    r"(?:every|cada)\s+(\d+(?:\.\d+)?)\s*-?\s*"
+    r"(days?|weeks?|d[ií]as?|semanas?)\b",
+    re.IGNORECASE,
+)
+
+_CADENCE_UNIT_DAYS: dict[str, float] = {
+    "day": 1.0,
+    "days": 1.0,
+    "dia": 1.0,
+    "dias": 1.0,
+    "week": 7.0,
+    "weeks": 7.0,
+    "semana": 7.0,
+    "semanas": 7.0,
+}
+
+# Small, explicit bilingual care-action vocabulary. Each key is the normalised action
+# name a cadence mention is reported under, so an English chunk and a Spanish chunk
+# that disagree about the same action still compare equal.
+_CARE_ACTIONS: dict[str, frozenset[str]] = {
+    "water": frozenset({"water", "watering", "watered", "riega", "riego", "regar", "regando"}),
+    "fertilize": frozenset(
+        {
+            "fertilize",
+            "fertilizing",
+            "fertilized",
+            "feed",
+            "feeding",
+            "fertiliza",
+            "fertilizar",
+            "fertilizando",
+            "abona",
+            "abonar",
+        }
+    ),
+    "mist": frozenset({"mist", "misting", "misted", "rocia", "rociar", "rociando"}),
+    "repot": frozenset({"repot", "repotting", "repotted", "trasplanta", "trasplantar"}),
+}
+
+# How far (in characters) around a cadence mention to look for an anchoring action
+# word. Bounded and symmetric so "Water ... every 7 days" and "Every 7 days, water
+# ..." both anchor, while a cadence with no nearby action word (e.g. "check the soil
+# every 3 days") is conservatively left unanchored and skipped.
+_ACTION_WINDOW_CHARS = 40
+
+
+def extract_cadences(text: str) -> list[tuple[str, float, str]]:
+    """Bilingual 'every N day(s)/week(s)' mentions anchored to a known care action.
+
+    Returns one ``(action, days, mention)`` tuple per anchored match, e.g.
+    ``[("water", 7.0, "every 7 days")]``. Weeks normalise to days so "every 2 weeks"
+    and "every 14 days" compare equal instead of registering as a false conflict. A
+    cadence with no recognised action word in its surrounding window is dropped —
+    unanchored numbers are exactly the over-firing risk this stays conservative about.
+    """
+    out: list[tuple[str, float, str]] = []
+    for m in _CADENCE_RE.finditer(text):
+        value = float(m.group(1))
+        unit = strip_accents(m.group(2).lower())
+        days = value * _CADENCE_UNIT_DAYS.get(unit, 1.0)
+        window_start = max(0, m.start() - _ACTION_WINDOW_CHARS)
+        window_end = min(len(text), m.end() + _ACTION_WINDOW_CHARS)
+        window_tokens = set(tokenize(text[window_start:window_end]))
+        for action, markers in _CARE_ACTIONS.items():
+            if window_tokens & markers:
+                out.append((action, days, m.group(0)))
+                break
+    return out

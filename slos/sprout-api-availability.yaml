@@ -1,0 +1,18 @@
+# SLO definition — STANDARDS/OBSERVABILITY-STANDARD.md §4. Schema: name, sli_query,
+# target_percentage, window_days, error_budget_policy (all required).
+#
+# Shape: this is Sprout's optional, self-funded, reference-implementation serverless API
+# (infra/), not a benefits-critical civic service — it takes the standard's "Internal/eval
+# API" default (99.0% / 4wk), the least strict of the three named shapes, because an
+# outage here degrades a demo, not a person's access to a service. The offline CLI (Tier
+# C, the default and what CI exercises) has no SLO — it is not a hosted service.
+name: sprout-api-availability
+sli_query: >-
+  1 - (
+    sum(rate(sprout_http_request_errors_total[5m]))
+    /
+    sum(rate(sprout_http_requests_total[5m]))
+  )
+target_percentage: 99.0
+window_days: 28
+error_budget_policy: freeze-features-on-50pct-burn

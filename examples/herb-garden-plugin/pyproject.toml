@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sprout-herb-garden-example"
+version = "0.1.0"
+description = "EXP-14 worked example: a third-party sprout.eval suite registered via the sprout.eval.suites entry-point group, with its own corpus in a different care domain (culinary herbs, not houseplants)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = ["sprout"]
+
+# This is the whole point of the example: a package outside the sprout repo declares a
+# suite here, and `sprout eval` (or sprout.eval.suite.resolve_suites) discovers it with
+# zero changes to sprout's own source — see docs/adr/0019-frozen-plugin-api-for-sprout-eval.md.
+[project.entry-points."sprout.eval.suites"]
+herb-actionable-advice = "herb_garden_eval.suite:build_suite"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/herb_garden_eval"]

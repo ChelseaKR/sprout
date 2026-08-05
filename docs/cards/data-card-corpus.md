@@ -76,11 +76,14 @@ content-hashed and reproducible). The species set is the common-houseplant core,
 
 | Toxicity posture (ASPCA-style, illustrative) | Example species |
 |---|---|
-| Toxic to cats and/or dogs | Monstera (*Monstera deliciosa*), Pothos (*Epipremnum aureum*), Philodendron, Snake plant (*Dracaena trifasciata*), Peace lily (*Spathiphyllum*), ZZ plant (*Zamioculcas*), Dieffenbachia, Aloe vera, English ivy |
-| Generally non-toxic (per ASPCA-style listing) | Spider plant (*Chlorophytum*), Boston fern, Calathea / prayer plant, Areca palm, African violet, Hoya, Phalaenopsis orchid |
+| Toxic to cats and/or dogs | Monstera (*Monstera deliciosa*), Pothos (*Epipremnum aureum*), Philodendron, Snake plant (*Dracaena trifasciata*), Peace lily (*Spathiphyllum*), ZZ plant (*Zamioculcas*), Aloe vera, English ivy |
+| Generally non-toxic (per ASPCA-style listing) | Spider plant (*Chlorophytum*), Boston fern, Calathea / prayer plant, Phalaenopsis orchid |
 
 (The exact roster is whatever the committed `corpus/manifest.yaml` enumerates; this table is the
-intended composition, not a contract on individual rows.)
+intended composition, not a contract on individual rows. **Planned, not yet in the corpus:**
+Dieffenbachia, Areca palm, African violet, Hoya — candidates for a future species-roster expansion;
+they are not part of the bundled `corpus/manifest.yaml` today and any question about them correctly
+falls to the refusal path.)
 
 > **A "generally non-toxic" listing is not a safety guarantee.** This column tracks an ASPCA-style
 > *classification* so the safety suite exercises real-shaped facts — it is **not** a clearance to let
@@ -184,6 +187,16 @@ Yes, all of it deterministic and in-repo:
   is Bedrock Titan behind a config switch. BM25 lexical scores are computed for hybrid RRF fusion.
 - **Labeling.** Toxicity status is encoded as prose in each `## toxicity` section; the assistant
   *quotes* it and the safety guard forbids turning it into a "safe" certification.
+- **Structured toxicity table (EXP-09).** `corpus/toxicity.yaml` mirrors the same toxic/non-toxic
+  facts as a machine-readable species x animal x severity table, each row carrying its own
+  `source_name`/`url`/`license`/`fetch_date` citation exactly like a manifest entry
+  (`src/sprout/toxicity.py:ToxicityRow`). It exists for deterministic coverage accounting
+  (`sprout toxicity coverage`) and future exposure-type routing (FIX-13) — **it never
+  replaces the cited prose as the rendered answer's source of truth.** `sprout toxicity check`
+  fails the build if a row disagrees with its document's prose. Every row is `synthetic: true`
+  and stays that way — original placeholder data, not a transcription of a real veterinary
+  source — until a veterinary toxicologist reviews the schema semantics and every real row's
+  intended rendering; see the hard-gate note atop `corpus/toxicity.yaml` and R1.
 
 **Is the raw data saved?**
 Yes — `corpus/raw/` holds the committed snapshots and `corpus/processed/` the cleaned Markdown, both
@@ -231,8 +244,8 @@ biases, not this one's.
 ## 6. Distribution
 
 **How is it distributed?**
-Bundled inside the open-source Sprout repository and the published package (committed under
-`corpus/`), so it ships with every `pipx install sprout` and is available fully offline. There is no
+Bundled inside the open-source Sprout repository and included in built distributions (committed
+under `corpus/`), so it is available fully offline. There is no
 separate dataset download, API, or hosted endpoint.
 
 **Under what license / IP terms?**

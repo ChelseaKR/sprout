@@ -1,6 +1,5 @@
-// Sprout chat UI — dependency-free. Consumes the sentence-grained SSE stream so the
-// live region only ever announces citation-verified text, never ungrounded text it
-// would have to retract. Severity/provenance are conveyed in words, not colour alone.
+// Sprout's stateless reference surface. Sentence-grained SSE means the live region
+// only receives citation-verified text; ungrounded text is never streamed and retracted.
 "use strict";
 
 (function () {
@@ -8,7 +7,10 @@
   const input = document.getElementById("q");
   const statusEl = document.getElementById("status");
   const answerEl = document.getElementById("answer");
+  const answerHeading = document.getElementById("answer-h");
+  const evidencePanel = document.querySelector(".evidence-panel");
   const safetyEl = document.getElementById("safety");
+  const disagreementsEl = document.getElementById("disagreements");
   const sourcesWrap = document.getElementById("sources-wrap");
   const citationsEl = document.getElementById("citations");
   const metaEl = document.getElementById("meta");
@@ -20,266 +22,142 @@
     return checked ? checked.value : "en";
   }
 
-  function reset() {
-    if (source) { source.close(); source = null; }
+  function setBusy(isBusy) {
+    evidencePanel.setAttribute("aria-busy", String(isBusy));
+    askBtn.disabled = isBusy;
+  }
+
+  function resetResult() {
+    if (source) {
+      source.close();
+      source = null;
+    }
     answerEl.textContent = "";
     citationsEl.textContent = "";
     metaEl.textContent = "";
     safetyEl.hidden = true;
     safetyEl.textContent = "";
+    disagreementsEl.hidden = true;
+    disagreementsEl.textContent = "";
     sourcesWrap.hidden = true;
+    answerHeading.textContent = "Checking the evidence";
   }
 
   function addCitation(label, url) {
-    for (const li of citationsEl.children) {
-      if (li.dataset.label === label) return;
+    for (const item of citationsEl.children) {
+      if (item.dataset.label === label) return;
     }
-    const li = document.createElement("li");
-    li.dataset.label = label;
+
+    const item = document.createElement("li");
+    item.dataset.label = label;
     if (url && /^https?:\/\//.test(url)) {
-      const a = document.createElement("a");
-      a.href = url;
-      a.textContent = label;
-      a.rel = "noopener noreferrer";
-      li.appendChild(a);
+      const link = document.createElement("a");
+      link.href = url;
+      link.textContent = label;
+      link.rel = "noopener noreferrer";
+      item.appendChild(link);
     } else {
-      li.textContent = label;
+      item.textContent = label;
     }
-    citationsEl.appendChild(li);
+    citationsEl.appendChild(item);
     sourcesWrap.hidden = false;
   }
 
   function ask(question) {
-    reset();
-    askBtn.disabled = true;
-    statusEl.textContent = "Searching the cited corpus…";
+    resetResult();
+    setBusy(true);
+    statusEl.textContent = "Searching the dated corpus and verifying each sentence…";
+
     const url = "/api/chat/stream?q=" + encodeURIComponent(question) +
       "&language=" + encodeURIComponent(selectedLanguage());
     source = new EventSource(url);
 
-    source.addEventListener("sentence", function (e) {
-      const data = JSON.parse(e.data);
-      const p = document.createElement("p");
-      p.textContent = data.text + " ";
+    source.addEventListener("sentence", function (event) {
+      const data = JSON.parse(event.data);
+      const paragraph = document.createElement("p");
+      paragraph.textContent = data.text + " ";
+
       const marker = document.createElement("span");
       marker.className = "cite-marker";
       marker.textContent = "[" + data.citation + "]";
-      p.appendChild(marker);
-      answerEl.appendChild(p);
+      paragraph.appendChild(marker);
+      answerEl.appendChild(paragraph);
+
       addCitation(data.citation, data.url);
+      answerHeading.textContent = "Verified answer";
       statusEl.textContent = "";
     });
 
-    source.addEventListener("refusal", function (e) {
-      const data = JSON.parse(e.data);
-      const p = document.createElement("p");
-      p.textContent = data.text;
-      answerEl.appendChild(p);
-      statusEl.textContent = "";
+    source.addEventListener("refusal", function (event) {
+      const data = JSON.parse(event.data);
+      const paragraph = document.createElement("p");
+      paragraph.textContent = data.text;
+      answerEl.appendChild(paragraph);
+      answerHeading.textContent = "Honest refusal";
+      statusEl.textContent = "The corpus did not support an answer.";
     });
 
-    source.addEventListener("safety", function (e) {
-      const data = JSON.parse(e.data);
+    source.addEventListener("safety", function (event) {
+      const data = JSON.parse(event.data);
       safetyEl.textContent = data.text;
       safetyEl.hidden = false;
     });
 
-    source.addEventListener("done", function (e) {
+    // EXP-02: when retrieved sources give a conflicting numeric care cadence, both
+    // citations are rendered here plainly rather than one being silently dropped.
+    source.addEventListener("disagreement", function (e) {
       const data = JSON.parse(e.data);
-      const bits = [];
+      const p = document.createElement("p");
+      p.textContent = data.text;
+      disagreementsEl.appendChild(p);
+      disagreementsEl.hidden = false;
+    });
+
+    source.addEventListener("done", function (event) {
+      const data = JSON.parse(event.data);
+      const details = [];
       if (typeof data.confidence === "number") {
-        bits.push("Confidence " + data.confidence.toFixed(2) +
-          (data.low_confidence && !data.refused ? " (low — consider a second source)" : ""));
+        // The verbalized band leads, the raw number follows in parentheses — never the
+        // reverse, and never the band alone — so a screen reader announces the
+        // calibrated language first while the number stays available to anyone who
+        // wants it (EXP-06). Bands come from confidence.py, derived from the
+        // committed reliability diagram, not invented client-side.
+        const bandLabel = data.confidence_band_label || null;
+        details.push("Confidence: " + (bandLabel ? bandLabel + " " : "") +
+          "(" + data.confidence.toFixed(2) + ")" +
+          (data.low_confidence && !data.refused ? " — low; check another source" : ""));
       }
-      if (data.as_of) bits.push("Based on references as of " + data.as_of);
-      if (data.disclosure) bits.push(data.disclosure);
-      metaEl.textContent = bits.join(" · ");
-      statusEl.textContent = "";
-      askBtn.disabled = false;
-      if (source) { source.close(); source = null; }
+      if (data.as_of) details.push("References current to " + data.as_of);
+      if (data.disclosure) details.push(data.disclosure);
+      metaEl.textContent = details.join(" · ");
+      setBusy(false);
+      if (source) {
+        source.close();
+        source = null;
+      }
     });
 
     source.onerror = function () {
-      statusEl.textContent = "Something went wrong reaching the assistant. Please try again.";
-      askBtn.disabled = false;
-      if (source) { source.close(); source = null; }
+      answerHeading.textContent = "Reference unavailable";
+      statusEl.textContent = "The answer service could not be reached. Check the server and try again.";
+      setBusy(false);
+      if (source) {
+        source.close();
+        source = null;
+      }
     };
   }
 
-  form.addEventListener("submit", function (e) {
-    e.preventDefault();
-    const q = input.value.trim();
-    if (q) ask(q);
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    const question = input.value.trim();
+    if (question) ask(question);
   });
 
-  document.getElementById("examples").addEventListener("click", function (e) {
-    const btn = e.target.closest("button[data-q]");
-    if (!btn) return;
-    input.value = btn.dataset.q;
-    input.focus();
-    ask(btn.dataset.q);
+  document.getElementById("examples").addEventListener("click", function (event) {
+    const button = event.target.closest("button[data-q]");
+    if (!button) return;
+    input.value = button.dataset.q;
+    ask(button.dataset.q);
   });
-
-  // --- Photo identification ---------------------------------------------------
-  const photoForm = document.getElementById("photo-form");
-  const photoInput = document.getElementById("photo");
-  const photoQ = document.getElementById("photo-q");
-  const photoStatus = document.getElementById("photo-status");
-  const photoLabel = document.getElementById("photo-label");
-  const photoAnswer = document.getElementById("photo-answer");
-  const photoSafety = document.getElementById("photo-safety");
-  const photoSourcesWrap = document.getElementById("photo-sources-wrap");
-  const photoCitations = document.getElementById("photo-citations");
-  const photoBtn = document.getElementById("photo-btn");
-
-  function readAsBase64(file) {
-    return new Promise(function (resolve, reject) {
-      const reader = new FileReader();
-      reader.onload = function () {
-        const result = String(reader.result || "");
-        const comma = result.indexOf(",");
-        resolve(comma >= 0 ? result.slice(comma + 1) : result);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function renderPhoto(data) {
-    photoAnswer.textContent = "";
-    photoCitations.textContent = "";
-    photoSourcesWrap.hidden = true;
-    photoSafety.hidden = true;
-    photoSafety.textContent = "";
-    if (!data.identified || !data.answer) {
-      photoLabel.textContent = "";
-      const p = document.createElement("p");
-      p.textContent = data.message || "Could not identify the plant from the photo.";
-      photoAnswer.appendChild(p);
-      return;
-    }
-    photoLabel.textContent = data.label || "";
-    const ans = data.answer;
-    const p = document.createElement("p");
-    p.textContent = ans.display_text;
-    photoAnswer.appendChild(p);
-    if (ans.safety_notice) {
-      photoSafety.textContent = ans.safety_notice;
-      photoSafety.hidden = false;
-    }
-    (ans.citations || []).forEach(function (c) {
-      const li = document.createElement("li");
-      if (c.url && /^https?:\/\//.test(c.url)) {
-        const a = document.createElement("a");
-        a.href = c.url;
-        a.textContent = c.label;
-        a.rel = "noopener noreferrer";
-        li.appendChild(a);
-      } else {
-        li.textContent = c.label;
-      }
-      photoCitations.appendChild(li);
-      photoSourcesWrap.hidden = false;
-    });
-  }
-
-  if (photoForm) {
-    photoForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      const file = photoInput.files && photoInput.files[0];
-      if (!file) { photoStatus.textContent = "Please choose a photo first."; return; }
-      photoBtn.disabled = true;
-      photoStatus.textContent = "Identifying the plant…";
-      readAsBase64(file).then(function (b64) {
-        return fetch("/api/identify", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            image_b64: b64,
-            question: photoQ.value.trim() || null,
-            language: selectedLanguage()
-          })
-        });
-      }).then(function (r) { return r.json(); }).then(function (data) {
-        photoStatus.textContent = "";
-        renderPhoto(data);
-      }).catch(function () {
-        photoStatus.textContent = "Something went wrong identifying the photo. Please try again.";
-      }).then(function () { photoBtn.disabled = false; });
-    });
-  }
-
-  // --- Reminders --------------------------------------------------------------
-  const reminderForm = document.getElementById("reminder-form");
-  const reminderStatus = document.getElementById("reminder-status");
-  const remindersBody = document.getElementById("reminders-body");
-  const remindersEmpty = document.getElementById("reminders-empty");
-
-  function renderReminders(reminders) {
-    remindersBody.textContent = "";
-    if (!reminders.length) { remindersEmpty.hidden = false; return; }
-    remindersEmpty.hidden = true;
-    reminders.forEach(function (r) {
-      const tr = document.createElement("tr");
-      [r.plant, r.kind, "every " + r.interval_days + "d", r.next_due].forEach(function (text) {
-        const td = document.createElement("td");
-        td.textContent = text;
-        tr.appendChild(td);
-      });
-      const actions = document.createElement("td");
-      const done = document.createElement("button");
-      done.type = "button";
-      done.textContent = "Mark done";
-      done.addEventListener("click", function () { completeReminder(r.reminder_id); });
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "ghost";
-      del.textContent = "Remove";
-      del.setAttribute("aria-label", "Remove " + r.kind + " reminder for " + r.plant);
-      del.addEventListener("click", function () { removeReminder(r.reminder_id); });
-      actions.appendChild(done);
-      actions.appendChild(del);
-      tr.appendChild(actions);
-      remindersBody.appendChild(tr);
-    });
-  }
-
-  function loadReminders() {
-    fetch("/api/reminders").then(function (r) { return r.json(); }).then(function (data) {
-      renderReminders(data.reminders || []);
-    }).catch(function () { /* offline build: leave the empty message */ });
-  }
-
-  function completeReminder(id) {
-    fetch("/api/reminders/" + encodeURIComponent(id) + "/complete", { method: "POST" })
-      .then(function () { reminderStatus.textContent = "Marked done and rescheduled."; loadReminders(); });
-  }
-
-  function removeReminder(id) {
-    fetch("/api/reminders/" + encodeURIComponent(id), { method: "DELETE" })
-      .then(function () { reminderStatus.textContent = "Reminder removed."; loadReminders(); });
-  }
-
-  if (reminderForm) {
-    reminderForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      const plant = document.getElementById("r-plant").value.trim();
-      if (!plant) { reminderStatus.textContent = "Please enter a plant."; return; }
-      fetch("/api/reminders", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          plant: plant,
-          kind: document.getElementById("r-kind").value,
-          interval_days: parseInt(document.getElementById("r-every").value, 10) || null,
-          language: selectedLanguage()
-        })
-      }).then(function (r) { return r.json(); }).then(function () {
-        reminderStatus.textContent = "Reminder added.";
-        document.getElementById("r-plant").value = "";
-        loadReminders();
-      }).catch(function () { reminderStatus.textContent = "Could not add the reminder."; });
-    });
-    loadReminders();
-  }
 })();

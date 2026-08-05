@@ -1,0 +1,55 @@
+name: redteam
+
+# Promptfoo OWASP LLM01-LLM10 red team (eval/redteam/promptfooconfig.yaml) — see
+# eval/redteam/README.md. Generation + grading call Anthropic and need
+# ANTHROPIC_API_KEY, so this is opt-in/advisory until the key is provisioned as a
+# repo secret and a maintainer has watched a run go clean; it has never been part of
+# ci-gate's needs: list. Advisory jobs run on a schedule, not per-push
+# (CI-CD-STANDARD §11d) — moved out of ci.yml 2026-07-17 to a nightly cadence.
+
+on:
+  schedule:
+    - cron: "47 4 * * *" # nightly, 04:47 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: redteam
+  cancel-in-progress: true
+
+jobs:
+  redteam:
+    runs-on: ubuntu-latest
+    continue-on-error: true # advisory; excluded from ci-gate
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+      - name: Check for ANTHROPIC_API_KEY
+        id: gate
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: echo "run=$HAS_KEY" >> "$GITHUB_OUTPUT"
+      - name: Install + ingest
+        if: steps.gate.outputs.run == 'true'
+        run: uv sync --frozen --extra serve && uv run sprout ingest
+      - name: Serve the chat API
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          uv run sprout serve &
+          sleep 5
+      - name: Promptfoo red team (OWASP LLM01-LLM10)
+        if: steps.gate.outputs.run == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        working-directory: eval/redteam
+        run: npx --yes promptfoo@latest redteam run --no-progress-bar
+      - name: No ANTHROPIC_API_KEY secret — skipped
+        if: steps.gate.outputs.run != 'true'
+        run: echo "::notice::ANTHROPIC_API_KEY not configured; see eval/redteam/README.md. Skipping (advisory job, not gate-blocking)."

@@ -1,0 +1,12 @@
+{
+  "name": "Sprout — grounded plant-care answers",
+  "short_name": "Sprout",
+  "description": "Inspect cited, evaluated plant-care answers from a deterministic pipeline that runs entirely in your browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f7f4",
+  "theme_color": "#12442b",
+  "lang": "en",
+  "icons": []
+}

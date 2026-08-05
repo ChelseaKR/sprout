@@ -205,12 +205,14 @@ def build_identifier(config: Config) -> PlantIdentifier:
     if provider == "offline":
         return OfflineIdentifier()
     if provider == "plantnet":  # pragma: no cover - network seam, exercised via injection
+        from .provider_lifecycle import CachedHttpClient
         from .providers.plantnet import PlantNetIdentifier
 
         return PlantNetIdentifier(
             endpoint=config.identification.endpoint,
             top_k=config.identification.top_k,
             timeout_s=config.identification.timeout_s,
+            client=CachedHttpClient(config.identification.timeout_s),
         )
     raise ValueError(f"unknown identification provider: {provider}")  # pragma: no cover
 

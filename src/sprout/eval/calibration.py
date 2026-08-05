@@ -141,11 +141,12 @@ def to_markdown(record: CalibrationRecord) -> str:
             "",
             f"Disagreements: {', '.join(record.disagreements) or 'none'}",
             "",
-            "> The deterministic lexical judge is the **reproducible offline floor**, not a "
-            "human-aligned gate-backer: it cannot detect antonym contradictions "
-            '("safe" vs "toxic") or morphological synonyms, which is exactly why production '
-            "gates are backed by the calibrated LLM judge (`--judge llm`). This record is "
-            "reported, not merge-blocking, for the deterministic judge.",
+            "> The deterministic lexical judge is the **reproducible offline floor**: lexical "
+            "coverage plus a negation/antonym polarity guard, not a general-purpose semantic "
+            "judge. It still misses morphological synonyms and paraphrase that share little "
+            "surface vocabulary, which is why production gates should ultimately be backed by "
+            "the calibrated LLM judge (`--judge llm`) as the probe set grows. Pass `--gate` to "
+            "`sprout calibrate` to fail the build below threshold; run without it to report only.",
             "",
         ]
     )

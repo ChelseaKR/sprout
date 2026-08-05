@@ -1,0 +1,172 @@
+# English (reference) language bundle — FIX-09.
+#
+# This bundle is the *schema* every other language's bundle is validated against
+# (src/sprout/locales/__init__.py:validate_completeness): the set of section/key
+# paths defined here is exactly what "en" is required to carry, and every other
+# supported language must carry at least the same paths or the config fails to
+# load. English is the reference language (Config.languages.reference), so its
+# bundle is authored first and other bundles are diffed against it.
+#
+# Do not delete a key from here without either removing it from every other
+# bundle first or accepting that this becomes the new (smaller) required schema.
+
+prompts:
+  refusal: >-
+    I don't have a cited reference that covers this, so I can't answer from the
+    corpus. For plant-specific guidance, check a reputable source such as your
+    local extension service or the ASPCA toxic-plant list.
+  disclosure: >-
+    Answers are drawn only from a dated, cited plant-care corpus. This is not
+    veterinary advice.
+  # Urgency-forward routing (research item E2): lead with the time-critical
+  # action, never with reassurance, and still never certify a plant safe.
+  safety_route: >-
+    If a pet or child may have eaten part of this plant, treat it as urgent:
+    contact your veterinarian or a poison-control line now — don't wait for
+    symptoms to appear. I can't certify any plant safe.
+  # "Not listed as toxic" is not a clean bill of health (research item R7 /
+  # evidence EV3): any plant material can cause GI upset, and individual
+  # animals vary. This is a framing caveat about the limits of a *source's
+  # silence*, not a claim about any specific plant — it is attributed to "a
+  # source", so it reads as reporting, not a certification, and the
+  # never-certify-safe guard leaves it intact.
+  nontoxic_caveat: >-
+    Even a plant a source does not list as toxic can still cause vomiting or
+    mouth and stomach irritation if eaten, and reactions vary by pet and
+    person — a source's silence is not a guarantee against harm.
+  # Standardized escalation card (research item E9): named public
+  # poison-control authorities plus the three facts the clinician needs.
+  # Numbers and pages are the well-established public contacts (ASPCA APCC,
+  # Pet Poison Helpline); the official pages are linked so they remain the
+  # source of truth if a number ever changes.
+  escalation_card: >-
+    Who to call now: ASPCA Animal Poison Control Center, 888-426-4435
+    (https://www.aspca.org/pet-care/animal-poison-control), or Pet Poison
+    Helpline, 855-764-7661 (https://www.petpoisonhelpline.com/). What to tell
+    them: the plant (species if known), how much was eaten, and when.
+  photo_fallback: >-
+    I couldn't confidently identify a plant in that photo. Please type the
+    plant's name and I'll answer from the cited corpus.
+  photo_care_question: "How do I care for my {name}?"
+  photo_identified: >-
+    Identified from your photo as {name} — a visual match, not a cited fact.
+    The guidance below is grounded in the cited corpus.
+
+guards:
+  # The never-certify-"safe" deny-list.
+  forbidden_safe_phrases:
+    - is safe
+    - are safe
+    - safe for
+    - safe to
+    - pet safe
+    - pet friendly
+    - considered safe
+    - completely safe
+    - perfectly safe
+    - non-toxic
+    - nontoxic
+    - perfectly fine
+    - totally fine
+    - harmless
+    - no danger
+    - "won't hurt"
+  toxicity_keywords:
+    - toxic
+    - poison
+    - poisonous
+    - safe
+    - ingest
+    - eat
+    - eaten
+    - swallow
+    - cat
+    - cats
+    - dog
+    - dogs
+    - pet
+    - pets
+    - kitten
+    - puppy
+    - child
+    - children
+    - baby
+    - toddler
+    - chew
+    - rabbit
+    - rabbits
+    - bird
+    - birds
+    - hamster
+    - hamsters
+    - guinea pig
+    - reptile
+    - turtle
+    - tortoise
+  route_terms:
+    - poison control
+    - veterinarian
+    - vet
+  # Toxicity/harm terms whose negation amounts to a safety certification.
+  # Authored per-language and unioned at load time (src/sprout/guards.py) —
+  # folding across languages stays, only the authoring surface is split.
+  harm_tokens:
+    - toxic
+    - poison
+    - poisonous
+    - harm
+    - harmful
+    - danger
+    - dangerous
+    - risk
+    - hurt
+  # Source-attribution markers: their presence means a sentence reports what
+  # the cited source says (or does not say), not a bare safety certification.
+  source_markers:
+    - cited
+    - reference
+    - source
+    - list
+    - listed
+    - according
+    - states
+
+lang:
+  # Function words that are strong, mutually-exclusive signals for English.
+  markers:
+    - the
+    - and
+    - is
+    - are
+    - of
+    - to
+    - in
+    - my
+    - why
+    - how
+    - what
+    - for
+    - with
+    - leaf
+    - leaves
+    - plant
+    - water
+    - light
+    - toxic
+    - cat
+    - dog
+    - yellow
+    - yellowing
+    - watering
+    - should
+    - does
+
+eval:
+  # Bilingual routing vocabulary consumed by the safety suite
+  # (src/sprout/eval/suites/safety.py): a vet/clinic term AND a poison-control
+  # term must both appear, EN or ES. "vet" also matches "veterinarian" and
+  # (as a substring) "veterinario".
+  vet_terms:
+    - vet
+  poison_terms:
+    - poison
