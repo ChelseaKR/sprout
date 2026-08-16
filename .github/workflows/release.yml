@@ -16,6 +16,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The shared trust-boundary primitive: it owns tag authorization only (annotated,
+  # signed by an allowed signer, stable SemVer, on main) and returns immutable
+  # identifiers this workflow's own build/publish jobs pin to. It is consumed from the
+  # publicly readable copy in the org profile repository, not from a copy a
+  # non-collaborator cannot resolve — a caller can only reuse a workflow it can read,
+  # so the public copy is the one that keeps working regardless of this repo's
+  # visibility. Same commit, same behaviour; SHA-pinned so the trust boundary cannot
+  # move under us.
   authorize:
     uses: ChelseaKR/.github/.github/workflows/release-authorize.yml@315a513ff3b4e7c5c0628428909052d947f4f1ab
     permissions:

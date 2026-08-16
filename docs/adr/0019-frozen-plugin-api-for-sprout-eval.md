@@ -18,9 +18,9 @@ suite at the same time.
 
 That matters beyond this repo. `docs/ideation/04-impact-and-sequencing.md` calls out that
 "a frozen public API and proven plugin seam" is a precondition for later, more ambitious
-plugin-shaped work (signed corpus registries, a review console), and the portfolio has
-other, unpublished eval-shaped projects that could consume the same runner if the
-seam were real instead of aspirational.
+plugin-shaped work (signed corpus registries, a review console), and the author maintains
+other, unpublished eval-shaped projects that could consume the same runner if the seam
+were real instead of aspirational.
 
 ## Decision
 
