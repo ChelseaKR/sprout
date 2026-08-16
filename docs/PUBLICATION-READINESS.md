@@ -79,24 +79,57 @@ Ask the maintainer for the kit path. It consists of:
   diff of old tip against new tip for every branch; a secret scan of the
   rewritten history; and the full local gate set green at the rewritten tip.
 
+It has been rehearsed end to end against a throwaway mirror, with this scrub
+staged as the tip: 164 commits in and 164 out, ref set identical, **0 hits
+across 1,081 blobs**, no name in any commit message or path, and `make lint type
+test workflow-lint claims ci-parity-check` green at the rewritten tip. Every
+rewritten historical sentence was read back by hand; each still parses and still
+makes its original point. Nothing was pushed.
+
+One operational detail the rehearsal turned up: a `--mirror` clone of a GitHub
+repository also fetches `refs/pull/*/head`, which cannot be pushed back. The
+script deletes those refs before rewriting and pushes heads and tags explicitly.
+
 Three things about running it are the maintainer's, not this document's:
 
 1. **Order matters.** The scrub must be merged first. The rules match only the
    old wording, so the tip's hand-written replacements pass through untouched
    and only historical blobs get the mechanical substitution. Running the
    rewrite first would produce worse prose at the tip.
-2. **`main` carries `required_status_checks`.** History rewriting needs the
-   ruleset temporarily relaxed. That is a maintainer action.
+2. **`main` carries `non_fast_forward` and `required_status_checks`, with no
+   bypass actors.** History rewriting needs the ruleset temporarily relaxed.
+   That is a maintainer action, and it is also the answer to a problem that
+   arrives earlier — see the deadlock below.
 3. **A force-push is not the end of it.** GitHub keeps rewritten commits
    reachable by SHA until garbage collection, and merged pull requests still
    reference the old SHAs. Removing them fully needs a support request, as a
    sibling repository already had to file.
 
+### The deadlock to resolve first
+
+`main`'s ruleset requires the `ci-gate` status check and grants no bypass to
+anyone, including the owner. Actions billing is failing account-wide, so
+`ci-gate` cannot run, cannot report, and cannot pass. **Nothing can land on
+`main` — not this scrub, not anything — until either billing is restored or the
+ruleset is relaxed by hand.**
+
+That is worth naming plainly, because it inverts the reason this work was
+started. Publishing was meant to escape the billing wall; instead the billing
+wall blocks the change that makes publishing safe. The way out is to relax the
+ruleset deliberately, land the scrub, run the rewrite, restore the ruleset, and
+only then consider visibility. It is not to publish first and scrub afterwards:
+history published once is public whether or not it is later rewritten.
+
 ### Two knock-on effects of the rewrite
 
-- `docs/adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md` cites a
-  short commit SHA that the rewrite will invalidate. `git-filter-repo` writes an
-  old-to-new commit map; update the citation from it afterwards. One line.
+- **Commit ids change, and one document cites one.**
+  `docs/adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md` cites the
+  short SHA of the initial commit. In the rehearsal that commit was one of six
+  whose id survived unchanged — it predates every occurrence being scrubbed, so
+  no rule fired on it and its hash was preserved — and the citation stayed valid.
+  Do not rely on that: re-check it against `filter-repo/commit-map` after the
+  real run, because any change to the expression rules could pull an earlier
+  commit into the rewrite. 158 of 164 commit ids did change.
 - Pull request bodies for three merged or closed PRs name unpublished
   repositories. **A history rewrite does not touch pull request bodies** — they
   live in GitHub's database, not in git. They become readable the moment the
@@ -107,7 +140,7 @@ Three things about running it are the maintainer's, not this document's:
 
 | Gate | Status | Evidence |
 |---|---|---|
-| Full-history secret scan | **PASS** | gitleaks over all refs, 156 commits, ~7.76 MB: *no leaks found* — reproduced with the repo's own `.gitleaks.toml` and again with an empty config, so the result does not depend on the committed allowlist |
+| Full-history secret scan | **PASS** | gitleaks over all refs, 156 commits, ~7.76 MB: *no leaks found*. Re-run with the committed `.gitleaks.toml` deliberately out of scope, it reports exactly two findings, both in the two paths that allowlist names — a documented deterministic-token example in an ADR and the token-hashing projection in `providers/deterministic.py`, which hashes content tokens with SHA-256 to pick a vector dimension. Neither is a credential. The allowlist suppresses those two and nothing else |
 | PII in fixtures | **PASS** | the only PII-shaped literals are deliberate redaction canaries in the test suite; corpus and eval data are synthetic |
 | Corpus and eval data licensing | **PASS** | every manifest row is `license: CC0-1.0` with an `example.invalid` source URL; `NOTICE` states the corpus is synthetic and license-clean. Nothing here is republished third-party data |
 | Vendored code licensing | **PASS (documented here)** | `src/sprout/_vendor/genai_telemetry/` is first-party code by the same author, Apache-2.0 in its source library, with no third-party code and no foreign copyright headers. Redistribution needs no additional permission. `NOTICE` now says so, because a reader could not otherwise tell |
