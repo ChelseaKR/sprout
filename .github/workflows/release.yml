@@ -57,7 +57,7 @@ jobs:
         # this step is the fail-closed re-verification at the tagged commit, not the writer.
         env:
           TAG: ${{ needs.authorize.outputs.release-tag }}
-        run: uv sync --frozen --extra serve && uv run sprout ingest && make verify RELEASE_TAG="${TAG}"
+        run: uv sync --locked --extra serve && uv run sprout ingest && make verify RELEASE_TAG="${TAG}"
 
       - name: Require tag, package, and changelog versions to match
         env:
@@ -91,7 +91,7 @@ jobs:
       - name: Build sdist + wheel
         run: uv build
       - name: Install the built package so the SBOM reflects real, non-empty deps
-        run: uv sync --frozen --no-dev
+        run: uv sync --locked --no-dev
       - name: Generate SBOM (CycloneDX)
         run: uvx cyclonedx-py environment --output-format json --outfile sbom.cdx.json
       - name: Upload SBOM artifact

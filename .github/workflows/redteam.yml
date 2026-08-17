@@ -38,7 +38,7 @@ jobs:
         run: echo "run=$HAS_KEY" >> "$GITHUB_OUTPUT"
       - name: Install + ingest
         if: steps.gate.outputs.run == 'true'
-        run: uv sync --frozen --extra serve && uv run sprout ingest
+        run: uv sync --locked --extra serve && uv run sprout ingest
       - name: Serve the chat API
         if: steps.gate.outputs.run == 'true'
         run: |
