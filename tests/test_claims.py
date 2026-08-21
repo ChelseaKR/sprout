@@ -260,6 +260,90 @@ def test_check_eval_report_source() -> None:
     assert not any("roadmap-groundedness-threshold" in p for p in problems)
 
 
+# --- README claims (issue #97): floor vs. measured, and the real suite list -----------------
+
+
+def test_check_readme_calibration_floor_sources() -> None:
+    """suite:calibration.min_agreement / min_kappa resolve to the ENFORCED FLOOR (0.80/0.60),
+    not the last measured value (0.955/0.906) — the exact collapse issue #97 found in the
+    README."""
+    problems = check()
+    assert not any("readme-judge-calibration-floor-agreement" in p for p in problems)
+    assert not any("readme-judge-calibration-floor-kappa" in p for p in problems)
+
+
+def test_check_readme_refusal_target_source() -> None:
+    problems = check()
+    assert not any("readme-refusal-target" in p for p in problems)
+
+
+def test_check_readme_coverage_floor_source() -> None:
+    """pytest:cov-fail-under resolves the real --cov-fail-under value from pyproject.toml."""
+    problems = check()
+    assert not any("readme-coverage-floor" in p for p in problems)
+
+
+def test_check_readme_eval_suite_count_and_names_sources() -> None:
+    """eval-report:suites.count / suites.names resolve from the committed eval report — the
+    README no longer hand-carries a suite list that can silently fall behind a new suite."""
+    problems = check()
+    assert not any("readme-eval-suite-count" in p for p in problems)
+    assert not any("readme-eval-suite-names" in p for p in problems)
+
+
+def test_resolve_suite_calibration_floors() -> None:
+    from sprout.claims import _resolve_suite
+
+    assert _resolve_suite("calibration.min_agreement") == "0.80"
+    assert _resolve_suite("calibration.min_kappa") == "0.60"
+
+
+def test_resolve_suite_unknown_raises() -> None:
+    from sprout.claims import _resolve_suite
+
+    with pytest.raises(ClaimsError, match="unknown suite claim source"):
+        _resolve_suite("nonsense.field")
+
+
+def test_resolve_pytest_cov_fail_under(tmp_path: Path) -> None:
+    from sprout.claims import _resolve_pytest_cov_fail_under
+
+    toml = tmp_path / "pyproject.toml"
+    toml.write_text(
+        '[tool.pytest.ini_options]\naddopts = "--cov=x --cov-fail-under=77 -q"\n',
+        encoding="utf-8",
+    )
+    assert _resolve_pytest_cov_fail_under(toml) == "77"
+
+
+def test_resolve_pytest_cov_fail_under_missing_file(tmp_path: Path) -> None:
+    from sprout.claims import _resolve_pytest_cov_fail_under
+
+    with pytest.raises(FileNotFoundError):
+        _resolve_pytest_cov_fail_under(tmp_path / "nope.toml")
+
+
+def test_resolve_pytest_cov_fail_under_missing_flag(tmp_path: Path) -> None:
+    from sprout.claims import _resolve_pytest_cov_fail_under
+
+    toml = tmp_path / "pyproject.toml"
+    toml.write_text('[tool.pytest.ini_options]\naddopts = "-q"\n', encoding="utf-8")
+    with pytest.raises(ClaimsError, match="no --cov-fail-under"):
+        _resolve_pytest_cov_fail_under(toml)
+
+
+def test_resolve_eval_report_suite_names_and_count(tmp_path: Path) -> None:
+    from sprout.claims import _resolve_eval_report_suite_count, _resolve_eval_report_suite_names
+
+    report = tmp_path / "eval-report.json"
+    report.write_text(
+        '{"suite_results": [{"suite": "a"}, {"suite": "b"}, {"suite": "c"}]}',
+        encoding="utf-8",
+    )
+    assert _resolve_eval_report_suite_names(report) == "a, b, c"
+    assert _resolve_eval_report_suite_count(report) == "3"
+
+
 def test_load_claims_missing_registry(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         check(claims_path=tmp_path / "nope.yaml")

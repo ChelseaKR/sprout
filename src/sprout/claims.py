@@ -13,6 +13,8 @@ function that returns a list of problem strings, wired to a CLI command and a CI
 from __future__ import annotations
 
 import json
+import re
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -20,11 +22,13 @@ from typing import Any
 import yaml
 
 from .config import Config, load_config
+from .eval.calibration import MIN_AGREEMENT, MIN_KAPPA
 from .eval.suites.refusal import RefusalSuite
 
 _DEFAULT_CLAIMS = "docs/claims.yaml"
 _DEFAULT_CONFIG = "config/sprout.yaml"
 _DEFAULT_EVAL_REPORT = "docs/audits/eval-report.json"
+_DEFAULT_PYPROJECT = "pyproject.toml"
 
 _CONTEXT_LINES = 1  # how many lines above/below the marker line the value may appear on
 
@@ -89,15 +93,25 @@ def _resolve_config(dotted: str, config_path: str | Path) -> str:
     return _fmt(obj)
 
 
-def _resolve_refusal_threshold() -> str:
-    return _fmt(RefusalSuite().metric.threshold)
+def _resolve_suite(name: str) -> str:
+    if name == "refusal.threshold":
+        return _fmt(RefusalSuite().metric.threshold)
+    if name == "calibration.min_agreement":
+        return _fmt(MIN_AGREEMENT)
+    if name == "calibration.min_kappa":
+        return _fmt(MIN_KAPPA)
+    raise ClaimsError(f"unknown suite claim source: {name!r}")
 
 
-def _resolve_eval_report(dotted: str, report_path: str | Path) -> str:
+def _load_eval_report(report_path: str | Path) -> Any:
     p = Path(report_path)
     if not p.exists():
         raise FileNotFoundError(f"eval report not found: {p}")
-    report: Any = json.loads(p.read_text(encoding="utf-8"))
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _resolve_eval_report(dotted: str, report_path: str | Path) -> str:
+    report = _load_eval_report(report_path)
     suite_name, _, rest = dotted.partition(".")
     suites = report.get("suite_results", [])
     match = next((s for s in suites if s.get("suite") == suite_name), None)
@@ -109,13 +123,48 @@ def _resolve_eval_report(dotted: str, report_path: str | Path) -> str:
     return _fmt(obj)
 
 
-def _resolve(source: str, config_path: str | Path, eval_report_path: str | Path) -> str:
+def _resolve_eval_report_suite_names(report_path: str | Path) -> str:
+    """Comma-joined suite names, in report order — e.g. the eval-report.md header line."""
+    report = _load_eval_report(report_path)
+    names = [s.get("suite") for s in report.get("suite_results", [])]
+    return ", ".join(str(n) for n in names)
+
+
+def _resolve_eval_report_suite_count(report_path: str | Path) -> str:
+    report = _load_eval_report(report_path)
+    return _fmt(len(report.get("suite_results", [])))
+
+
+def _resolve_pytest_cov_fail_under(pyproject_path: str | Path) -> str:
+    p = Path(pyproject_path)
+    if not p.exists():
+        raise FileNotFoundError(f"pyproject.toml not found: {p}")
+    data = tomllib.loads(p.read_text(encoding="utf-8"))
+    addopts = data.get("tool", {}).get("pytest", {}).get("ini_options", {}).get("addopts", "")
+    match = re.search(r"--cov-fail-under=(\d+)", addopts)
+    if match is None:
+        raise ClaimsError(f"no --cov-fail-under found in {pyproject_path}'s pytest addopts")
+    return _fmt(int(match.group(1)))
+
+
+def _resolve(
+    source: str,
+    config_path: str | Path,
+    eval_report_path: str | Path,
+    pyproject_path: str | Path = _DEFAULT_PYPROJECT,
+) -> str:
     if source.startswith("config:"):
         return _resolve_config(source.removeprefix("config:"), config_path)
-    if source == "suite:refusal.threshold":
-        return _resolve_refusal_threshold()
+    if source.startswith("suite:"):
+        return _resolve_suite(source.removeprefix("suite:"))
+    if source == "eval-report:suites.names":
+        return _resolve_eval_report_suite_names(eval_report_path)
+    if source == "eval-report:suites.count":
+        return _resolve_eval_report_suite_count(eval_report_path)
     if source.startswith("eval-report:"):
         return _resolve_eval_report(source.removeprefix("eval-report:"), eval_report_path)
+    if source == "pytest:cov-fail-under":
+        return _resolve_pytest_cov_fail_under(pyproject_path)
     raise ClaimsError(f"unknown claim source kind: {source!r}")
 
 
@@ -141,6 +190,7 @@ def check(
     claims_path: str | Path = _DEFAULT_CLAIMS,
     config_path: str | Path = _DEFAULT_CONFIG,
     eval_report_path: str | Path = _DEFAULT_EVAL_REPORT,
+    pyproject_path: str | Path = _DEFAULT_PYPROJECT,
 ) -> list[str]:
     """Check every claim in ``claims_path`` against its source of truth.
 
@@ -157,7 +207,7 @@ def check(
     for claim in claims:
         if not claim.source.startswith("policy:"):
             try:
-                resolved = _resolve(claim.source, config_path, eval_report_path)
+                resolved = _resolve(claim.source, config_path, eval_report_path, pyproject_path)
             except Exception as exc:  # surfaced as a reported problem, not a crash
                 problems.append(f"{claim.id}: could not resolve source {claim.source!r}: {exc}")
                 continue

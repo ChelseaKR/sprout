@@ -10,6 +10,36 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **Fixed a stale-claim bug class in the README (issue #97): the enforced CI floor and the
+  last measured value were collapsed into one number.** `README.md`'s AI Evaluation row read
+  "judge-calibration ... gated at agreement 0.955 / κ 0.906" — those are the values the last
+  run *achieved*, not the thresholds it had to clear (`MIN_AGREEMENT = 0.8`, `MIN_KAPPA = 0.6`
+  in `src/sprout/eval/calibration.py`). A regression from 0.955/0.906 down to 0.81/0.61 would
+  still pass CI and the README would still claim the gate sits at 0.955/0.906 — a 15-point and
+  30-point margin between what the README promised and what the pipeline enforced. Every other
+  doc in the repo already stated floor and measurement separately (`docs/ROADMAP.md`,
+  `docs/audits/judge-calibration.md`, `docs/audits/gate-inventory.md`); the README was the one
+  exception, and the one document `docs/claims.yaml`'s drift guard did not reach.
+  `README.md:139` now states the enforced floor (agreement ≥ 0.80, κ ≥ 0.60) and the last
+  measured value (0.955 / 0.906) as separately labeled claims. A second, same-root-cause drift
+  in the same section — "120+ YAML cases across five suites" — undercounted: the harness
+  gates on **8** suites (`calibration, completeness, conversation, groundedness, multilingual,
+  refusal, safety, toxicity-coverage`, per `docs/audits/eval-report.json`), not 5; the suite
+  table and repo-layout tree diagram are corrected and the table no longer omits
+  `completeness`, `conversation`, and `toxicity-coverage`.
+  `sprout claims-check` (`docs/claims.yaml`) now covers the README: six new claims
+  (`readme-refusal-target`, `readme-judge-calibration-floor-agreement`,
+  `readme-judge-calibration-floor-kappa`, `readme-coverage-floor`, `readme-eval-suite-count`,
+  `readme-eval-suite-names`) pin these values to their live source of truth, gaining two new
+  resolver kinds along the way: a generalized `suite:` source (`suite:calibration.min_agreement`
+  / `suite:calibration.min_kappa`, alongside the existing `suite:refusal.threshold`) and
+  `eval-report:suites.names` / `eval-report:suites.count` (the report's real suite list/count)
+  and `pytest:cov-fail-under` (the real `--cov-fail-under` value in `pyproject.toml`). The
+  registry deliberately does **not** pin the *measured* 0.955/0.906 — unlike a floor, a
+  measurement is expected to legitimately drift run to run; pinning it would make the gate
+  brittle rather than honest. `docs/claims.yaml`'s header comment documents all three new
+  source kinds for the next claim added against them.
+
 - Every `uv sync --frozen` is now `uv sync --locked`, across `ci.yml`,
   `release.yml`, `pages.yml`, `corpus-freshness.yml`, `redteam.yml`, both
   Dockerfiles, and the CI-parity test fixture. `--frozen` never reads
