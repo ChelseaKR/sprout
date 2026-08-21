@@ -3,5 +3,5 @@
 # offline CLI or the eval harness, and nobody running `sprout ask` should have to fetch
 # it. Install with `pip install -r infra/requirements.txt` in a dedicated venv (see
 # infra/README.md).
-aws-cdk-lib>=2.262.2,<3
-constructs>=10.7.2,<11
+aws-cdk-lib>=2.264.0,<3
+constructs>=10.8.1,<11
