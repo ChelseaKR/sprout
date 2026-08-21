@@ -15,13 +15,13 @@ ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
 
 COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --frozen --no-install-project --extra serve --extra bedrock --extra observability
+RUN uv sync --locked --no-install-project --extra serve --extra bedrock --extra observability
 
 COPY src ./src
 COPY config ./config
 COPY corpus ./corpus
 COPY web ./web
-RUN uv sync --frozen --extra serve --extra bedrock --extra observability && uv run sprout ingest
+RUN uv sync --locked --extra serve --extra bedrock --extra observability && uv run sprout ingest
 
 # The adapter proxies Lambda invocations to this port over HTTP, so the app code (and
 # its /livez, /readyz, /api/* routes) is unchanged from the non-Lambda deployment. Lambda

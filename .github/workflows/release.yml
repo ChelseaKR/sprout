@@ -44,7 +44,7 @@ jobs:
       # consumed here even though this job itself holds no write credentials (zizmor
       # `cache-poisoning`, high severity — found 2026-07-05, applies workflow-wide on a
       # tag-push trigger, not just to the job holding OIDC/attestation permissions).
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
       - name: Re-run the full gate set at the tagged commit
@@ -57,7 +57,7 @@ jobs:
         # this step is the fail-closed re-verification at the tagged commit, not the writer.
         env:
           TAG: ${{ needs.authorize.outputs.release-tag }}
-        run: uv sync --frozen --extra serve && uv run sprout ingest && make verify RELEASE_TAG="${TAG}"
+        run: uv sync --locked --extra serve && uv run sprout ingest && make verify RELEASE_TAG="${TAG}"
 
       - name: Require tag, package, and changelog versions to match
         env:
@@ -85,13 +85,13 @@ jobs:
       # attestations: write, and a poisoned/stale cache is the standard's canonical
       # cache-poisoning exposure for a provenance job (SEC-30, CICD-24). The `verify`
       # job above has no credentials and may cache freely.
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
       - name: Build sdist + wheel
         run: uv build
       - name: Install the built package so the SBOM reflects real, non-empty deps
-        run: uv sync --frozen --no-dev
+        run: uv sync --locked --no-dev
       - name: Generate SBOM (CycloneDX)
         run: uvx cyclonedx-py environment --output-format json --outfile sbom.cdx.json
       - name: Upload SBOM artifact
@@ -131,7 +131,7 @@ jobs:
           LIVE_TAG_OBJECT="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)"
           test "${LIVE_TAG_OBJECT}" = "${TAG_OBJECT_SHA}"
       - name: Publish to PyPI through Trusted Publishing
-        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdf1 # v1.12.4
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
 
   publish-release:
     needs: [authorize, build, publish-pypi]

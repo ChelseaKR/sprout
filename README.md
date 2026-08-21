@@ -126,23 +126,27 @@ targets, and evidence are recorded in this public repository. Per-repo *values* 
 [`docs/ROADMAP.md`](docs/ROADMAP.md) and
 [`docs/RESPONSIBLE-TECH-AUDITS.md`](docs/RESPONSIBLE-TECH-AUDITS.md).
 
-| Standard | Applies | This repo's posture |
+| Standard | State | This repo's posture |
 |---|---|---|
-| Quality & Metrics (ISO 25010 / DORA) | ✅ | Metrics ledger in ROADMAP; `make verify` uses the same tools/thresholds as the CI-required checks |
-| Code Quality | ✅ | `ruff` + `mypy --strict`; branch coverage ≥90% (published-library floor); src layout |
-| Security & Supply-Chain | ✅ | ASVS L1 offline mode; scoped ASVS L2 review for the authenticated Family Greenhouse boundary; pip-audit + Semgrep blocking; gitleaks; CodeQL + zizmor; SHA-pinned actions; release SBOM |
-| CI/CD | ✅ | Single `ci-gate` required check; least-privilege tokens; `make verify` mirrors CI's tools/thresholds |
-| Release & Versioning | ✅ | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
-| Accessibility | ✅ | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
-| Observability | ✅ | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
-| Internationalization | ✅ | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
-| AI Evaluation | ✅ | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, gap tracked); judge-calibration (deterministic judge, 66 probes) gated at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
-| Documentation | ✅ | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
-| Responsible-Tech Framework | ✅ | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; every audit applies (added to this table 2026-07-05 — was silently omitted) |
+| Quality & Metrics | Applies | ISO 25010 / DORA. Metrics ledger in ROADMAP; `make verify` uses the same tools/thresholds as the CI-required checks |
+| Code Quality | Applies | `ruff` + `mypy --strict`; branch coverage ≥90% (published-library floor); src layout |
+| Security & Supply-Chain | Applies | ASVS L1 offline mode; scoped ASVS L2 review for the authenticated Family Greenhouse boundary; pip-audit + Semgrep blocking; gitleaks; CodeQL + zizmor; SHA-pinned actions; release SBOM |
+| CI/CD | Applies | Single `ci-gate` required check; least-privilege tokens; `make verify` mirrors CI's tools/thresholds |
+| Release & Versioning | Applies | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
+| Accessibility | Applies | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
+| Observability | Applies | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
+| Internationalization | Applies | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
+| AI Evaluation | Applies | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, recorded as an open gap); judge-calibration (deterministic judge, 66 probes) gated at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
+| Documentation | Applies | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
+| Responsible-Tech Framework | Applies | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; every audit applies (added to this table 2026-07-05 — was silently omitted) |
+| Performance | Applies | Offline first-token latency budgeted at p95 < 200 ms and gated by `tests/test_latency.py`; reproducibility budgets in the ROADMAP ledger; Tier-A latency and availability SLOs declared in `slos/` and schema-checked by `make slo` |
+| Incident Response | Applies | `SECURITY.md` is the private reporting channel and states the disclosure SLA: triage within 72 hours, CVSS-based severity, coordinated disclosure, and a `Security` CHANGELOG entry referencing the advisory. Not met: no severity-label convention and no committed-postmortem requirement |
+| Data Governance | Applies | `docs/cards/data-card-corpus.md` and `docs/cards/model-card.md` are committed and regenerated with the audits; corpus provenance and citation freshness are gated by `make freshness`. Not met: no stated governance tier and no retention SLA |
+| AI Development Measurement | Applies | Not met: no baseline and no outcome metrics are recorded for this repository's development stream |
 
 No standard is `N/A`. Family Greenhouse Phase A personalization is implemented behind a feature
 flag with an ASVS L2 review; notification and confirmed-write phases remain deferred. Every row above with a
-"gap tracked" note is tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md) and this repo's remediation
+"open gap" note is recorded in [`docs/ROADMAP.md`](docs/ROADMAP.md) and this repo's remediation
 history, not silently carried — see the 2026-07-05 audit remediation for the full list.
 
 ## Architecture (one screen)
