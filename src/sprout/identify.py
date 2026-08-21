@@ -27,6 +27,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 
+from . import locales
 from .answer import Assistant
 from .config import Config
 from .models import Answer
@@ -132,6 +133,42 @@ def parse_plantnet(
         )
     candidates.sort(key=lambda c: -c.score)
     return Identification(provider=provider, candidates=tuple(candidates))
+
+
+# R8/E8 (docs/RESEARCH-ROADMAP.md): "show your work" instead of a bare fallback message
+# when nothing resolves confidently enough to ground an answer. Three is a display
+# choice, not a config knob — this never feeds retrieval or scoring, only a caller's
+# rendering of the *existing* Identification the resolver already declined to use.
+DEFAULT_CANDIDATE_DISPLAY_LIMIT = 3
+
+
+def format_candidates(
+    identification: Identification, *, limit: int = DEFAULT_CANDIDATE_DISPLAY_LIMIT
+) -> list[str]:
+    """Render up to ``limit`` scored candidates as ``"Name (0.42)"`` strings, best first.
+
+    Pure formatting over data the identifier already returned — never a new source of
+    fact, and never presented as one: callers pair this with a "not a cited fact, not
+    confident enough to use" framing (see :func:`photo_candidates_intro_for`), the same
+    disclosure the *resolved* path already carries via ``PromptsConfig.photo_identified``.
+    """
+    ranked = sorted(identification.candidates, key=lambda c: -c.score)
+    return [f"{c.scientific_name} ({c.score:.2f})" for c in ranked[:limit]]
+
+
+# Loaded directly from the locale bundle rather than routed through Config/PromptsConfig
+# (src/sprout/config.py): this string is never eval-visible input — it labels a rejected
+# guess in the identify CLI/API output, not anything that reaches Assistant.answer or a
+# retrieval/guard/confidence path — so it deliberately stays off config.py's tunable
+# surface (docs/ROADMAP.md Phase 3, src/sprout/eval/tuning_scope.py).
+_CANDIDATES_INTRO_BY_LANG: dict[str, str] = locales.by_lang(
+    "prompts", "photo_candidates_intro", locales.available_languages()
+)
+
+
+def photo_candidates_intro_for(language: str) -> str:
+    """Localized lead-in for a rejected-candidates list ("closest visual matches...")."""
+    return _CANDIDATES_INTRO_BY_LANG.get(language, _CANDIDATES_INTRO_BY_LANG["en"])
 
 
 def _fold(text: str) -> str:

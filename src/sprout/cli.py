@@ -708,7 +708,12 @@ def identify(
     config: ConfigOpt = _DEFAULT_CONFIG,
 ) -> None:
     """Identify a plant from a photo, then answer from the cited corpus (or fall back)."""
-    from .identify import PhotoCareService, build_identifier
+    from .identify import (
+        PhotoCareService,
+        build_identifier,
+        format_candidates,
+        photo_candidates_intro_for,
+    )
 
     cfg = _load(config)
     img = Path(image)
@@ -724,6 +729,14 @@ def identify(
     result = service.identify_and_answer(img.read_bytes(), question=question, language=language)
     if not result.identified or result.answer is None:
         typer.echo(result.message or "Could not identify the plant from the photo.")
+        # R8/E8: "show your work" — a rejected candidate (below min_confidence, or not a
+        # corpus species) is more useful surfaced than silently dropped. Never presented
+        # as a resolved identification: same non-fact framing as the resolved path.
+        if result.identification is not None and result.identification.candidates:
+            lang = assistant.resolve_language(question or "", language)
+            typer.echo(f"\n{photo_candidates_intro_for(lang)}")
+            for line in format_candidates(result.identification):
+                typer.echo(f"  - {line}")
         raise typer.Exit(0)
     typer.echo(result.label or "")
     typer.echo("")

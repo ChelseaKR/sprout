@@ -51,6 +51,12 @@ prompts:
   photo_identified: >-
     Identified from your photo as {name} — a visual match, not a cited fact.
     The guidance below is grounded in the cited corpus.
+  # R8/E8: shown alongside photo_fallback when the identifier returned candidates but
+  # none cleared min_confidence or named a species the corpus covers — "show your
+  # work" instead of a bare fallback, without ever presenting a rejected guess as
+  # a resolved identification.
+  photo_candidates_intro: >-
+    Closest visual matches from the photo, not confident enough to use:
 
 guards:
   # The never-certify-"safe" deny-list.
