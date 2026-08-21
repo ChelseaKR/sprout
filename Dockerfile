@@ -11,14 +11,14 @@ ENV UV_LINK_MODE=copy \
 
 # Install dependencies first for layer caching.
 COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --frozen --no-install-project --extra serve
+RUN uv sync --locked --no-install-project --extra serve
 
 # Then the project and its data.
 COPY src ./src
 COPY config ./config
 COPY corpus ./corpus
 COPY web ./web
-RUN uv sync --frozen --extra serve && uv run sprout ingest
+RUN uv sync --locked --extra serve && uv run sprout ingest
 
 EXPOSE 8000
 # A non-root user; no mutable server state to protect, but least-privilege anyway.
