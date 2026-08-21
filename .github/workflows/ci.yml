@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Install (dev + serve) on ${{ matrix.python }}
-        run: uv sync --frozen --extra serve --python ${{ matrix.python }}
+        run: uv sync --locked --extra serve --python ${{ matrix.python }}
       - name: Ruff format check
         run: uv run ruff format --check src tests
       - name: Ruff lint
@@ -56,7 +56,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Install (dev)
-        run: uv sync --frozen
+        run: uv sync --locked
       - name: Semgrep (SAST)
         run: uvx --with 'setuptools<81' semgrep scan --config p/python --error src
       - name: pip-audit (blocking — not muted)
@@ -83,7 +83,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Install (dev + serve)
-        run: uv sync --frozen --extra serve
+        run: uv sync --locked --extra serve
       - name: Ingest the bundled corpus
         run: uv run sprout ingest
       - name: Eval suites (offline deterministic judge, merge-blocking)
@@ -118,7 +118,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Install (dev + serve)
-        run: uv sync --frozen --extra serve
+        run: uv sync --locked --extra serve
       - name: Ingest the bundled corpus
         run: uv run sprout ingest
       - name: Corpus-derived smoke suite (merge-blocking)
@@ -135,7 +135,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Install (dev)
-        run: uv sync --frozen
+        run: uv sync --locked
       - name: Tuning-scope gate
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
@@ -157,7 +157,7 @@ jobs:
           cache: npm
           cache-dependency-path: web-static/package-lock.json
       - name: Install (dev + serve)
-        run: uv sync --frozen --extra serve
+        run: uv sync --locked --extra serve
       - name: Ingest the bundled corpus
         run: uv run sprout ingest
       - name: Export the static bundle (index.json + config.json)
@@ -190,7 +190,7 @@ jobs:
         with:
           node-version: "20"
       - name: Install + ingest
-        run: uv sync --frozen --extra serve && uv run sprout ingest
+        run: uv sync --locked --extra serve && uv run sprout ingest
       - name: Serve and pa11y the UI (axe + htmlcs runners, merge-blocking)
         run: |
           uv run sprout serve &
@@ -212,7 +212,7 @@ jobs:
         with:
           node-version: "20"
       - name: Install + ingest
-        run: uv sync --frozen --extra serve && uv run sprout ingest
+        run: uv sync --locked --extra serve && uv run sprout ingest
       - name: Regenerate the HTML eval report
         run: uv run sprout eval --out docs/audits
       - name: Serve + Lighthouse accessibility audit (chat UI + eval report, merge-blocking, threshold 0.95)
@@ -256,7 +256,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Install (docs)
-        run: uv sync --frozen --group docs
+        run: uv sync --locked --group docs
       - name: MkDocs strict build
         run: uv run mkdocs build --strict
 
@@ -282,7 +282,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Install (dev)
-        run: uv sync --frozen
+        run: uv sync --locked
       - name: make verify vs. ci-gate invocation diff
         run: uv run sprout ci-parity-check
 

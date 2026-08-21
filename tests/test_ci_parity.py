@@ -51,7 +51,7 @@ jobs:
   test:
     steps:
       - uses: actions/checkout@v7
-      - run: uv sync --frozen
+      - run: uv sync --locked
       - name: lint
         run: uv run ruff check src tests
       - name: test

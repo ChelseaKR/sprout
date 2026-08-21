@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: "20"
       - name: Install documentation dependencies
-        run: uv sync --frozen --group docs
+        run: uv sync --locked --group docs
       - name: Build the deterministic corpus index
         run: uv run sprout ingest
       - name: Export the browser corpus bundle

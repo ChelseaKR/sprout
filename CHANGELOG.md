@@ -10,6 +10,28 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- Every `uv sync --frozen` is now `uv sync --locked`, across `ci.yml`,
+  `release.yml`, `pages.yml`, `corpus-freshness.yml`, `redteam.yml`, both
+  Dockerfiles, and the CI-parity test fixture. `--frozen` never reads
+  `pyproject.toml`, so it installs the locked set and exits 0 when the lock no
+  longer satisfies the manifest; `--locked` makes the comparison and exits 1.
+  Nineteen invocations across the repository were the weaker flag, which means
+  a drifted lock could have gone through CI, the docs build, the red-team run,
+  the release, and both images without one of them saying so.
+- The README standards-conformance table declares all fifteen standards and is
+  now machine-readable. Performance, Incident Response, Data Governance, and AI
+  Development Measurement had no row, so none of the four was recorded as met,
+  exempt, or a gap; the first three point at gates and artifacts already in the
+  repository (`tests/test_latency.py`, `slos/`, `SECURITY.md`, `docs/cards/`)
+  with their remaining shortfalls named, and AI Development Measurement is
+  declared an open gap. The state column was headed "Applies" and filled with
+  check marks, and the Quality & Metrics row carried a parenthetical in its
+  label, which together made the table unparseable; the header is "State", the
+  verdicts are the word "Applies", and the parenthetical moved into the posture
+  cell. The phrase "gap tracked" reads as a reference to an issue tracker,
+  which is not where this repository records gaps, so those notes now say
+  "open gap" and name `docs/ROADMAP.md`. No row's meaning changed.
+
 - Release authorization now runs from reviewed `main` through the immutable
   portfolio authorizer; verification and builds use the exact selected commit,
   while separate checkout-free jobs recheck the tag object before PyPI and
