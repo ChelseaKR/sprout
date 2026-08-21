@@ -14,6 +14,14 @@ reflect publicly known information but the prose is original and synthetic.
 
 Sprout is not veterinary or medical advice.
 
+The vendored package under src/sprout/_vendor/genai_telemetry/ is first-party code by
+the same author, copied in from the author's own shared library at the commit recorded
+in that directory's .standards-version file. It is licensed Apache-2.0 on the same terms
+as the rest of this repository and contains no third-party code, so redistributing it
+here requires no additional notice or permission. Its README describes the shared
+library it came from; that library is not itself published, so its internal document
+names are references a reader of this repository cannot follow.
+
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
 file except in compliance with the License. You may obtain a copy of the License at
 

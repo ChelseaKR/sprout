@@ -275,6 +275,37 @@ def test_identify_offline_falls_back(tmp_path: Path) -> None:
     assert missing.exit_code == 2
 
 
+def test_identify_shows_rejected_candidates_on_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # R8/E8: a below-threshold candidate is more useful surfaced than silently dropped.
+    from sprout.identify import Identification, PlantCandidate
+
+    cfg = _project(tmp_path)
+    assert runner.invoke(app, ["ingest", "--config", str(cfg)]).exit_code == 0
+    img = tmp_path / "plant.jpg"
+    img.write_bytes(b"fake-jpeg-bytes")
+
+    class _LowConfidenceIdentifier:
+        def identify(self, image: bytes) -> Identification:
+            return Identification(
+                provider="fake",
+                candidates=(PlantCandidate(scientific_name="Ficus lyrata", score=0.10),),
+            )
+
+    monkeypatch.setattr("sprout.identify.build_identifier", lambda cfg: _LowConfidenceIdentifier())
+    result = runner.invoke(app, ["identify", str(img), "--config", str(cfg)])
+    assert result.exit_code == 0
+    assert "type the plant" in result.stdout.lower()
+    assert "not confident enough to use" in result.stdout.lower()
+    assert "Ficus lyrata (0.10)" in result.stdout
+
+    spanish = runner.invoke(app, ["identify", str(img), "--language", "es", "--config", str(cfg)])
+    assert spanish.exit_code == 0
+    assert "confianza suficiente" in spanish.stdout.lower()
+    assert "Ficus lyrata (0.10)" in spanish.stdout
+
+
 def test_remind_lifecycle(tmp_path: Path) -> None:
     cfg = _project(tmp_path)
     empty = runner.invoke(app, ["remind", "list", "--config", str(cfg)])
