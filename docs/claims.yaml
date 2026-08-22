@@ -14,9 +14,22 @@
 #                              resolved against config/sprout.yaml.
 #   suite:refusal.threshold  — RefusalSuite().metric.threshold (src/sprout/eval/suites/refusal.py),
 #                              the MetricDefinition the refusal gate actually enforces.
+#   suite:calibration.min_agreement / suite:calibration.min_kappa
+#                            — MIN_AGREEMENT / MIN_KAPPA (src/sprout/eval/calibration.py), the
+#                              enforced CI floors judge-calibration gates on — NOT the value the
+#                              last run measured (see eval-report:calibration.* / the committed
+#                              docs/audits/judge-calibration.json for that; this registry
+#                              deliberately does not pin the measured value, which is expected to
+#                              drift run to run — only the floor is a fixed claim to guard).
 #   eval-report:<suite>.<dotted.path>
 #                            — a field under the named suite's entry in the committed
 #                              docs/audits/eval-report.json (suite_results[].<path>).
+#   eval-report:suites.names — comma-joined suite names, in report order (the same list
+#                              docs/audits/eval-report.md's own header line carries).
+#   eval-report:suites.count — the number of suites the committed eval report gates on.
+#   pytest:cov-fail-under    — the `--cov-fail-under` value in pyproject.toml's
+#                              `[tool.pytest.ini_options] addopts` (the coverage floor `pytest`
+#                              actually enforces).
 #   policy:<name>            — a fixed policy decision with no single computed code artifact (e.g.
 #                              a conformance-level target). The registry's `expected` value IS the
 #                              source of truth here; the checker only cross-checks doc sites
@@ -115,3 +128,42 @@ claims:
     source: "policy:wcag-conformance-level"
     expected: "AA"
     marker: "<!-- claim:claude-md-wcag-target -->"
+
+  # --- README (added 2026-08-21, issue #97: the README collapsed the judge-calibration ENFORCED
+  # FLOOR and the last MEASURED value into one number, and named five suites where the harness
+  # gates on eight — the one doc the drift guard did not reach, and the one that drifted) --------
+  - id: readme-refusal-target
+    file: README.md
+    source: "suite:refusal.threshold"
+    expected: "0.90"
+    marker: "<!-- claim:readme-refusal-target -->"
+
+  - id: readme-judge-calibration-floor-agreement
+    file: README.md
+    source: "suite:calibration.min_agreement"
+    expected: "0.80"
+    marker: "<!-- claim:readme-judge-calibration-floor-agreement -->"
+
+  - id: readme-judge-calibration-floor-kappa
+    file: README.md
+    source: "suite:calibration.min_kappa"
+    expected: "0.60"
+    marker: "<!-- claim:readme-judge-calibration-floor-kappa -->"
+
+  - id: readme-coverage-floor
+    file: README.md
+    source: "pytest:cov-fail-under"
+    expected: "90"
+    marker: "<!-- claim:readme-coverage-floor -->"
+
+  - id: readme-eval-suite-count
+    file: README.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:readme-eval-suite-count -->"
+
+  - id: readme-eval-suite-names
+    file: README.md
+    source: "eval-report:suites.names"
+    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    marker: "<!-- claim:readme-eval-suite-names -->"

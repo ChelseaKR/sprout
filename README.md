@@ -99,17 +99,21 @@ make eval                        # regenerate the committed eval report, fully o
 
 ## The eval harness (the actual product)
 
-120+ YAML cases across five suites, scored by **deterministic checks** blended with an
-**LLM-as-judge** (judge model ≠ answer model), reported in `docs/audits/eval-report.{md,html,json}`
-plus JUnit + SARIF. Runs are content-hashed and **byte-identical for identical inputs**.
+**8 suites**<!-- claim:readme-eval-suite-count --> — calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage<!-- claim:readme-eval-suite-names --> — cover the harness end to end,
+scored by **deterministic checks** blended with an **LLM-as-judge** (judge model ≠ answer model),
+reported in `docs/audits/eval-report.{md,html,json}` plus JUnit + SARIF. Runs are content-hashed
+and **byte-identical for identical inputs**.
 
 | Suite | Asks |
 |---|---|
 | **groundedness** | Is every claim entailed by the cited passage? (contradicted vs unsupported) |
+| **completeness** | For multi-fact cases, are all authored facts present, not just one? |
 | **safety** | For toxicity questions: cite a toxicity ref, never certify "safe," route to vet/poison-control |
+| **toxicity-coverage** | Does every ASPCA top-N pet-toxic plant in the corpus carry a toxicity section that routes to a vet/poison-control line? |
 | **calibration** | Do stated confidences track correctness? (reliability diagram, ECE; abstain below threshold) |
 | **refusal** | Out-of-scope, "just tell me it's fine," and prompt-injection embedded in questions |
 | **multilingual** | Spanish answers preserve the facts and citations of their English mirror |
+| **conversation** | Do follow-ups resolve species/topic from turn history, without a prior turn's species leaking into one it doesn't belong to? |
 
 Everything is **fail-closed**: a dataset hash mismatch, a malformed case, an empty suite,
 or a malformed judge response fails the run rather than passing quietly.
@@ -129,14 +133,14 @@ targets, and evidence are recorded in this public repository. Per-repo *values* 
 | Standard | State | This repo's posture |
 |---|---|---|
 | Quality & Metrics | Applies | ISO 25010 / DORA. Metrics ledger in ROADMAP; `make verify` uses the same tools/thresholds as the CI-required checks |
-| Code Quality | Applies | `ruff` + `mypy --strict`; branch coverage ≥90% (published-library floor); src layout |
+| Code Quality | Applies | `ruff` + `mypy --strict`; branch coverage ≥**90%**<!-- claim:readme-coverage-floor --> (published-library floor); src layout |
 | Security & Supply-Chain | Applies | ASVS L1 offline mode; scoped ASVS L2 review for the authenticated Family Greenhouse boundary; pip-audit + Semgrep blocking; gitleaks; CodeQL + zizmor; SHA-pinned actions; release SBOM |
 | CI/CD | Applies | Single `ci-gate` required check; least-privilege tokens; `make verify` mirrors CI's tools/thresholds |
 | Release & Versioning | Applies | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
 | Accessibility | Applies | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
 | Observability | Applies | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
 | Internationalization | Applies | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
-| AI Evaluation | Applies | RAG groundedness/safety/multilingual gates green; refusal gated at 0.90 (offline floor, portfolio target 0.95, recorded as an open gap); judge-calibration (deterministic judge, 66 probes) gated at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
+| AI Evaluation | Applies | RAG groundedness/safety/multilingual gates green; refusal gated at **0.90**<!-- claim:readme-refusal-target --> (offline floor, portfolio target 0.95, recorded as an open gap); judge-calibration (deterministic judge, 66 probes) **enforced floor: agreement ≥ 0.80**<!-- claim:readme-judge-calibration-floor-agreement --> **· Cohen's κ ≥ 0.60**<!-- claim:readme-judge-calibration-floor-kappa --> (CI gate; a regression below either fails the build) — last *measured*, well above floor, at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
 | Documentation | Applies | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
 | Responsible-Tech Framework | Applies | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; every audit applies (added to this table 2026-07-05 — was silently omitted) |
 | Performance | Applies | Offline first-token latency budgeted at p95 < 200 ms and gated by `tests/test_latency.py`; reproducibility budgets in the ROADMAP ledger; Tier-A latency and availability SLOs declared in `slos/` and schema-checked by `make slo` |
@@ -174,7 +178,7 @@ question ─▶ guards(input) ─▶ retrieve(hybrid BM25 + dense, threshold gat
 src/sprout/        ingest · retrieve · answer · guards · confidence · providers/ · server · cli
   eval/            the harness: dataset · suites · runner · judges · report · calibration
 corpus/            manifest.yaml (dated, licensed) + processed passages (EN/ES, synthetic CC0)
-eval/suites/       120+ YAML cases; baseline.json
+eval/suites/       YAML case suites (see "The eval harness" above); baseline.json
 web/dist/          framework-free WCAG 2.2 reference and assurance surface
 docs/              ARCHITECTURE · THREAT-MODEL · ACCESSIBILITY · ROADMAP · audits/ · cards/ · adr/
 ```
