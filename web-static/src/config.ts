@@ -27,9 +27,16 @@ export interface GenerationConfig {
   support_overlap: number;
 }
 
+export interface ConfidenceFitConfig {
+  midpoint: number;
+  steepness: number;
+  margin_bonus: number;
+}
+
 export interface ConfidenceConfig {
   abstain_threshold: number;
   low_confidence_threshold: number;
+  fit?: ConfidenceFitConfig | null;
 }
 
 export interface GuardsConfig {

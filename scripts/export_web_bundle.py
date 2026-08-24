@@ -57,6 +57,15 @@ def _export_config(config_path: Path, out_dir: Path) -> Path:
         "confidence": {
             "abstain_threshold": cfg.confidence.abstain_threshold,
             "low_confidence_threshold": cfg.confidence.low_confidence_threshold,
+            "fit": (
+                {
+                    "midpoint": cfg.confidence.fit.midpoint,
+                    "steepness": cfg.confidence.fit.steepness,
+                    "margin_bonus": cfg.confidence.fit.margin_bonus,
+                }
+                if cfg.confidence.fit is not None
+                else None
+            ),
         },
         "guards": {
             "forbidden_safe_phrases": cfg.guards.forbidden_safe_phrases,

@@ -71,7 +71,7 @@ export class Assistant {
       return this.refuse(query, lang, safety, "no_supported_sentences", false, 0.0, retrieved);
     }
 
-    const confidence = scoreConfidence(retrieved, sentences.length);
+    const confidence = scoreConfidence(retrieved, sentences.length, this.config.confidence);
     if (shouldAbstain(confidence, this.config.confidence)) {
       return this.refuse(query, lang, safety, "low_confidence", true, confidence, retrieved);
     }

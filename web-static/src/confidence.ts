@@ -16,15 +16,23 @@ const MARGIN_BONUS = 0.05;
  * Map retrieval evidence to a calibrated confidence in [0, 1] — mirrors
  * `score_confidence`.
  */
-export function scoreConfidence(retrieved: readonly RetrievedChunk[], nRendered: number): number {
+export function scoreConfidence(
+  retrieved: readonly RetrievedChunk[],
+  nRendered: number,
+  cfg?: ConfidenceConfig | null,
+): number {
   if (nRendered === 0 || retrieved.length === 0) {
     return 0.0;
   }
+  const midpoint = cfg?.fit?.midpoint ?? MIDPOINT;
+  const steepness = cfg?.fit?.steepness ?? STEEPNESS;
+  const marginBonus = cfg?.fit?.margin_bonus ?? MARGIN_BONUS;
+
   const scores = retrieved.map((rc) => rc.score).sort((a, b) => b - a);
   const best = scores[0] as number;
   const margin = scores.length > 1 ? best - (scores[1] as number) : best;
-  const base = 1.0 / (1.0 + Math.exp(-STEEPNESS * (best - MIDPOINT)));
-  const adjusted = base + MARGIN_BONUS * Math.min(margin, 0.3);
+  const base = 1.0 / (1.0 + Math.exp(-steepness * (best - midpoint)));
+  const adjusted = base + marginBonus * Math.min(margin, 0.3);
   return Math.max(0.0, Math.min(1.0, adjusted));
 }
 
