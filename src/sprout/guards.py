@@ -33,6 +33,9 @@ from .text import (
 )
 from .verifiers import EntailmentVerifier
 
+#: Topic slugs that mark safety-bearing/toxicity passages across languages (EN + ES).
+SAFETY_TOPIC_SLUGS: frozenset[str] = frozenset({"toxicity", "toxicidad", "safety", "seguridad"})
+
 # --- input classification --------------------------------------------------------
 
 

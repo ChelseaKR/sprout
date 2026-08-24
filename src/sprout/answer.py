@@ -43,6 +43,7 @@ from .confidence import (
 from .config import Config
 from .disagreement import numeric_cadence_conflicts
 from .guards import (
+    SAFETY_TOPIC_SLUGS,
     citation_guard,
     detect_exposure_type,
     detect_injection,
@@ -290,7 +291,7 @@ class Assistant:
         # safety query OR any rendered sentence cites a toxicity passage — so the routing
         # is a property of the content shown, not only of the input keywords.
         topic_by_id = {rc.chunk.chunk_id: rc.chunk.topic for rc in retrieved}
-        toxicity_cited = any(topic_by_id.get(s.chunk_id) == "toxicity" for s in sentences)
+        toxicity_cited = any(topic_by_id.get(s.chunk_id) in SAFETY_TOPIC_SLUGS for s in sentences)
         route = safety or toxicity_cited
         # A toxicity-cited (but not keyword-classified) query never had its exposure type
         # detected above; classify it now so the card still routes correctly.
@@ -357,7 +358,7 @@ class Assistant:
         # Route to a vet / poison-control line whenever the question was classified a
         # safety query OR the retrieved evidence itself cites a toxicity passage — so a
         # refusal still routes even when the input keywords alone did not trip `safety`.
-        toxicity_cited = any(rc.chunk.topic == "toxicity" for rc in retrieved)
+        toxicity_cited = any(rc.chunk.topic in SAFETY_TOPIC_SLUGS for rc in retrieved)
         route = safety or toxicity_cited
         # A toxicity-cited (but not keyword-classified) refusal never had its exposure
         # type detected in answer(); classify it now so the card still routes correctly.

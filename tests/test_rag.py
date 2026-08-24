@@ -740,6 +740,24 @@ def test_refusal_routes_when_retrieved_cites_toxicity(assistant: Assistant) -> N
     assert ans.safety_notice and "poison-control" in ans.safety_notice.lower()
 
 
+def test_refusal_routes_when_retrieved_cites_spanish_toxicidad(assistant: Assistant) -> None:
+    # Ensure bilingual safety topic slugs (e.g. 'toxicidad') also trigger routing on refusal.
+    pothos_tox = next(c for c in assistant._store.all_chunks() if c.chunk_id == "pothos-tox")
+    toxicidad_chunk = pothos_tox.model_copy(update={"topic": "toxicidad", "language": "es"})
+    retrieved = [RetrievedChunk(chunk=toxicidad_chunk, score=0.01)]
+    ans = assistant._refuse(
+        "consulta no relacionada",
+        "es",
+        False,
+        None,
+        reason="low_confidence",
+        abstained=True,
+        retrieved=retrieved,
+    )
+    assert ans.is_safety_query
+    assert ans.safety_notice and "envenenamiento" in ans.safety_notice.lower()
+
+
 def test_refusal_does_not_route_without_safety_or_toxicity(assistant: Assistant) -> None:
     ans = assistant._refuse(
         "how do I patch a flat bicycle tire",
@@ -769,6 +787,38 @@ def test_safety_non_toxic_states_source_without_certifying(assistant: Assistant)
     assert not ans.refused
     assert not asserts_safety(ans.display_text, "en", Config().guards)
     assert "does not list" in ans.text.lower()
+
+
+def test_safety_spanish_toxicidad_topic_triggers_routing_when_query_not_lexical(
+    assistant_factory: Callable[..., Assistant], config: Config
+) -> None:
+    # A Spanish question phrased around symptoms (not classified as safety query by keywords)
+    # citing a 'toxicidad' chunk must still attach the safety notice and set is_safety_query=True.
+    monstera_toxicidad = Chunk(
+        chunk_id="mon-tox-es",
+        doc_id="monstera.es.md",
+        title="Cuidado de la Monstera",
+        source="monstera.es.md",
+        text=(
+            "La referencia citada incluye la Monstera como toxica para gatos y perros; "
+            "la ingestion puede causar irritacion bucal y salivacion excesiva."
+        ),
+        language="es",
+        topic="toxicidad",
+        source_name="Synthetic Plant-Care Notes",
+        url="https://example.invalid/monstera",
+        license="CC0-1.0",
+        fetch_date="2026-05-01",
+    )
+    local_assistant = assistant_factory(config, [monstera_toxicidad])
+    ans = local_assistant.answer(
+        "¿Por qué mi Monstera causa irritación bucal y salivación excesiva?", language="es"
+    )
+    assert not ans.refused
+    assert ans.is_safety_query
+    assert ans.safety_notice is not None
+    notice_lower = ans.safety_notice.lower()
+    assert "envenenamiento" in notice_lower or "veterinario" in notice_lower
 
 
 def test_safety_directive_is_urgency_forward_and_escalates(assistant: Assistant) -> None:

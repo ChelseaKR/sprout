@@ -8,7 +8,7 @@ import { isLowConfidence, scoreConfidence, shouldAbstain } from "./confidence.js
 import type { WebConfig } from "./config.js";
 import { disclosureFor, refusalFor, safetyDirectiveFor } from "./config.js";
 import { ExtractiveGenerator } from "./generator.js";
-import { citationGuard, isSafetyQuery, safetyFilter } from "./guards.js";
+import { citationGuard, isSafetyQuery, safetyFilter, SAFETY_TOPIC_SLUGS } from "./guards.js";
 import { HashingEmbedding } from "./hashEmbedding.js";
 import { detectLanguage } from "./lang.js";
 import type { Answer, AnswerSentence, RetrievedChunk } from "./models.js";
@@ -93,7 +93,10 @@ export class Assistant {
         ? citations.reduce((max, c) => (c.fetch_date > max ? c.fetch_date : max), citations[0]?.fetch_date ?? "")
         : null;
     const topicById = new Map(retrieved.map((rc) => [rc.chunk.chunk_id, rc.chunk.topic]));
-    const toxicityCited = sentences.some((s) => topicById.get(s.chunk_id) === "toxicity");
+    const toxicityCited = sentences.some((s) => {
+      const topic = topicById.get(s.chunk_id);
+      return topic !== undefined && SAFETY_TOPIC_SLUGS.has(topic);
+    });
     const route = safety || toxicityCited;
     return {
       question: query,
@@ -122,7 +125,7 @@ export class Assistant {
     confidence = 0.0,
     retrieved: readonly RetrievedChunk[] = [],
   ): Answer {
-    const toxicityCited = retrieved.some((rc) => rc.chunk.topic === "toxicity");
+    const toxicityCited = retrieved.some((rc) => SAFETY_TOPIC_SLUGS.has(rc.chunk.topic));
     const route = safety || toxicityCited;
     return {
       question: query,

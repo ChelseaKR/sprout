@@ -18,6 +18,9 @@ import {
 } from "./text.js";
 import type { GuardsConfig } from "./config.js";
 
+/** Topic slugs that mark safety-bearing/toxicity passages across languages (EN + ES). */
+export const SAFETY_TOPIC_SLUGS = new Set(["toxicity", "toxicidad", "safety", "seguridad"]);
+
 // --- input classification --------------------------------------------------------
 
 /** True if the question is about toxicity/ingestion safety (either language). Mirrors `is_safety_query`. */

@@ -79,7 +79,7 @@ from .corpus_report import (
 )
 from .determinism import sha256_of_text
 from .freshness import check_freshness
-from .guards import asserts_safety
+from .guards import SAFETY_TOPIC_SLUGS, asserts_safety
 from .ingest import ManifestEntry, load_corpus
 from .models import Document
 from .text import split_sentences, strip_accents
@@ -162,9 +162,6 @@ _SIGNATURE_MIN = 3
 #: YAML in this repo uses. A file carrying it that then fails to parse is a *failure*, not
 #: a skip (see :func:`_is_proposal_file`).
 _SIGNATURE_MARKER = "harm_checklist"
-
-#: Topic slugs that make a proposal safety-bearing (see ``requires_expert_review``).
-SAFETY_TOPIC_SLUGS: frozenset[str] = frozenset({"toxicity", "toxicidad", "safety", "seguridad"})
 
 #: Substrings that mark safety-bearing prose even outside a ``## Toxicity`` section.
 #: Same vocabulary ``freshness.py`` uses to pick the stricter citation SLA.
