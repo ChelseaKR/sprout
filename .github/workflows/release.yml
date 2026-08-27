@@ -1,12 +1,22 @@
 name: release
 
+# Fires on pushing an existing signed stable SemVer tag, deliberately NOT on
+# `workflow_dispatch`. A `workflow_dispatch` run executes in the context of the default
+# branch, so it holds *write* access to main's Actions cache scope. The `verify` job
+# below then checks out the release commit and runs that commit's `make verify` gate,
+# which means checked-out code executes in a cache scope every branch cut from main can
+# later restore from. That is CodeQL `actions/cache-poisoning/poisonable-step`
+# (error severity, CWE-349), and it is GitHub's own stated failure mode: "Never run
+# untrusted code in the context of the default branch."
+#
+# A tag push scopes the run's cache to `refs/tags/<tag>` instead of `refs/heads/main`,
+# so the gate physically cannot write anything main (or a branch cut from main) will
+# restore. The tag authorization in the `authorize` job below is unchanged and remains
+# the real trust boundary: only an annotated, allowed-signer-signed, stable SemVer tag
+# that is on main resolves to a release commit at all.
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Existing signed stable SemVer tag (vX.Y.Z)"
-        required: true
-        type: string
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: read
@@ -29,7 +39,7 @@ jobs:
     permissions:
       contents: read
     with:
-      tag: ${{ inputs.tag }}
+      tag: ${{ github.ref_name }}
 
   verify:
     needs: authorize
