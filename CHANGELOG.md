@@ -34,6 +34,41 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   tested first and does **not** clear it — every `ControlCheck` in the query only covers
   `pull_request_target`/`workflow_run`/`issue_comment`-class events, never `workflow_dispatch`.
   The alert was not dismissed or suppressed.
+- **The container image carried five fixable HIGH CVEs, and could not start
+  (ISO 25010: Security / vulnerability management, plus Reliability).** `container-scan`
+  had been red on both of its last two weekly runs (2026-08-19, 2026-08-26) on
+  `Total: 3 (HIGH: 3)` from Debian and `Total: 2 (HIGH: 2)` from Python packages:
+  - `CVE-2026-14456` (HIGH) in `libssl3t64`, `openssl`, and `openssl-provider-legacy`
+    `3.5.6-1~deb13u2`. `trixie-security` already publishes the fixed `3.5.7-1~deb13u2`;
+    the upstream `python:3.12-slim` tag simply lags it (a freshly pulled base image on
+    2026-08-26 still shipped 3.5.6). The Dockerfile now applies pending Debian security
+    updates, so this is fixed rather than waited on.
+  - `CVE-2025-47273` (setuptools 70.3.0) and `GHSA-6v7p-g79w-8964` (msgpack 1.1.2). These
+    were never direct dependencies -- `uv.lock` already pins the fixed msgpack 1.2.1 and
+    does not carry setuptools at all. They came from **pip's vendored copies**: the base
+    image's bundled pip 25.0.1 and, in the venv, pip 26.2.1 pulled in transitively by
+    `pip-audit`, both of whose `_vendor/vendor.txt` pin `setuptools==70.3.0`. The image
+    was installing the entire dev toolchain (pytest, mypy, ruff, coverage, hypothesis,
+    cyclonedx, pip-audit) into a *runtime* container, because `uv sync` installs the dev
+    group by default. Both syncs are now `--no-dev`, and the interpreter's bundled pip is
+    removed, since uv is the only installer this image uses. Nothing that runtime code can
+    reach is lost: httpx, sigstore, and opentelemetry are all imported lazily inside the
+    optional cloud-provider, corpus-signing, and observability seams.
+
+  Verified by building the image and scanning it with the same Trivy 0.70.0 and the same
+  flags CI uses: **5 HIGH before, 0 after**. No `.trivyignore` and no `ignore-unfixed`
+  widening were used; every finding is fixed at the package level.
+
+  While verifying, the image turned out to be **non-startable on `main`, and to have been
+  so for every build**: the `sprout` user is created with `--no-create-home`, so `$HOME`
+  (`/home/sprout`) does not exist, and the `uv run` entry point died on
+  `Failed to initialize cache at /home/sprout/.cache/uv: Permission denied` before the
+  server started. `container-scan` only builds and scans, so nothing ever ran the image
+  and nothing caught it. The entry point is now the already-built venv console script,
+  which also removes `uv run`'s attempt to re-sync the environment at container start (a
+  network call in an image explicitly built to need none). Confirmed by running the image
+  with `--network none`: `/livez`, `/readyz`, and `/health` return 200 and `/api/chat`
+  returns a grounded, cited toxicity answer.
 
 - **Fixed a stale-claim bug class in the README (issue #97): the enforced CI floor and the
   last measured value were collapsed into one number.** `README.md`'s AI Evaluation row read
