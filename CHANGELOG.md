@@ -10,6 +10,31 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **`release.yml` ran the tagged commit's own gate inside main's Actions cache scope
+  (ISO 25010: Security / integrity).** The `codeql` workflow has been failing on the default
+  branch since the 2026-08-24 scheduled run with one error-severity finding:
+  `actions/cache-poisoning/poisonable-step` at `.github/workflows/release.yml:50` — "Potential
+  cache poisoning in the context of the default branch due to privilege checkout of untrusted
+  code from `needs.authorize.outputs.release-commit` (`workflow_dispatch`)". A
+  `workflow_dispatch` run executes in the context of the default branch and therefore holds
+  **write** access to main's cache scope; the `verify` job then checks out the release commit
+  and runs that commit's `make verify`, so checked-out code executed somewhere every branch cut
+  from main can later restore from. GitHub's guidance for this query is explicit: "Never run
+  untrusted code in the context of the default branch."
+  The trigger is now `push: tags: ["v*"]`, which scopes the run's cache to `refs/tags/<tag>`,
+  so the gate cannot write anything main will restore. This restores the trigger the file's own
+  comments still described (`# ... this whole workflow triggers on 'push: tags'`), stale since
+  `719c8db` (#79) switched to `workflow_dispatch` and introduced the finding. **The `authorize`
+  trust boundary is unchanged** and remains the real control: the tag must still be annotated,
+  signed by an allowed signer, stable SemVer, and on main before it resolves to a release
+  commit; only the tag name's source changes (`inputs.tag` → `github.ref_name`).
+  Note this is a release-process change: a release now starts when a `v*` tag is pushed rather
+  than from a manual dispatch. Verified with the CodeQL 2.26.3 bundle locally against
+  `scripts/codeql_gate.py`: 1 error-severity finding before, 0 after. An `environment:` gate was
+  tested first and does **not** clear it — every `ControlCheck` in the query only covers
+  `pull_request_target`/`workflow_run`/`issue_comment`-class events, never `workflow_dispatch`.
+  The alert was not dismissed or suppressed.
+
 - **Fixed a stale-claim bug class in the README (issue #97): the enforced CI floor and the
   last measured value were collapsed into one number.** `README.md`'s AI Evaluation row read
   "judge-calibration ... gated at agreement 0.955 / κ 0.906" — those are the values the last
