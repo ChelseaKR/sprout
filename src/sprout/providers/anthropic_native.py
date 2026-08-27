@@ -69,7 +69,13 @@ class AnthropicGenerator:
     ) -> str:
         import httpx
 
-        client = self._client or httpx.Client(timeout=60.0)
+        # Cache the lazily-built client. `self._client or httpx.Client(...)`
+        # constructs a fresh, never-closed client on every call, so a
+        # long-running server leaks a connection pool and its file descriptors
+        # per generation. An injected client is still used as-is.
+        if self._client is None:
+            self._client = httpx.Client(timeout=60.0)
+        client = self._client
         sources = "\n".join(
             f"[{i}] (chunk {rc.chunk.chunk_id}) {rc.chunk.text}" for i, rc in enumerate(context)
         )

@@ -55,7 +55,9 @@ class PlantNetIdentifier:
         if client is None:
             import httpx
 
+            # Cached rather than rebuilt per call; see TitanEmbedding.embed.
             client = httpx.Client(timeout=self._timeout_s)
+            self._client = client
         resp = client.post(
             self._endpoint,
             params={"api-key": self._api_key},

@@ -49,7 +49,11 @@ class TitanEmbedding:
         return self._dim
 
     def embed(self, text: str) -> list[float]:
-        client = self._client or _client(self._region)
+        # Cache the lazily-built client: a fresh boto3 client carries its own
+        # connection pool, and embed() runs once per chunk during ingest.
+        if self._client is None:
+            self._client = _client(self._region)
+        client = self._client
         resp = client.invoke_model(
             modelId="amazon.titan-embed-text-v2:0",
             body=json.dumps({"inputText": text, "dimensions": self._dim}),
@@ -105,7 +109,11 @@ class BedrockGenerator:
         max_sentences: int,
         boost_terms: frozenset[str] = frozenset(),
     ) -> str:
-        client = self._client or _client(self._region)
+        # Cache the lazily-built client: a fresh boto3 client carries its own
+        # connection pool, and embed() runs once per chunk during ingest.
+        if self._client is None:
+            self._client = _client(self._region)
+        client = self._client
         sources = "\n".join(
             f"[{i}] (chunk {rc.chunk.chunk_id}) {rc.chunk.text}" for i, rc in enumerate(context)
         )
