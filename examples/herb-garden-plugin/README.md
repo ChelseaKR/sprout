@@ -9,7 +9,7 @@ without changing a single line of the `sprout` package itself:
    Rosemary), not houseplants — with the same manifest/provenance shape as the primary
    corpus (`corpus/manifest.yaml` at the repo root).
 2. **A third party can add a suite with zero fork.** [`src/herb_garden_eval/suite.py`](src/herb_garden_eval/suite.py)
-   defines `herb-actionable-advice`, a domain-specific check the built-in five suites
+   defines `herb-actionable-advice`, a domain-specific check the built-in suites
    don't cover, registered purely through the `sprout.eval.suites` entry point declared
    in [`pyproject.toml`](pyproject.toml):
 

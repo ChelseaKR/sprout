@@ -252,14 +252,21 @@ Key design points, mapped to code:
   The model call is an injected `CompletionFn`, so the harness is fully testable offline and
   never hit in CI; malformed judge JSON raises (fail-closed).
 
-- **The five suites** ([`suites/`](../src/sprout/eval/suites/)). `groundedness` (every claim
+- **The 8 suites**<!-- claim:architecture-eval-suite-count --> ([`suites/`](../src/sprout/eval/suites/)). `groundedness` (every claim
   entailed by its cited passage; contradicted vs unsupported), `safety` (deterministic: no
   "safe" certification, routes to vet/poison-control, cites a toxicity reference or honestly
   refuses — threshold 0.95, immune to judge drift), `calibration` (reliability diagram +
   ECE; abstains below threshold), `refusal` (out-of-scope, "just tell me it's fine",
   embedded prompt injection), `multilingual` (Spanish answers preserve the facts and
   citations of their English mirror — gated at ≥ 0.85 of non-reference-language cases
-  matching their English anchor on the refuse/answer decision and the cited-plant set).
+  matching their English anchor on the refuse/answer decision and the cited-plant set),
+  `completeness` (a multi-facet question's authored `expected_facts` all surface in the
+  answer; single-fact cases are groundedness's job), `conversation` (a follow-up replayed
+  through the same bounded `SessionMemory` the server uses: citations resolve to the right
+  species, `forbidden_terms` from a prior turn do not leak, and history cannot turn an
+  out-of-scope follow-up into an answer), and `toxicity-coverage` (a corpus-level gate: every
+  ASPCA-listed pet-toxic plant the corpus covers carries an English "## Toxicity" section
+  that routes to a vet and a poison-control line, so no lucky generation can satisfy it).
 
 - **Reproducible reporting** ([`report.py`](../src/sprout/eval/report.py)). Every artifact
   is a pure function of `RunResult` (no wall-clock): Markdown scoreboard, an HTML report that

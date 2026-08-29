@@ -11,7 +11,7 @@
 > [`docs/cards/data-card-corpus.md`](cards/data-card-corpus.md).
 >
 > Persona needs are mapped only to **features that actually exist in the repo**
-> (the four hard rules, the five eval suites, photo-ID-as-selector per
+> (the four hard rules, the eval suites, photo-ID-as-selector per
 > [ADR-0010](adr/0010-photo-plant-id-as-selector-not-fact-source.md), local
 > reminders per [ADR-0011](adr/0011-local-first-reminder-scheduler.md), EN/ES
 > parity, WCAG 2.2 AA). No feature, fact, or statistic about Sprout was invented.
