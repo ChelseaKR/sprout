@@ -8,7 +8,7 @@ CONFIG ?= config/sprout.yaml
 RELEASE_TAG ?=
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        smoke a11y claims calibrate gate-inventory slo corpus-report propose-check \
+        smoke a11y site-check claims calibrate gate-inventory slo corpus-report propose-check \
         freshness audits docs \
         workflow-lint ci-parity-check demo verify clean web-static-bundle \
         web-static-fixtures web-static-test web-static-build
@@ -81,6 +81,15 @@ a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gat
 	$(PY) sprout a11y-check web/dist/index.html
 	$(PY) sprout a11y-check docs/audits/eval-report.html
 
+# The published tree is not `mkdocs build`'s output: `pages.yml` copies
+# web-static/public over it afterwards, so the page served at / is the reference
+# surface and not mkdocs' own index. Nothing local reproduced that, which is how
+# the root page came to be the one published page with no canonical on it. This
+# target builds what is actually deployed and then reads it.
+site-check: docs web-static-build ## Metadata gate on the deployed tree: canonicals, robots.txt, sitemap
+	cp -R web-static/public/. site/
+	$(PY) sprout site-check site --origin https://sprout.chelseakr.com
+
 claims: ## Claims-integrity gate: docs/claims.yaml vs code/config source of truth
 	$(PY) sprout claims-check
 
@@ -126,7 +135,7 @@ web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conf
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
 	cd web-static && npm ci && npm run build:site
 
-verify: lint type test security eval smoke a11y claims calibrate gate-inventory slo corpus-report propose-check docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
+verify: lint type test security eval smoke a11y site-check claims calibrate gate-inventory slo corpus-report propose-check docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts

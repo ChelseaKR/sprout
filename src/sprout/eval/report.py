@@ -243,6 +243,13 @@ def render_html(result: RunResult, history: Sequence[HistoryEntry] = ()) -> str:
     doc = (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        # This is the standalone artifact: it opens from a CI download, a local
+        # checkout, or anywhere someone drops it. The docs site publishes the
+        # same run at /audits/eval-report/, rendered from the Markdown twin, and
+        # that is the address worth indexing. Deployed side by side without
+        # this, the two are one report at two addresses and a search engine
+        # picks between them.
+        '<meta name="robots" content="noindex">'
         "<title>Sprout Evaluation Report</title></head><body><main>"
         "<h1>Sprout Evaluation Report</h1>"
         f"<p><strong>Overall verdict: {overall}</strong></p>"
