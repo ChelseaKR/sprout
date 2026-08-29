@@ -10,6 +10,45 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The published site could not say where its pages were.** A technical SEO
+  audit of sprout.chelseakr.com found `/robots.txt` a 404, so the sitemap mkdocs
+  already writes was advertised to nothing; the page served at `/` carrying no
+  canonical and no share card, because `pages.yml` copies `web-static/public`
+  over mkdocs' own index and nothing local reproduced that; all 52 published
+  URLs shipping one identical `site_description`; and
+  `/audits/eval-report.html` published, reachable, and in neither the sitemap
+  nor a `noindex` beside `/audits/eval-report/`, which is the same run at a
+  second address.
+
+  - `docs/robots.txt` is copied to the site root by mkdocs and advertises the
+    sitemap. Nothing is disallowed: every page this site publishes is a page it
+    means to publish.
+  - `web-static/public/index.html` carries a canonical and the OpenGraph and
+    Twitter tags, repeating the page's own title and description rather than a
+    second set written for a card. There is deliberately no `og:image`: the
+    project ships no image asset, and an `og:image` naming a file that is not
+    there is worse than none at all.
+  - `docs_hooks/page_description.py` gives each documentation page the
+    description its own opening paragraph already states. It writes no new copy,
+    it leaves a page that declares its own description alone, and it escapes what
+    it produces, because mkdocs-material interpolates the value straight into an
+    attribute and an ADR quoting its own model card closed that attribute early.
+    52 pages, 52 distinct descriptions.
+  - The standalone HTML eval report is `noindex`. It opens from a CI download or
+    a local checkout; the address worth indexing is the docs page rendered from
+    its Markdown twin.
+  - `sprout site-check` and `make site-check` are the gate, in the same shape as
+    `sprout a11y-check`: a pure function over a built directory, no network. It
+    checks self-referencing https canonicals, unique non-empty titles and
+    descriptions, complete share cards that agree with the page, `robots.txt`
+    naming the sitemap and no path the site does not serve, and every built page
+    either listed in the sitemap or saying it is not for indexing. It is in
+    `make verify` and in `pages.yml`, and unlike anything before it, `make
+    site-check` builds what is actually deployed: mkdocs' output with
+    `web-static/public` copied over it. `tests/test_site_meta.py` breaks one
+    property at a time and asserts each is caught, including that an empty tree
+    reports having checked nothing rather than reporting success.
+
 - **The secret scanner was running with no rules at all (ISO 25010: Security /
   confidentiality).** `.gitleaks.toml` declared only an `[allowlist]`. gitleaks treats a
   config it finds as the *whole* configuration, so without `[extend] useDefault = true`

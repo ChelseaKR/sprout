@@ -117,7 +117,7 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 disallow_any_unimported = true
-files = ["src", "tests"]
+files = ["src", "tests", "docs_hooks"]
 
 [[tool.mypy.overrides]]
 module = ["boto3.*", "botocore.*", "sse_starlette.*", "langdetect.*", "uvicorn.*"]

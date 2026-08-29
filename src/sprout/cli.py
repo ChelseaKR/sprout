@@ -35,6 +35,7 @@ from .answer import Assistant
 from .claims import check as check_claims
 from .config import Config, load_config
 from .models import Answer
+from .site_meta import check_site
 from .slo import check_all
 
 app = typer.Typer(add_completion=False, help="Sprout — grounded, evaluated plant-care assistant.")
@@ -518,6 +519,26 @@ def a11y_check(
             typer.echo(f"  - {p}", err=True)
         raise typer.Exit(1)
     typer.echo(f"{target}: no structural accessibility violations")
+
+
+@app.command("site-check")
+def site_check(
+    directory: Annotated[str, typer.Argument()] = "site",
+    origin: Annotated[
+        str, typer.Option("--origin", help="The https origin the site is served from.")
+    ] = "https://sprout.chelseakr.com",
+) -> None:
+    """Check the published site's metadata: canonicals, robots.txt, and the sitemap."""
+    root = Path(directory)
+    if not root.is_dir():
+        typer.echo(f"not a directory: {root}", err=True)
+        raise typer.Exit(2)
+    problems = check_site(root, origin)
+    if problems:
+        for problem in problems:
+            typer.echo(f"  - {problem}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{root}: every published page's address checks out")
 
 
 @app.command("freshness")
