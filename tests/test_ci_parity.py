@@ -100,9 +100,27 @@ def test_diff_group_ignores_allowlisted_make_only_prefix() -> None:
     report = diff_group(
         "security",
         {"uv run pip-audit"},
-        {"uv run pip-audit", "command -v gitleaks >/dev/null 2>&1 && gitleaks detect"},
+        {
+            "uv run pip-audit",
+            'if command -v gitleaks >/dev/null 2>&1; then gitleaks detect; else echo "no"; fi',
+        },
     )
     assert report.ok
+
+
+def test_the_old_gitleaks_and_or_form_is_no_longer_allowlisted() -> None:
+    """The allowlist says "gitleaks is CI-side only", not "any shell shape is fine".
+
+    `command -v gitleaks && gitleaks detect || <fallback>` routed a real finding into the
+    fallback branch and exited 0 (see tests/test_security_gate.py). Waving it through here
+    would let it come back without the parity gate noticing.
+    """
+    report = diff_group(
+        "security",
+        {"uv run pip-audit"},
+        {"uv run pip-audit", "command -v gitleaks >/dev/null 2>&1 && gitleaks detect || echo no"},
+    )
+    assert not report.ok
 
 
 def test_check_parity_on_synthetic_fixtures_matches(tmp_path: Path) -> None:
