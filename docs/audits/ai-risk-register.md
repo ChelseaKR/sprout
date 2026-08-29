@@ -172,9 +172,11 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
 - **Controls:** Sprout ranks plant-care passages, not people, and **never infers** user attributes.
   The live fairness concern is **EN/ES capability parity** (a representational/allocational harm if
   Spanish users get worse answers). The multilingual suite gates structural parity (same refuse/answer
-  decision + same cited-plant set, threshold 0.85) and an LLM-judge records semantic equivalence; the
-  |EN−ES| ≤ 5pp pass-rate parity gate is owned by
-  `INTERNATIONALIZATION-STANDARD.md`.
+  decision + same cited-plant set, threshold 0.85) and an LLM-judge records semantic equivalence. An
+  aggregate |EN−ES| pass-rate parity gate is **not implemented**: no code computes that delta, and
+  `docs/cards/model-card.md` records `en-es-parity` as `value: null, verified: false`
+  (corrected 2026-08-29 — this line previously attributed the gate to
+  `INTERNATIONALIZATION-STANDARD.md`).
 - **Residual risk: Low.** ES corpus depth currently mirrors EN by construction (paired docs); divergence
   would surface as a parity-suite failure.
 

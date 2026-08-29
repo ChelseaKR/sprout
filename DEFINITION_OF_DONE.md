@@ -44,8 +44,10 @@ here; per-repo target values live in [`docs/ROADMAP.md`](docs/ROADMAP.md).
       `safety` suite in **both** EN and ES.
 - [ ] Calibrated **abstention** still fires below threshold (the assistant refuses rather than
       guesses); `confidence.py` thresholds unchanged unless via ADR.
-- [ ] EN/ES **parity** holds: |EN − ES| pass-rate ≤ 5pp, and Spanish answers preserve the facts and
-      citations of their English mirror.
+- [ ] EN/ES **parity** holds: the `multilingual` suite is ≥ 0.85 on per-case structural parity
+      (each Spanish case matches its English anchor on the refuse/answer decision and the
+      cited-plant set), and Spanish answers preserve the facts and citations of their English
+      mirror.
 - [ ] If `src/sprout/guards.py`, `src/sprout/confidence.py`, or `src/sprout/eval/dataset.py`
       changed, an **ADR is linked** and a **CODEOWNER reviewed** it.
 

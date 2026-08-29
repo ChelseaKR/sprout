@@ -136,10 +136,15 @@ people (see the inferred-attributes stance below).
   (`PromptConfig`, `GuardsConfig`). The catalog key + placeholder parity gate is owned by
   `INTERNATIONALIZATION-STANDARD.md`.
 - *Capability parity*: the **multilingual eval suite** checks that a Spanish answer preserves
-  the facts and citations of its English mirror, and the harness enforces
-  **|EN − ES| ≤ 5pp pass-rate parity** as a gate (README standards table; threshold owned by
-  the I18N standard). Language detection is deterministic and dependency-free (`lang.py`), so
-  the segment assignment is itself reproducible.
+  the facts and citations of its English mirror, and the harness gates **per-case structural
+  parity at ≥ 0.85** — the fraction of non-reference-language cases that match their English
+  anchor on the refuse/answer decision and the cited-plant set
+  (`multilingual-parity`, `src/sprout/eval/suites/multilingual.py`). An aggregate
+  **|EN − ES| pass-rate delta is not computed and not gated**; it is a planned metric,
+  recorded unmeasured in the model card as `en-es-parity: value: null, verified: false`
+  (corrected 2026-08-29 — this section previously called the 5pp delta a gate).
+  Language detection is deterministic and dependency-free (`lang.py`), so the segment
+  assignment is itself reproducible.
 
 **Never infer sensitive attributes.** Sprout's stance is the portfolio default: **never infer
 sensitive attributes.** It does not classify, rank, or profile users; it has no user model,
@@ -163,8 +168,9 @@ may select corpus passages but may not override or fabricate a cited fact, and t
 must not infer household composition. Strict schemas and provenance labels enforce the rule.
 
 **Enforcement.**
-- **AUTO** — EN/ES capability parity (multilingual suite, ≤ 5pp gate) and string/placeholder
-  parity (I18N catalog gate); no-inferred-attribute enforced by the whitelisting logger and
+- **AUTO** — EN/ES capability parity (multilingual suite, ≥ 0.85 per-case structural-parity
+  gate) and string/placeholder parity (I18N catalog gate); no-inferred-attribute enforced by
+  the whitelisting logger and
   the absence of any person-classification code path.
 - **REVIEW** — representational-harm review of corpus + strings, committed dated each release.
 

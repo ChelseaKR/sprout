@@ -10,6 +10,31 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The docs claimed an EN/ES parity gate the harness does not have.** Eleven places
+  across the README, ROADMAP, ARCHITECTURE, RESPONSIBLE-TECH-AUDITS, USER-RESEARCH,
+  DEFINITION_OF_DONE, the AI risk register, the model card and this changelog said the
+  AI-eval harness enforces `|EN - ES| <= 5pp` **pass-rate** parity. It does not, and never
+  did. What `eval/suites/multilingual.py` gates is `multilingual-parity` at a threshold of
+  **0.85**: the fraction of non-reference-language cases that match their English anchor on
+  the refuse/answer decision and the cited-plant set. That is per-case structural parity, a
+  different quantity from an aggregate pass-rate delta between two languages. Nothing in
+  `src/` computes such a delta, and the model card had already recorded `en-es-parity` as
+  `value: null, verified: false` — the repository was contradicting its own honest
+  disclosure.
+
+  - Every occurrence now states the gate that exists. The 5pp delta survives in the ledgers
+    as an explicitly **planned, not implemented** row, so the target is not lost and the
+    claim is not made; `docs/audits/gate-inventory.md` regenerated accordingly and now
+    reports 28 AUTO rows where it reported 29.
+  - The corrected claim is **gated**, which is why it could drift in the first place: it
+    carried no `<!-- claim: -->` marker, so `sprout claims-check` could not see it. A new
+    `suite:multilingual.threshold` source resolves
+    `MultilingualSuite().metric.threshold` live, and three registered claims (README,
+    ROADMAP, model card) pin the doc text to it in both directions.
+  - The model card's fairness section also claimed per-language segment disaggregation in
+    the report. The only `segments` any suite emits are the calibration suite's confidence
+    bins; that sentence is corrected too.
+
 - **The published site could not say where its pages were.** A technical SEO
   audit of sprout.chelseakr.com found `/robots.txt` a 404, so the sitemap mkdocs
   already writes was advertised to nothing; the page served at `/` carrying no
@@ -428,8 +453,9 @@ the public evaluation harness as the headline artifact.
   `/api/chat/stream` `done` event, the chat UI's `aria-live` meta line), so a screen reader
   announces the calibrated language first while the number stays visible; localized in EN/ES via
   `Config.prompts.confidence_band_labels`.
-- **English/Spanish parity** with enforced |EN − ES| ≤ 5pp pass-rate parity and mirrored
-  facts/citations.
+- **English/Spanish parity** with a gated per-case structural-parity floor (≥ 0.85 of Spanish
+  cases match their English anchor on the refuse/answer decision and the cited-plant set) and
+  mirrored facts/citations.
 - **Provider seam** (`providers/`): deterministic offline generator as default; a Claude-on-Bedrock
   generator (answer model: Claude Haiku) behind a config switch as the production seam.
 - **The eval harness** (`src/sprout/eval/`): five suites — **groundedness, safety, calibration,

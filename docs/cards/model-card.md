@@ -47,7 +47,7 @@ model-index:
             value: 0.0
             verified: false
           - type: en-es-parity
-            name: EN/ES pass-rate parity gap (|EN - ES|, lower is better; gate <= 0.05)
+            name: "EN/ES pass-rate parity gap (|EN - ES|, lower is better; planned metric with a target of <= 0.05, NOT implemented and never measured — the gate that does exist is per-case structural parity >= 0.85, see 'Fairness and EN/ES parity')"
             value: null
             verified: false
           - type: expected-calibration-error
@@ -356,12 +356,19 @@ case set — are authoritative in the committed report, not here.
 Sprout's fairness commitment is **language parity**: a Spanish-speaking user must get the same
 facts, the same citations, and the same safety behavior as an English-speaking user.
 
-- **Parity is a gate, not an aspiration.** The multilingual suite checks that each Spanish answer
-  preserves the facts and citations of its English mirror, and the AI-evaluation gate enforces a
-  pass-rate parity of **|EN − ES| ≤ 5 pp** (per
-  `AI-EVALUATION-STANDARD`); a wider gap fails CI.
-  Per-segment results are **disaggregated by language** in the report — no language is allowed to
-  hide inside a macro average.
+- **Parity is a gate, but it is a *per-case* gate.** The multilingual suite checks that each
+  Spanish answer preserves the facts and citations of its English mirror, and the AI-evaluation
+  gate enforces **per-case structural parity at ≥ 0.85**<!-- claim:model-card-multilingual-parity-threshold -->:
+  the fraction of non-reference-language cases that match their English anchor on the
+  refuse/answer decision and the cited-plant set (`multilingual-parity`,
+  `src/sprout/eval/suites/multilingual.py`). Falling below that floor fails CI, and every
+  failing case is listed by item id in the report, so no case hides inside the average.
+- **The aggregate |EN − ES| pass-rate gap is *not* gated.** It is a planned metric that nothing
+  in the harness computes, which is exactly why this card's front matter records `en-es-parity`
+  as `value: null, verified: false`. Prior versions of this card, the README, and the ROADMAP
+  described the 5 pp delta as an enforced gate; that was wrong and was corrected 2026-08-29.
+  Results are also not disaggregated into per-language segments in the report — the only
+  `segments` any suite emits today are the calibration suite's confidence bins.
 - **Same guards in both languages.** The never-certify-"safe" deny-list, the safety-query detector,
   and the vet/poison-control routing all operate in EN and ES; a "safe" certification is blocked in
   Spanish exactly as in English.
