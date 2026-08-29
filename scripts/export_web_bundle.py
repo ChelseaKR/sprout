@@ -57,6 +57,22 @@ def _export_config(config_path: Path, out_dir: Path) -> Path:
         "confidence": {
             "abstain_threshold": cfg.confidence.abstain_threshold,
             "low_confidence_threshold": cfg.confidence.low_confidence_threshold,
+            # The logistic's shape, when `sprout fit-confidence` (ADR-0016) has written
+            # one. Python reads it in `confidence.py::_constants`; without it here the
+            # browser would keep using the ADR-0012 defaults and compute a different
+            # confidence — and therefore different abstain/low-confidence decisions —
+            # than the CLI for the same question, silently, from the first committed
+            # fit onward (issue #108). `null` when no fit is committed, which is what
+            # tells the TypeScript side to use the same defaults Python would.
+            "fit": (
+                None
+                if cfg.confidence.fit is None
+                else {
+                    "midpoint": cfg.confidence.fit.midpoint,
+                    "steepness": cfg.confidence.fit.steepness,
+                    "margin_bonus": cfg.confidence.fit.margin_bonus,
+                }
+            ),
         },
         "guards": {
             "forbidden_safe_phrases": cfg.guards.forbidden_safe_phrases,

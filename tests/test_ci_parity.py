@@ -15,9 +15,11 @@ from typer.testing import CliRunner
 from sprout.ci_parity import (
     ParityReport,
     _normalize,
+    _resolve_make_vars,
     check_parity,
     diff_group,
     format_reports,
+    make_target_commands,
 )
 from sprout.cli import app
 
@@ -100,9 +102,27 @@ def test_diff_group_ignores_allowlisted_make_only_prefix() -> None:
     report = diff_group(
         "security",
         {"uv run pip-audit"},
-        {"uv run pip-audit", "command -v gitleaks >/dev/null 2>&1 && gitleaks detect"},
+        {
+            "uv run pip-audit",
+            'if command -v gitleaks >/dev/null 2>&1; then gitleaks detect; else echo "no"; fi',
+        },
     )
     assert report.ok
+
+
+def test_the_old_gitleaks_and_or_form_is_no_longer_allowlisted() -> None:
+    """The allowlist says "gitleaks is CI-side only", not "any shell shape is fine".
+
+    `command -v gitleaks && gitleaks detect || <fallback>` routed a real finding into the
+    fallback branch and exited 0 (see tests/test_security_gate.py). Waving it through here
+    would let it come back without the parity gate noticing.
+    """
+    report = diff_group(
+        "security",
+        {"uv run pip-audit"},
+        {"uv run pip-audit", "command -v gitleaks >/dev/null 2>&1 && gitleaks detect || echo no"},
+    )
+    assert not report.ok
 
 
 def test_check_parity_on_synthetic_fixtures_matches(tmp_path: Path) -> None:
@@ -174,3 +194,60 @@ def test_cli_ci_parity_check_passes_on_real_repo() -> None:
 def test_cli_ci_parity_check_fails_on_missing_file(tmp_path: Path) -> None:
     result = runner.invoke(app, ["ci-parity-check", "--workflow", str(tmp_path / "nope.yml")])
     assert result.exit_code != 0
+
+
+# -- what the parser must not lose --------------------------------------------
+#
+# Both of these were real blind spots on 2026-08-28. A break-the-gate pass found
+# the first: reverting the parser fix left every test in this file green, which
+# means the fix was resting on nothing.
+
+_COMMENTED_MAKEFILE = """\
+PY := uv run
+SAST_PATHS := src tests scripts
+
+security: ## Security
+\t$(PY) pip-audit
+# A block comment at column zero. `make` does not end a recipe here, and neither
+# may this parser: everything below used to vanish from the diff.
+
+\t$(PY) semgrep-stand-in $(SAST_PATHS)
+\t@if command -v gitleaks >/dev/null 2>&1; then gitleaks detect; fi
+"""
+
+
+def test_a_column_zero_comment_does_not_end_a_recipe() -> None:
+    """`make` reads past a comment, so the parity diff has to as well.
+
+    Losing the tail of a recipe is silent in the worst way: the diff compares a
+    shorter list against CI and reports agreement, so a step could be deleted from
+    the Makefile without the gate saying anything.
+    """
+    commands = make_target_commands(_COMMENTED_MAKEFILE, "security")
+    assert "uv run pip-audit" in commands
+    assert "uv run semgrep-stand-in src tests scripts" in commands, (
+        "the recipe lines after a column-zero comment were dropped"
+    )
+    assert any(c.startswith("if command -v gitleaks") for c in commands), commands
+
+
+def test_every_simple_make_variable_expands_not_only_py_and_config() -> None:
+    """An unexpanded `$(VAR)` can never equal CI's expansion of it.
+
+    The gate then reports drift that is not drift, and the cheapest way to make it
+    green is to stop using Makefile variables -- which is the opposite of what a
+    parity gate should encourage.
+    """
+    commands = make_target_commands(_COMMENTED_MAKEFILE, "security")
+    assert not any("$(" in c for c in commands), commands
+
+
+def test_an_empty_assignment_does_not_swallow_the_following_line() -> None:
+    """`\\s` matches newlines; the assignment pattern must not.
+
+    `RELEASE_TAG ?=` followed by a blank line and a `.PHONY:` line captured that
+    line as the variable's value, which then rewrote every command referencing it.
+    """
+    makefile = "RELEASE_TAG ?=\n\n.PHONY: build\n\nbuild:\n\techo one $(RELEASE_TAG) two\n"
+    assert _resolve_make_vars(makefile)["RELEASE_TAG"] == ""
+    assert _normalize("echo one $(RELEASE_TAG) two", _resolve_make_vars(makefile)) == "echo one two"

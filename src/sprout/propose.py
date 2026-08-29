@@ -67,6 +67,7 @@ from urllib.parse import urlsplit
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from .chunk import SAFETY_TOPIC_SLUGS as _SAFETY_TOPIC_SLUGS
 from .chunk import slugify
 from .config import Config
 from .corpus_report import (
@@ -164,7 +165,10 @@ _SIGNATURE_MIN = 3
 _SIGNATURE_MARKER = "harm_checklist"
 
 #: Topic slugs that make a proposal safety-bearing (see ``requires_expert_review``).
-SAFETY_TOPIC_SLUGS: frozenset[str] = frozenset({"toxicity", "toxicidad", "safety", "seguridad"})
+#: Re-exported from ``chunk`` so this module and the safety router in ``answer`` cannot
+#: answer "is this about toxicity?" differently; see that definition for why the bare
+#: literal ``"toxicity"`` is not enough.
+SAFETY_TOPIC_SLUGS = _SAFETY_TOPIC_SLUGS
 
 #: Substrings that mark safety-bearing prose even outside a ``## Toxicity`` section.
 #: Same vocabulary ``freshness.py`` uses to pick the stricter citation SLA.
