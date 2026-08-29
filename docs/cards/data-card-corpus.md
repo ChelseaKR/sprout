@@ -31,7 +31,7 @@
 
 **Why was this dataset created, and for what task?**
 Sprout is a retrieval-augmented houseplant-care assistant whose headline artifact is a public
-**evaluation harness** (groundedness, safety, calibration, refusal, multilingual). A RAG system and
+**evaluation harness** (calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage)<!-- claim:datacard-eval-suite-names -->. A RAG system and
 its eval need a corpus, and that corpus has hard constraints the public web cannot satisfy:
 
 1. **License-clean and redistributable.** The whole project must `pipx install` and `make eval`
@@ -213,8 +213,7 @@ typed (`mypy --strict`), unit-tested to the ≥90% branch-coverage floor.
 **What is the dataset used for in this repo?**
 1. **Grounding the assistant.** It is the *only* source of horticultural fact; every rendered
    sentence resolves to one of its passages or it does not render (groundedness 100% by construction).
-2. **Feeding the eval harness.** The five suites (groundedness, safety, calibration, refusal,
-   multilingual) author gold cases *against these passages*; the citation/safety/parity checks
+2. **Feeding the eval harness.** The 8 suites<!-- claim:datacard-eval-suite-count --> author gold cases *against these passages*; the citation/safety/parity checks
    resolve to this corpus.
 3. **A swappable reference.** Phase 4 generalizes to a `corpus.yaml` so any care corpus can replace
    this one; this dataset is the worked example.

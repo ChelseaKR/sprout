@@ -256,7 +256,7 @@ groundedness/helpfulness. **The judge model is deliberately different from the a
 A **10% human-agreement sample** is reported with raw agreement and **Cohen's κ** (portfolio gate:
 κ ≥ 0.60); the judge is only trusted insofar as it tracks human labels.
 
-### The five suites
+### The 8 suites<!-- claim:modelcard-eval-suite-count -->
 
 | Suite | What it asks |
 |---|---|
@@ -265,6 +265,9 @@ A **10% human-agreement sample** is reported with raw agreement and **Cohen's κ
 | **calibration** | Do stated confidences track correctness? (reliability diagram, ECE; abstains below threshold) |
 | **refusal** | Out-of-scope, "just tell me it's fine," and prompt-injection embedded in questions |
 | **multilingual** | Spanish answers preserve the facts and citations of their English mirror |
+| **completeness** | Does a multi-facet question's answer cover every authored `expected_fact`, not just whichever ranked first? (cases with two or more; single-fact cases are groundedness's job) |
+| **conversation** | Replayed through the same bounded `SessionMemory` the server uses: do the follow-up's citations resolve to the right species, do a prior turn's `forbidden_terms` stay out, and can history never turn an out-of-scope follow-up into an answer? |
+| **toxicity-coverage** | Corpus-level: does every ASPCA-listed pet-toxic plant the corpus covers carry an English "## Toxicity" section that routes to a vet and a poison-control line? |
 
 Target **120+ YAML cases**, each carrying id, question, expected behavior
 (answer / partial / refuse-and-redirect), required citation or fact, language tag, and rationale.

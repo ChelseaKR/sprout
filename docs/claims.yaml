@@ -197,3 +197,59 @@ claims:
     source: "eval-report:suites.names"
     expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
     marker: "<!-- claim:readme-eval-suite-names -->"
+
+  # The suite count and the suite names were published in nine places and gated in one.
+  # The README said eight; docs/index.md, docs/ADAPT.md, docs/ARCHITECTURE.md, both cards,
+  # CITATION.cff and pyproject.toml still named the original five by name, three suites
+  # after they stopped being the whole set. Every Markdown site that states the figure is
+  # pinned here now. CITATION.cff and pyproject.toml carry no marker because neither is
+  # Markdown and neither can hold an HTML comment; they are covered instead by
+  # tests/test_claims.py::test_the_packaging_metadata_names_every_shipped_suite.
+
+  - id: index-eval-suite-count
+    file: docs/index.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:index-eval-suite-count -->"
+
+  - id: index-eval-suite-names
+    file: docs/index.md
+    source: "eval-report:suites.names"
+    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    marker: "<!-- claim:index-eval-suite-names -->"
+
+  - id: adapt-eval-suite-count
+    file: docs/ADAPT.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:adapt-eval-suite-count -->"
+
+  - id: adapt-eval-suite-names
+    file: docs/ADAPT.md
+    source: "eval-report:suites.names"
+    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    marker: "<!-- claim:adapt-eval-suite-names -->"
+
+  - id: architecture-eval-suite-count
+    file: docs/ARCHITECTURE.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:architecture-eval-suite-count -->"
+
+  - id: datacard-eval-suite-count
+    file: docs/cards/data-card-corpus.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:datacard-eval-suite-count -->"
+
+  - id: datacard-eval-suite-names
+    file: docs/cards/data-card-corpus.md
+    source: "eval-report:suites.names"
+    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    marker: "<!-- claim:datacard-eval-suite-names -->"
+
+  - id: modelcard-eval-suite-count
+    file: docs/cards/model-card.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:modelcard-eval-suite-count -->"
