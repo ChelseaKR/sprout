@@ -291,6 +291,22 @@ def test_check_readme_eval_suite_count_and_names_sources() -> None:
     assert not any("readme-eval-suite-names" in p for p in problems)
 
 
+def test_check_multilingual_parity_threshold_sources() -> None:
+    """The EN/ES parity claim in the README, the ROADMAP and the model card all resolve to the
+    floor the multilingual suite actually enforces (0.85) — not the |EN - ES| <= 5pp pass-rate
+    delta the docs used to assert, which no code computes."""
+    problems = check()
+    assert not any("readme-multilingual-parity-threshold" in p for p in problems)
+    assert not any("roadmap-multilingual-parity-threshold" in p for p in problems)
+    assert not any("model-card-multilingual-parity-threshold" in p for p in problems)
+
+
+def test_resolve_suite_multilingual_threshold() -> None:
+    from sprout.claims import _resolve_suite
+
+    assert _resolve_suite("multilingual.threshold") == "0.85"
+
+
 def test_resolve_suite_calibration_floors() -> None:
     from sprout.claims import _resolve_suite
 

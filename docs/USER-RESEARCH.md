@@ -114,7 +114,9 @@ The panel is anchored to published evidence so the personas argue from reality, 
   ([JAMIA Open](https://academic.oup.com/jamiaopen/article/9/1/ooag007/8460310);
   [PMC8568518](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8568518/);
   [PMC6238892](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6238892/)).
-  → validates **enforced EN/ES parity with |EN−ES| ≤ 5pp**, not "English-plus-Spanish theater."
+  → validates **gated EN/ES parity** — the multilingual suite requires ≥ 0.85 of Spanish
+  cases to match their English anchor on the refuse/answer decision and the cited plants —
+  not "English-plus-Spanish theater."
 
 ### How to read a persona
 
@@ -195,11 +197,13 @@ Each card compresses the simulated interview to five lines: **Goal · Values tod
 ### A4 — Lucía, Spanish-first user
 - **Goal.** Ask *"¿Es tóxico el potho para los gatos?"* and get the *same facts and
   citations* as the English mirror.
-- **Values today.** *Enforced EN/ES parity.* One resolved-language variable drives
+- **Values today.** *Gated EN/ES parity.* One resolved-language variable drives
   every string (refusal, disclosure, safety route), string/placeholder parity is
-  gated, and the multilingual eval suite enforces |EN − ES| ≤ 5pp pass-rate parity —
-  the structural answer to the documented risk that machine translation degrades
-  exactly the safety-adjacent content LEP users depend on.
+  gated, and the multilingual eval suite gates per-case structural parity at ≥ 0.85 —
+  each Spanish case must match its English anchor on the refuse/answer decision and the
+  cited-plant set — the structural answer to the documented risk that machine translation
+  degrades exactly the safety-adjacent content LEP users depend on. (An aggregate
+  |EN − ES| pass-rate delta is planned, not implemented.)
 - **Gets stuck.** Until the bilingual corpus + multilingual cases are committed, ES
   coverage of a given question may lag EN; she has learned from experience to distrust
   "Spanish" that is really MT sludge.

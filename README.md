@@ -77,22 +77,16 @@ The project has not published its first package release yet. After the initial r
 `pipx install sprout` will be the supported packaged installation path. From a source checkout:
 
 ```bash
+uv sync                                 # create the environment from the lockfile
 uv run sprout ingest                    # build the index from the bundled corpus
 uv run sprout ask "Why are my Monstera's leaves yellowing?"
 uv run sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
+uv run sprout ask "How much water does my Pothos need?" --season winter --light "north window"
 uv run sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer
 uv run sprout remind add pothos --kind water --every 7    # local, offline reminder
 uv run sprout remind export --ics --out reminders.ics     # standards-based calendar file, any app
 uv run sprout serve                     # stateless reference UI + JSON/SSE API at :8000
-pipx install sprout              # or: uv sync && uv run sprout ...
-sprout ingest                    # build the index from the bundled corpus
-sprout ask "Why are my Monstera's leaves yellowing?"
-sprout ask "¿Es tóxico el potho para los gatos?"   # Spanish, with EN/ES parity
-sprout ask "How much water does my Pothos need?" --season winter --light "north window"
-sprout identify plant.jpg -q "is this toxic to my cat?"   # photo → cited care answer (offline → fallback)
-sprout remind add pothos --kind water --every 7    # local, offline reminder
-sprout serve                     # accessible chat UI + JSON/SSE API at :8000
-make eval                        # regenerate the committed eval report, fully offline
+make eval                               # regenerate the committed eval report, fully offline
 ```
 
 `make demo` reproduces a scripted session end to end.
@@ -139,7 +133,7 @@ targets, and evidence are recorded in this public repository. Per-repo *values* 
 | Release & Versioning | Applies | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
 | Accessibility | Applies | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
 | Observability | Applies | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
-| Internationalization | Applies | EN/ES key + placeholder parity; AI-eval enforces \|EN−ES\| ≤ 5pp pass-rate parity |
+| Internationalization | Applies | EN/ES key + placeholder parity; the `multilingual` eval suite gates *per-case* EN/ES structural parity — each Spanish case must match its English anchor on the refuse/answer decision and the cited-plant set — at **≥ 0.85**<!-- claim:readme-multilingual-parity-threshold -->. An \|EN−ES\| *pass-rate delta* is a planned metric that nothing computes or gates; the model card records it `value: null, verified: false` |
 | AI Evaluation | Applies | RAG groundedness/safety/multilingual gates green; refusal gated at **0.90**<!-- claim:readme-refusal-target --> (offline floor, portfolio target 0.95, recorded as an open gap); judge-calibration (deterministic judge, 66 probes) **enforced floor: agreement ≥ 0.80**<!-- claim:readme-judge-calibration-floor-agreement --> **· Cohen's κ ≥ 0.60**<!-- claim:readme-judge-calibration-floor-kappa --> (CI gate; a regression below either fails the build) — last *measured*, well above floor, at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
 | Documentation | Applies | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
 | Responsible-Tech Framework | Applies | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; every audit applies (added to this table 2026-07-05 — was silently omitted) |

@@ -14,6 +14,14 @@
 #                              resolved against config/sprout.yaml.
 #   suite:refusal.threshold  — RefusalSuite().metric.threshold (src/sprout/eval/suites/refusal.py),
 #                              the MetricDefinition the refusal gate actually enforces.
+#   suite:multilingual.threshold
+#                            — MultilingualSuite().metric.threshold (src/sprout/eval/suites/
+#                              multilingual.py), the `multilingual-parity` floor the EN/ES gate
+#                              actually enforces: the fraction of non-reference-language cases
+#                              matching their English anchor on the refuse/answer decision and
+#                              the cited-plant set. Registered 2026-08-29 because the README,
+#                              ROADMAP, model card and three other docs described the gate as an
+#                              |EN - ES| <= 5pp pass-rate delta, a quantity no code computes.
 #   suite:calibration.min_agreement / suite:calibration.min_kappa
 #                            — MIN_AGREEMENT / MIN_KAPPA (src/sprout/eval/calibration.py), the
 #                              enforced CI floors judge-calibration gates on — NOT the value the
@@ -100,6 +108,28 @@ claims:
     source: "suite:refusal.threshold"
     expected: "0.90"
     marker: "<!-- claim:roadmap-refusal-target -->"
+
+  # --- Multilingual EN/ES parity floor (src/sprout/eval/suites/multilingual.py) ---------------
+  # Added 2026-08-29. The docs claimed an "|EN - ES| <= 5pp pass-rate parity" gate; the harness
+  # gates `multilingual-parity` >= 0.85, per-case structural parity against the English anchor.
+  # No marker existed at any of those sites, which is why the drift guard could not see them.
+  - id: readme-multilingual-parity-threshold
+    file: README.md
+    source: "suite:multilingual.threshold"
+    expected: "0.85"
+    marker: "<!-- claim:readme-multilingual-parity-threshold -->"
+
+  - id: roadmap-multilingual-parity-threshold
+    file: docs/ROADMAP.md
+    source: "suite:multilingual.threshold"
+    expected: "0.85"
+    marker: "<!-- claim:roadmap-multilingual-parity-threshold -->"
+
+  - id: model-card-multilingual-parity-threshold
+    file: docs/cards/model-card.md
+    source: "suite:multilingual.threshold"
+    expected: "0.85"
+    marker: "<!-- claim:model-card-multilingual-parity-threshold -->"
 
   # --- eval-report.json cross-check (demonstrates the eval-report source kind; groundedness has
   # not drifted, but pinning it here means the ledger row is checked, not merely trusted) -------

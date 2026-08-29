@@ -23,6 +23,7 @@ import yaml
 
 from .config import Config, load_config
 from .eval.calibration import MIN_AGREEMENT, MIN_KAPPA
+from .eval.suites.multilingual import MultilingualSuite
 from .eval.suites.refusal import RefusalSuite
 
 _DEFAULT_CLAIMS = "docs/claims.yaml"
@@ -96,6 +97,8 @@ def _resolve_config(dotted: str, config_path: str | Path) -> str:
 def _resolve_suite(name: str) -> str:
     if name == "refusal.threshold":
         return _fmt(RefusalSuite().metric.threshold)
+    if name == "multilingual.threshold":
+        return _fmt(MultilingualSuite().metric.threshold)
     if name == "calibration.min_agreement":
         return _fmt(MIN_AGREEMENT)
     if name == "calibration.min_kappa":
