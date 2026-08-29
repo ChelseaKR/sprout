@@ -57,8 +57,10 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Install (dev)
         run: uv sync --locked
+      # Every directory holding tracked Python. Keep in step with the Makefile's
+      # SAST_PATHS; tests/test_security_gate.py fails if the two lists disagree.
       - name: Semgrep (SAST)
-        run: uvx --with 'setuptools<81' semgrep scan --config p/python --error src
+        run: uvx --with 'setuptools<81' semgrep scan --config p/python --error src tests scripts eval examples infra
       - name: pip-audit (blocking — not muted)
         run: uv run pip-audit
       # Runs on pull_request too, as of 2026-08-01. It used to carry
