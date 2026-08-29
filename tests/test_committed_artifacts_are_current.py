@@ -26,6 +26,7 @@ stale, which is the failure being gated.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -296,4 +297,54 @@ def test_worked_example_output_matches_a_fresh_run(rel: str, regenerated_example
         regenerated_example / rel,
         "`uv pip install -e examples/herb-garden-plugin && "
         "uv run python examples/herb-garden-plugin/run_example.py`",
+    )
+
+
+# --------------------------------------------------------------------------------------
+# eval/research/ (EXP-E3): a frozen snapshot, pinned to the provenance its doc records
+# --------------------------------------------------------------------------------------
+
+_E3 = _ROOT / "eval" / "research" / "e3_external_suite_comparison"
+_E3_DOC = _ROOT / "docs" / "research" / "E3-external-suite-comparison.md"
+
+
+def test_e3_research_snapshot_matches_the_provenance_its_doc_records() -> None:
+    """`golden_set.json` is regenerable offline; its four companions are not.
+
+    `build_golden_set.py` replays the real assistant over the real committed suites, so a
+    rebuild is one command. The Ragas, DeepEval and ALCE results beside it were scored
+    against the golden set as it stood, and re-running them needs an isolated venv, a local
+    Ollama model and a 370MB NLI checkpoint. Rebuilding the input alone would therefore
+    leave four published result files describing a set that no longer exists, silently.
+
+    Measured 2026-08-29: the committed golden set carries `sha256:b87c705c52ef` with 128
+    items, and rebuilding it today yields `sha256:50a032e7e395` with 158. That gap is now
+    written down in the doc, and this pins the files to it, so the next partial rebuild
+    fails here instead of passing.
+    """
+    doc = _E3_DOC.read_text(encoding="utf-8")
+    recorded = re.search(r"hashed to `(sha256:[0-9a-f]+)` and held\s+(\d+) items", doc)
+    assert recorded, (
+        f"{_E3_DOC.relative_to(_ROOT)} no longer records the dataset version and item "
+        "count the committed snapshot was built from; there is nothing left to pin to"
+    )
+    version, items = recorded.group(1), int(recorded.group(2))
+
+    golden = json.loads((_E3 / "golden_set.json").read_text(encoding="utf-8"))
+    assert golden["dataset_version"] == version, (
+        f"eval/research/.../golden_set.json carries {golden['dataset_version']} but "
+        f"{_E3_DOC.relative_to(_ROOT)} records {version}. Either the snapshot was rebuilt "
+        "without its four result files, or the doc was not updated with it."
+    )
+    assert len(golden["items"]) == items, (
+        f"the committed golden set holds {len(golden['items'])} items where "
+        f"{_E3_DOC.relative_to(_ROOT)} records {items}"
+    )
+
+    scored = re.search(r"of which (\d+) reached the ALCE-style citation scorer", doc)
+    assert scored, f"{_E3_DOC.relative_to(_ROOT)} no longer records the ALCE item count"
+    alce = json.loads((_E3 / "alce_results.json").read_text(encoding="utf-8"))
+    assert alce["n_items"] == int(scored.group(1)), (
+        f"alce_results.json scored {alce['n_items']} items where "
+        f"{_E3_DOC.relative_to(_ROOT)} records {scored.group(1)}"
     )

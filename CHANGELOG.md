@@ -43,6 +43,18 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
     `eval/suites.sha256` no longer matched its own cases file. Regenerated, and now gated
     by a run of the real `run_example.py` against a copy of the example under `tmp_path`.
 
+- **The E3 external-suite research bundle was a silent fossil.**
+  `eval/research/e3_external_suite_comparison/golden_set.json` is rebuilt offline in one
+  command from the real assistant and the real committed suites, and nothing rebuilt or
+  compared it. It was built when the eval dataset hashed to `sha256:b87c705c52ef` and held
+  128 items; rebuilding it today gives `sha256:50a032e7e395` and 158. It is *not*
+  regenerated here, because the four result files beside it were scored against the set as
+  it was and cannot be recomputed offline (an isolated venv, a local Ollama model and a
+  370MB NLI checkpoint). Instead `docs/research/E3-external-suite-comparison.md` now
+  records the frozen dataset version and item counts, says the chain must be re-run whole
+  or not at all, and a test pins the committed files to that record, so the next partial
+  rebuild fails instead of passing quietly.
+
 - **`uv run` without `--locked` re-locked silently inside the gates.** Measured 2026-08-29:
   with one dependency constraint tightened in `pyproject.toml`, `make lint` printed
   `ruff 0.16.3` and changed `uv.lock`'s sha from `1c127747` to `88a9de81`, saying nothing.
