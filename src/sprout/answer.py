@@ -33,6 +33,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .answer_trace import AnswerTrace
+from .chunk import is_safety_topic
 from .confidence import (
     best_and_margin,
     confidence_band,
@@ -288,9 +289,11 @@ class Assistant:
         as_of = max((c.fetch_date for c in citations), default=None)
         # Route to a vet / poison-control line whenever the question was classified a
         # safety query OR any rendered sentence cites a toxicity passage — so the routing
-        # is a property of the content shown, not only of the input keywords.
+        # is a property of the content shown, not only of the input keywords. The
+        # topic is compared against `chunk.SAFETY_TOPIC_SLUGS`, not the English
+        # literal: a Spanish `## Toxicidad` heading slugs to `toxicidad` (issue #107).
         topic_by_id = {rc.chunk.chunk_id: rc.chunk.topic for rc in retrieved}
-        toxicity_cited = any(topic_by_id.get(s.chunk_id) == "toxicity" for s in sentences)
+        toxicity_cited = any(is_safety_topic(topic_by_id.get(s.chunk_id)) for s in sentences)
         route = safety or toxicity_cited
         # A toxicity-cited (but not keyword-classified) query never had its exposure type
         # detected above; classify it now so the card still routes correctly.
@@ -357,7 +360,7 @@ class Assistant:
         # Route to a vet / poison-control line whenever the question was classified a
         # safety query OR the retrieved evidence itself cites a toxicity passage — so a
         # refusal still routes even when the input keywords alone did not trip `safety`.
-        toxicity_cited = any(rc.chunk.topic == "toxicity" for rc in retrieved)
+        toxicity_cited = any(is_safety_topic(rc.chunk.topic) for rc in retrieved)
         route = safety or toxicity_cited
         # A toxicity-cited (but not keyword-classified) refusal never had its exposure
         # type detected in answer(); classify it now so the card still routes correctly.

@@ -14,6 +14,7 @@ import { detectLanguage } from "./lang.js";
 import type { Answer, AnswerSentence, RetrievedChunk } from "./models.js";
 import { Retriever } from "./retrieve.js";
 import { VectorStore } from "./store.js";
+import { isSafetyTopic } from "./topics.js";
 
 /** Round to 4 decimal places, matching Python's `round(x, 4)` for the non-adversarial,
  * never-exactly-at-a-tie-boundary floats this pipeline produces (logistic outputs). */
@@ -71,7 +72,7 @@ export class Assistant {
       return this.refuse(query, lang, safety, "no_supported_sentences", false, 0.0, retrieved);
     }
 
-    const confidence = scoreConfidence(retrieved, sentences.length);
+    const confidence = scoreConfidence(retrieved, sentences.length, this.config.confidence);
     if (shouldAbstain(confidence, this.config.confidence)) {
       return this.refuse(query, lang, safety, "low_confidence", true, confidence, retrieved);
     }
@@ -93,7 +94,7 @@ export class Assistant {
         ? citations.reduce((max, c) => (c.fetch_date > max ? c.fetch_date : max), citations[0]?.fetch_date ?? "")
         : null;
     const topicById = new Map(retrieved.map((rc) => [rc.chunk.chunk_id, rc.chunk.topic]));
-    const toxicityCited = sentences.some((s) => topicById.get(s.chunk_id) === "toxicity");
+    const toxicityCited = sentences.some((s) => isSafetyTopic(topicById.get(s.chunk_id)));
     const route = safety || toxicityCited;
     return {
       question: query,
@@ -122,7 +123,7 @@ export class Assistant {
     confidence = 0.0,
     retrieved: readonly RetrievedChunk[] = [],
   ): Answer {
-    const toxicityCited = retrieved.some((rc) => rc.chunk.topic === "toxicity");
+    const toxicityCited = retrieved.some((rc) => isSafetyTopic(rc.chunk.topic));
     const route = safety || toxicityCited;
     return {
       question: query,
