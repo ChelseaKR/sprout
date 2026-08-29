@@ -104,12 +104,19 @@ def test_the_exported_bundle_carries_the_confidence_fit(tmp_path: Path) -> None:
     the three constants once one is.
     """
     out = tmp_path / "public" / "data"
+    # The exporter copies the built index verbatim; a stub is enough, and keeps this
+    # test from needing `make ingest` to have run. The CI `test` job does not ingest,
+    # and depending on `var/index.json` made this pass locally and fail there.
+    stub_index = tmp_path / "index.json"
+    stub_index.write_text('{"chunks": []}\n', encoding="utf-8")
     completed = subprocess.run(
         [
             sys.executable,
             str(_EXPORT),
             "--config",
             str(_ROOT / "config" / "sprout.yaml"),
+            "--index",
+            str(stub_index),
             "--out",
             str(out),
         ],
