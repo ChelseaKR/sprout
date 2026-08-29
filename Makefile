@@ -27,8 +27,8 @@ fmt: ## Auto-format the codebase
 	$(PY) ruff format src tests
 
 lint: ## Lint (format check + rules)
-	$(PY) ruff format --check src tests
-	$(PY) ruff check src tests
+	$(PY) ruff format --check src tests docs_hooks
+	$(PY) ruff check src tests docs_hooks
 
 type: ## Strict type-check
 	$(PY) mypy
@@ -40,7 +40,7 @@ test: ## Run the test suite with the coverage gate (>=90%)
 # Python files — tests/, scripts/, eval/, examples/, infra/ — with no SAST pass ever run
 # over them, including the gate machinery in scripts/. tests/test_security_gate.py fails
 # if a Python root is missing here or if this list and ci.yml's disagree.
-SAST_PATHS := src tests scripts eval examples infra
+SAST_PATHS := src tests scripts eval examples infra docs_hooks
 
 security: ## Dependency + secret + SAST scanning — the same tools/thresholds CI enforces
 	$(PY) pip-audit
