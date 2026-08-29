@@ -31,6 +31,11 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
     same serialiser `main()` writes with and compares without touching the file. Editing
     `src/sprout/data/embeddings/clusters.yaml` and forgetting to regenerate previously
     shipped a table the code no longer produces, with every gate green.
+  - `src/sprout/data/embeddings/manifest.yaml` restates the table's `dim` by hand and
+    names its source, its generator and its ADR. The dimension is now checked against
+    the table and the generator, and each named path must exist, so a renamed producer
+    or a regenerated table of a different width cannot leave the provenance record
+    describing something that is no longer there.
   - **`examples/herb-garden-plugin/report/` had drifted.** Its committed run was recorded
     against judge config `b37ebf08157f` and dataset hash `7eebd2b8e764adc9`; the current
     judge is `ff1ad7874e00` and the dataset hashes to `506563e8bea7a2fa`. The refusal

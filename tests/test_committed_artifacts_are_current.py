@@ -25,6 +25,7 @@ stale, which is the failure being gated.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -40,6 +41,9 @@ _ROOT = Path(__file__).resolve().parents[1]
 _AUDITS = _ROOT / "docs" / "audits"
 _EXAMPLE = _ROOT / "examples" / "herb-garden-plugin"
 _GENERATOR = _ROOT / "scripts" / "generate_static_vectors.py"
+_EMBEDDINGS = _ROOT / "src" / "sprout" / "data" / "embeddings"
+_EMBEDDINGS_MANIFEST = _EMBEDDINGS / "manifest.yaml"
+_STATIC_VECTORS = _EMBEDDINGS / "static_vectors.json"
 
 _runner = CliRunner()
 
@@ -193,6 +197,34 @@ def test_static_vector_table_matches_its_generator() -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+def test_static_vector_manifest_describes_the_table_it_ships_with() -> None:
+    """`embeddings/manifest.yaml` restates the table's dimension and names its producer.
+
+    Its `dim:` is a figure copied by hand out of a generated file, and its three path
+    fields are claims about a pipeline. Both rot silently: a regenerated table with a
+    different dimension, or a renamed generator, leaves the provenance record describing
+    something that no longer exists.
+    """
+    manifest = yaml.safe_load(_EMBEDDINGS_MANIFEST.read_text(encoding="utf-8"))
+    table = json.loads(_STATIC_VECTORS.read_text(encoding="utf-8"))
+    assert manifest["dim"] == table["dim"], (
+        f"{_EMBEDDINGS_MANIFEST.relative_to(_ROOT)} says dim {manifest['dim']} where "
+        f"{_STATIC_VECTORS.relative_to(_ROOT)} holds {table['dim']}"
+    )
+    assert manifest["generator"] == table["generator"] == "scripts/generate_static_vectors.py"
+    assert manifest["source_file"] == table["source"]
+    for field, path in (
+        ("source_file", _EMBEDDINGS_MANIFEST.parent / str(manifest["source_file"])),
+        ("generated_file", _EMBEDDINGS_MANIFEST.parent / str(manifest["generated_file"])),
+        ("generator", _ROOT / str(manifest["generator"])),
+        ("adr", _ROOT / str(manifest["adr"])),
+    ):
+        assert path.exists(), (
+            f"{_EMBEDDINGS_MANIFEST.relative_to(_ROOT)} names {field}={manifest[field]!r}, "
+            f"which does not exist at {path}"
+        )
 
 
 _EXAMPLE_OUTPUTS = (
