@@ -47,6 +47,8 @@ jobs:
         run: cp -R web-static/public/. site/
       - name: Check the published root structure
         run: uv run sprout a11y-check site/index.html
+      - name: Check the published site's addresses
+        run: uv run sprout site-check site --origin https://sprout.chelseakr.com
       - name: Verify linked documentation routes
         run: |
           test -s site/ARCHITECTURE/index.html

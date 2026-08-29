@@ -1,0 +1,10 @@
+# mkdocs copies this file to the site root. Without it /robots.txt is a 404 and
+# the sitemap mkdocs already writes is never advertised to anything.
+#
+# Nothing here is disallowed. Every page this site publishes is a page it means
+# to publish: the reference surface, the architecture and threat-model docs, the
+# model and data cards, the accessibility conformance report, and the ADRs.
+User-agent: *
+Allow: /
+
+Sitemap: https://sprout.chelseakr.com/sitemap.xml
