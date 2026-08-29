@@ -10,6 +10,69 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The secret scanner was running with no rules at all (ISO 25010: Security /
+  confidentiality).** `.gitleaks.toml` declared only an `[allowlist]`. gitleaks treats a
+  config it finds as the *whole* configuration, so without `[extend] useDefault = true`
+  the default rule set was never loaded: every gitleaks run in this repository — `make
+  security`, the `gitleaks/gitleaks-action` CI job, and the pre-commit hook — scanned
+  with zero detectors and reported "no leaks found" because there was nothing it could
+  find. Measured with a control on 2026-08-28: a file holding a well-formed `ghp_` token
+  is `leaks found: 1` under gitleaks' defaults and `no leaks found` under this
+  repository's config. The full commit history is clean with the defaults restored, so
+  nothing was missed; the gate simply could not have caught it.
+  `tests/test_secret_scanning.py` now plants a synthetic credential and asserts the
+  committed config finds it, and skips rather than passes where gitleaks is absent.
+
+- **`make security` announced a real gitleaks finding as the tool being missing, and
+  exited 0.** The recipe was `command -v gitleaks && gitleaks detect || <fallback>`, and
+  a gitleaks that finds a secret exits 1 exactly like one that is not installed.
+  Measured with a stub reporting `leaks found: 1`: the recipe printed "gitleaks not
+  installed locally" and the target went green. The install check and the scan are now
+  separate statements.
+
+- **SAST read 80 of the repository's 142 Python files, then 0 of the tests.** `semgrep
+  scan --config p/python --error src` named one directory, leaving `tests/`, `scripts/`,
+  `eval/`, `examples/` and `infra/` — the gate machinery included — unscanned in both
+  `make security` and CI. Adding them to the command was not enough: semgrep's default
+  `.semgrepignore` excludes `tests/`, and `semgrep scan ... tests` reported success
+  having scanned **0 files**. A committed `.semgrepignore` fixes that. The scan now
+  reads 146 files. `tests/test_security_gate.py` derives the required roots from `git
+  ls-files` and fails if one is missing from either side or re-excluded.
+
+- **A toxicity fact could render in Spanish with no vet or poison-control routing
+  ([#107](https://github.com/ChelseaKR/sprout/issues/107)).** The routing decision asked
+  whether the answer cited a chunk whose topic was the literal `"toxicity"`. A chunk's
+  topic is its slugified Markdown heading, and 8 of the 16 Spanish corpus documents head
+  that section `## Toxicidad`, 7 of them ASPCA-listed as toxic to pets. For those, the
+  content-based check could never fire, so the mandatory escort survived only where the
+  keyword classifier also happened to fire. Reproduced on the committed corpus: a
+  Spanish question about oral irritation and drooling rendered Monstera's toxicity
+  paragraph with `is_safety_query=False` and no routing. `answer.py` and `answer.ts` now
+  read a shared bilingual slug set (`chunk.SAFETY_TOPIC_SLUGS` /
+  `web-static/src/topics.ts`), which `propose.py` already had for this exact hazard. The
+  committed eval failure `safety-025` ("no vet/poison routing", Spanish, peace lily) now
+  passes: the `safety` suite goes 0.976 to 1.000. Calibration ECE moves 0.126 to 0.134,
+  still inside the 0.15 gate.
+
+- **The browser could not receive a fitted confidence logistic
+  ([#108](https://github.com/ChelseaKR/sprout/issues/108)).** `confidence.py` reads
+  `cfg.confidence.fit` when `sprout fit-confidence` (ADR-0016) has written one, but
+  `export_web_bundle.py` never emitted it, TypeScript's `ConfidenceConfig` had no field
+  for it, and `scoreConfidence()` never read config at all. No fit is committed, so
+  nothing diverged yet; the first use of the documented workflow would have made
+  sprout.chelseakr.com compute a different confidence, and different abstain decisions,
+  than the CLI for the same question, silently. The fit is exported, declared, and read,
+  with the ADR-0012 defaults as the fallback on both sides.
+
+- **`sprout ci-parity-check` lost a recipe at a comment, and could not read a Makefile
+  variable.** `_make_target_recipes` treated any column-zero line as the end of a
+  recipe, so a `#` comment between two recipe lines dropped everything after it from the
+  diff — `make` does not end a recipe there, so the two disagreed about what the recipe
+  even was. `_resolve_make_vars` read exactly `PY` and `CONFIG`, so any other `$(VAR)`
+  reached the diff unexpanded and could never match CI's expansion of it. Both are
+  fixed, and the gitleaks allowlist entry is narrowed to the `if`-form so the old
+  `&&`/`||` shape cannot return unnoticed.
+
 - **`release.yml` ran the tagged commit's own gate inside main's Actions cache scope
   (ISO 25010: Security / integrity).** The `codeql` workflow has been failing on the default
   branch since the 2026-08-24 scheduled run with one error-severity finding:
