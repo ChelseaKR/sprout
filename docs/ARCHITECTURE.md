@@ -148,7 +148,7 @@ All model-touching code hides behind two narrow `Protocol`s in
 [`providers/base.py`](../src/sprout/providers/base.py); callers never import a concrete
 provider, and [`providers/__init__.py`](../src/sprout/providers/__init__.py) resolves config
 strings to implementations with **lazy imports** (so `boto3`/`httpx` are only imported when
-the cloud path is actually selected — `pip install sprout` with no extras runs end to end).
+the cloud path is actually selected — a plain `uv sync` with no extras runs end to end).
 
 | Protocol | Method | Offline default | Cloud / production seam |
 |---|---|---|---|

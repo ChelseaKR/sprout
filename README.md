@@ -73,8 +73,18 @@ key and makes no cloud call.
 
 ---
 
-The project has not published its first package release yet. After the initial release,
-`pipx install sprout` will be the supported packaged installation path. From a source checkout:
+## Install
+
+**Install from this source checkout. Do not `pip install sprout` or `pipx install sprout`** —
+that installs somebody else's package. The name `sprout` on PyPI is taken by an unrelated
+library ([Sprout 1.1.1](https://pypi.org/project/sprout/), Martijn Faassen / Infrae:
+*"common Python library which contains reusable components"*), and nothing in this repository
+has ever been published to PyPI. There is no release to install and no distribution name to
+type; a reader who followed the old instruction here got a stranger's code.
+[`docs/ROADMAP.md`](docs/ROADMAP.md) tracks the release work, which now includes choosing a
+distribution name that is actually available.
+
+Everything below runs offline from the checkout:
 
 ```bash
 uv sync                                 # create the environment from the lockfile
@@ -90,6 +100,60 @@ make eval                               # regenerate the committed eval report, 
 ```
 
 `make demo` reproduces a scripted session end to end.
+
+## What an answer actually looks like
+
+Real output from the commands above — the deterministic offline pipeline over the bundled corpus,
+on a machine with no API key and no network, so you get the same answers on your own checkout.
+Long lines are hard-wrapped here for width; nothing else is edited, and
+`tests/test_committed_artifacts_are_current.py::test_readme_transcripts_are_what_the_engine_says`
+re-asks both questions through the engine so this section cannot quietly go stale.
+
+<!-- transcript:pothos-toxicity -->
+```console
+$ uv run sprout ask "Is my pothos toxic to my cat?"
+The cited reference lists Pothos (Epipremnum aureum) as toxic to cats and dogs; ingestion can
+cause oral irritation, intense burning of the mouth and tongue, excessive drooling, vomiting,
+and difficulty swallowing. If a cat or dog is suspected of chewing or swallowing Pothos,
+contact a veterinarian or a poison-control hotline promptly. These effects in Pothos are
+attributed to insoluble calcium oxalate crystals released when an animal chews the leaves or
+stems. If a pet or child may have eaten part of this plant, treat it as urgent: contact your
+veterinarian or a poison-control line now — don't wait for symptoms to appear. I can't certify
+any plant safe. Even a plant a source does not list as toxic can still cause vomiting or mouth
+and stomach irritation if eaten, and reactions vary by pet and person — a source's silence is
+not a guarantee against harm. Who to call now: ASPCA Animal Poison Control Center,
+888-426-4435 (https://www.aspca.org/pet-care/animal-poison-control), or Pet Poison Helpline,
+855-764-7661 (https://www.petpoisonhelpline.com/). What to tell them: the plant (species if
+known), how much was eaten, and when.
+
+Sources:
+  - Pothos care — pothos.md (as of 2026-05-01)
+
+Based on references as of 2026-05-01.
+[confidence: partially supported — verify (0.66) · Answers are drawn only from a dated, cited
+plant-care corpus. This is not veterinary advice.]
+```
+<!-- /transcript:pothos-toxicity -->
+
+All four hard rules are visible in that one answer: every sentence is copied verbatim from the
+cited passage, the citation carries its fetch date, the only appearance of the word "safe" is the
+refusal to certify it, and the ingestion question is routed to a vet and a poison-control line
+with the numbers spelled out. The stated confidence is 0.66 — "partially supported — verify",
+not a flat assertion.
+
+And when the corpus does not cover the question, it says so instead of improvising:
+
+<!-- transcript:venus-flytrap-abstain -->
+```console
+$ uv run sprout ask "How do I care for a Venus flytrap?"
+I don't have a cited reference that covers this, so I can't answer from the corpus. For
+plant-specific guidance, check a reputable source such as your local extension service or the
+ASPCA toxic-plant list.
+[confidence: insufficient evidence to answer (0.00) · Answers are drawn only from a dated,
+cited plant-care corpus. This is not veterinary advice.]
+```
+<!-- /transcript:venus-flytrap-abstain -->
+
 
 ## The eval harness (the actual product)
 
@@ -111,6 +175,38 @@ and **byte-identical for identical inputs**.
 
 Everything is **fail-closed**: a dataset hash mismatch, a malformed case, an empty suite,
 or a malformed judge response fails the run rather than passing quietly.
+
+### The committed scoreboard
+
+This is the run in [`docs/audits/eval-report.md`](docs/audits/eval-report.md) as of this commit —
+regenerate it with `make eval`, offline, and get the same fingerprint. ↑ means higher is better,
+↓ lower.
+
+<!-- scoreboard:eval-report -->
+| Suite | Verdict | Score | Threshold | n |
+|---|---|---|---|---|
+| `calibration` | ✅ PASS | **0.134** | 0.150 ↓ | 121 |
+| `completeness` | ✅ PASS | **1.000** | 0.900 ↑ | 3 |
+| `conversation` | ✅ PASS | **1.000** | 0.950 ↑ | 9 |
+| `groundedness` | ✅ PASS | **1.000** | 0.950 ↑ | 121 |
+| `multilingual` | ✅ PASS | **0.917** | 0.850 ↑ | 12 |
+| `refusal` | ✅ PASS | **0.923** | 0.900 ↑ | 39 |
+| `safety` | ✅ PASS | **1.000** | 0.950 ↑ | 42 |
+| `toxicity-coverage` | ✅ PASS | **1.000** | 0.990 ↑ | 12 |
+<!-- /scoreboard:eval-report -->
+
+Overall verdict **PASS**, run fingerprint `50a032e7e395aa04` (dataset) ·
+`ff1ad7874e00` (judge config) · seed `1729` · target
+`deterministic:extractive`. `tests/test_committed_artifacts_are_current.py::test_readme_scoreboard_matches_the_committed_report`
+re-renders this table from `eval-report.json` and fails if the README has drifted from it, so
+these numbers cannot outlive the run that produced them.
+
+Two of them are honest about their own weakness rather than rounded away. `completeness` scores
+1.000 on **n=3**, an under-powered sample whose 95% CI is [0.439, 1.000] — the committed report
+labels it as such. `refusal` sits at 0.923 against a 0.90 offline floor, below the 0.95 portfolio
+target, because the deterministic hashing embedder cannot separate every unknown-species or
+jailbreak phrasing; that gap is recorded in the model card, not hidden.
+
 
 ---
 

@@ -456,3 +456,134 @@ def test_e3_research_snapshot_matches_the_provenance_its_doc_records() -> None:
         f"alce_results.json scored {alce['n_items']} items where "
         f"{_E3_DOC.relative_to(_ROOT)} records {scored.group(1)}"
     )
+
+
+# --- README proof surfaces -------------------------------------------------------------------
+#
+# The README calls the eval scoreboard "the headline artifact" and, until this commit, printed
+# neither a score nor a single answer: a reader had to clone the repo and run it to find out
+# whether any of it was real. Pasting the numbers and a transcript in fixes that and creates a
+# new failure mode — a README that keeps asserting last quarter's run. Both are therefore
+# derived here from the things that produced them, not eyeballed.
+
+_README = _ROOT / "README.md"
+
+
+def _readme_block(marker: str) -> str:
+    """Return the text between ``<!-- marker -->`` and ``<!-- /marker -->`` in the README."""
+    opening, closing = f"<!-- {marker} -->", f"<!-- /{marker} -->"
+    text = _README.read_text(encoding="utf-8")
+    assert opening in text and closing in text, (
+        f"README.md no longer carries the {marker} block. It was removed rather than "
+        "updated, which takes the proof out of the README and this gate with it."
+    )
+    start = text.index(opening) + len(opening)
+    return text[start : text.index(closing, start)].strip("\n")
+
+
+def _scoreboard_from(report: dict[str, object]) -> str:
+    """Render the README's scoreboard table from an eval report, the single renderer."""
+    rows = [
+        "| Suite | Verdict | Score | Threshold | n |",
+        "|---|---|---|---|---|",
+    ]
+    results = report["suite_results"]
+    assert isinstance(results, list)
+    for result in results:
+        metric = result["metric"]
+        verdict = "✅ PASS" if result["verdict"] == "pass" else "❌ FAIL"
+        direction = "↑" if metric["higher_is_better"] else "↓"
+        rows.append(
+            f"| `{result['suite']}` | {verdict} | **{result['score']:.3f}** | "
+            f"{metric['threshold']:.3f} {direction} | {result['n_items']} |"
+        )
+    return "\n".join(rows)
+
+
+def test_readme_scoreboard_matches_the_committed_report() -> None:
+    """The README's scoreboard is the committed run, not a remembered one.
+
+    ``docs/audits/eval-report.json`` is itself gated against a fresh regeneration above, so
+    pinning the README to it chains the whole way back to the engine: a score that moves fails
+    ``test_committed_audits_match_a_fresh_run`` first, and if the report is then regenerated
+    without touching the README, it fails here.
+    """
+    report = json.loads((_AUDITS / "eval-report.json").read_text(encoding="utf-8"))
+    expected = _scoreboard_from(report)
+    assert _readme_block("scoreboard:eval-report") == expected, (
+        "README.md's scoreboard no longer matches docs/audits/eval-report.json. Re-render "
+        "the block between the scoreboard:eval-report markers from the committed report — "
+        "the README is the surface most readers judge these numbers on, and a stale one is "
+        "worse than none."
+    )
+
+
+def test_readme_scoreboard_records_the_run_that_produced_it() -> None:
+    """The fingerprint printed under the table identifies that exact run."""
+    fingerprint = json.loads((_AUDITS / "eval-report.json").read_text(encoding="utf-8"))[
+        "fingerprint"
+    ]
+    readme = _README.read_text(encoding="utf-8")
+    for label, value in (
+        ("dataset hash", str(fingerprint["dataset_hash"])[:16]),
+        ("judge config hash", str(fingerprint["judge_config_hash"])[:12]),
+        ("seed", str(fingerprint["seed"])),
+        ("target", str(fingerprint["target"])),
+    ):
+        assert value in readme, (
+            f"README.md does not name the committed run's {label} ({value}); the scoreboard "
+            "would then be a set of numbers with no run attached to them"
+        )
+
+
+#: README transcript marker -> the question that must reproduce it.
+_README_TRANSCRIPTS = {
+    "transcript:pothos-toxicity": "Is my pothos toxic to my cat?",
+    "transcript:venus-flytrap-abstain": "How do I care for a Venus flytrap?",
+}
+
+
+def _normalized(text: str) -> str:
+    """Collapse whitespace: the README hard-wraps long answers for column width."""
+    return " ".join(text.split())
+
+
+def test_readme_transcripts_are_what_the_engine_says(regenerated_audits: Path) -> None:
+    """Each pasted transcript is replayed against the real engine and the real corpus.
+
+    A quoted answer is the most persuasive thing a README of this kind can show and the
+    easiest to fake, so it is not trusted: the questions are re-asked here through the same
+    CLI a reader would run, over the bundled corpus, offline. A corpus edit, a guard change
+    or a retrieval-threshold tweak that changes what the assistant says fails this test
+    instead of leaving the README quoting an answer the software no longer gives.
+
+    Whitespace is normalized because the README wraps the long toxicity answer to fit; the
+    words, the citation line, the fetch date and the stated confidence are compared exactly.
+    """
+    config_path = regenerated_audits.parent / "sprout.yaml"
+
+    for marker, question in _README_TRANSCRIPTS.items():
+        block = _readme_block(marker)
+        assert block.startswith("```console\n") and block.endswith("\n```"), (
+            f"the {marker} block is no longer a fenced console transcript, so what a reader "
+            "sees and what this test compares have come apart"
+        )
+        prompt, _, quoted = block[len("```console\n") : -len("\n```")].partition("\n")
+        assert prompt == f'$ uv run sprout ask "{question}"', (
+            f"the {marker} block no longer opens with the command it claims to show; a "
+            "reader cannot reproduce a transcript whose command has drifted from its output"
+        )
+
+        result = _runner.invoke(app, ["ask", question, "--config", str(config_path)])
+        assert result.exit_code == 0, (
+            f"`sprout ask {question!r}` exited {result.exit_code} while replaying the "
+            f"README's {marker} transcript:\n{result.output}"
+        )
+        assert _normalized(quoted) == _normalized(result.output), (
+            f"README.md's {marker} transcript is not what the engine says any more.\n"
+            f"  README: {_normalized(quoted)[:300]}\n"
+            f"  engine: {_normalized(result.output)[:300]}\n"
+            "Re-run the command and paste the current answer, or fix the regression it "
+            "caught — a README quoting an answer the software no longer gives is the "
+            "failure this file exists to prevent."
+        )
