@@ -252,6 +252,17 @@ All scripts live in `eval/research/e3_external_suite_comparison/` and are checke
 doc, plus their exact output (`golden_set.json`, `alce_results.json`, `ragas_nonllm_results.json`,
 `ragas_llm_results.json`, `deepeval_results.json`).
 
+**These five files are a frozen snapshot, not a live artifact.** The committed
+`golden_set.json` was built when the eval dataset hashed to `sha256:b87c705c52ef` and held
+128 items, of which 98 reached the ALCE-style citation scorer. The suites have grown since:
+rebuilding the golden set from the committed config and suites today produces
+`sha256:50a032e7e395` and 158 items. That is expected, and it is the reason step 1 must not
+be re-run on its own — the four result files below are scored against the golden set as it
+was, and regenerating only the input would leave them describing a set that no longer
+exists. Re-run the whole chain, or none of it.
+`tests/test_committed_artifacts_are_current.py` pins the committed snapshot to the dataset
+version recorded here, so a partial rebuild fails instead of passing quietly.
+
 ```bash
 # 1. Build the shared golden set from the real assistant + real eval cases (sprout's own venv)
 uv run python eval/research/e3_external_suite_comparison/build_golden_set.py

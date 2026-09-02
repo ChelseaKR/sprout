@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-PY := uv run
+PY := uv run --locked
 CONFIG ?= config/sprout.yaml
 # Set only by the release workflow (e.g. `make verify RELEASE_TAG=v1.2.3`): when non-empty,
 # `eval` appends this run's scores to docs/audits/eval-history.jsonl and runs the
@@ -8,6 +8,7 @@ CONFIG ?= config/sprout.yaml
 RELEASE_TAG ?=
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
+        lock-check \
         smoke a11y site-check claims calibrate gate-inventory slo corpus-report propose-check \
         freshness audits docs \
         workflow-lint ci-parity-check demo verify clean web-static-bundle \
@@ -25,6 +26,17 @@ dev: ingest ## Ingest the corpus and run the chat server locally
 
 fmt: ## Auto-format the codebase
 	$(PY) ruff format src tests
+
+# `uv run` without `--locked` implicitly re-locks: with a pyproject edit in the tree it
+# rewrites uv.lock in place and the gate it was running still exits 0. Measured on
+# 2026-08-29: tightening one dependency constraint and then running `make lint` printed
+# `ruff 0.16.3` and changed uv.lock's sha from 1c127747 to 88a9de81, silently. Every
+# recipe now goes through `uv run --locked` (see PY above), and this target runs first in
+# `verify` so a lockfile that no longer matches pyproject.toml fails before any other
+# target has a chance to heal it in the working tree. `uv lock --check` resolves and
+# compares; it never writes.
+lock-check: ## Fail if uv.lock is not what pyproject.toml now resolves to (writes nothing)
+	uv lock --check --offline
 
 lint: ## Lint (format check + rules)
 	$(PY) ruff format --check src tests docs_hooks
@@ -135,7 +147,7 @@ web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conf
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
 	cd web-static && npm ci && npm run build:site
 
-verify: lint type test security eval smoke a11y site-check claims calibrate gate-inventory slo corpus-report propose-check docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
+verify: lock-check lint type test security eval smoke a11y site-check claims calibrate gate-inventory slo corpus-report propose-check docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts

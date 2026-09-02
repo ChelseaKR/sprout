@@ -15,12 +15,20 @@ English and Spanish synonyms/paraphrases of one plant-care concept; this script:
 Run ``uv run python scripts/generate_static_vectors.py`` after editing
 ``clusters.yaml``; the output is committed, so this script is a build step, not a
 runtime dependency (mirrors ``make ingest`` regenerating the index from source data).
+
+``--check`` renders the table and compares it against the committed file without
+writing anything, so a ``clusters.yaml`` edit that was never regenerated fails a gate
+instead of shipping a stale table. ``tests/test_committed_artifacts_are_current.py``
+runs it.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
+import math
+import sys
 from pathlib import Path
 
 import yaml
@@ -52,8 +60,7 @@ def _seed_vector(name: str, dim: int = DIM) -> list[float]:
             raw = int.from_bytes(digest[i : i + 2], "big")
             vec.append((raw / 32768.0) - 1.0)
         counter += 1
-    norm = sum(v * v for v in vec) ** 0.5
-    return [v / norm for v in vec] if norm else vec
+    return _normalize(vec)
 
 
 def _add(a: list[float], b: list[float]) -> list[float]:
@@ -61,7 +68,17 @@ def _add(a: list[float], b: list[float]) -> list[float]:
 
 
 def _normalize(vec: list[float]) -> list[float]:
-    norm = sum(v * v for v in vec) ** 0.5
+    """L2-normalise, using ``math.sqrt`` and never ``x ** 0.5``.
+
+    ``x ** 0.5`` is libm's ``pow``, which IEEE 754 does not require to be correctly
+    rounded; ``math.sqrt`` is ``sqrt``, which it does. Measured 2026-09-01 on macOS
+    (arm64, CPython 3.12.14): of the 276 norms this generator computes, **91 give a
+    different double** from ``math.sqrt`` of the same sum. glibc's ``pow`` agrees with
+    ``sqrt`` on those, so a table regenerated on macOS and a table regenerated on Linux
+    were different bytes, and the regenerate-and-compare gate that landed with this
+    module passed locally and failed in CI on a table nobody had touched.
+    """
+    norm = math.sqrt(sum(v * v for v in vec))
     return [v / norm for v in vec] if norm else vec
 
 
@@ -92,11 +109,47 @@ def build_table() -> dict[str, object]:
     }
 
 
-def main() -> None:
-    table = build_table()
-    OUTPUT_PATH.write_text(json.dumps(table, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+def render() -> str:
+    """The exact bytes ``main()`` writes. One serialiser, so ``--check`` cannot drift
+    from the writer it is checking."""
+    return json.dumps(build_table(), indent=2, sort_keys=True) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Write nothing; exit non-zero if the committed table is not what this "
+        "generator now produces from clusters.yaml.",
+    )
+    args = parser.parse_args(argv)
+    rendered = render()
+
+    if args.check:
+        # Deliberately never writes. A gate that regenerates into the working tree heals
+        # its own drift locally and leaves the committed bytes stale, which is the exact
+        # failure this check exists to catch.
+        if not OUTPUT_PATH.exists():
+            print(f"{OUTPUT_PATH} is missing; run `python {Path(__file__).name}`", file=sys.stderr)
+            return 1
+        committed = OUTPUT_PATH.read_text(encoding="utf-8")
+        if committed != rendered:
+            print(
+                f"{OUTPUT_PATH} is stale: clusters.yaml (or this generator) changed since it "
+                f"was last regenerated. Run `uv run python scripts/{Path(__file__).name}` "
+                "and commit the result.",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"{OUTPUT_PATH} is current")
+        return 0
+
+    OUTPUT_PATH.write_text(rendered, encoding="utf-8")
+    table = json.loads(rendered)
     print(f"wrote {OUTPUT_PATH} ({table['n_tokens']} tokens from {table['n_terms']} terms)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
