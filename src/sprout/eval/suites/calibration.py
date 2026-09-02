@@ -106,7 +106,15 @@ class CalibrationSuite:
             )
             coverage_segments.append(
                 SegmentScore(
-                    label=f"coverage≥{point.threshold:.2f} (risk)",
+                    # The threshold is a *confidence* cutoff, and coverage is what the
+                    # curve reports at it -- naming the row "coverage>=0.25" said the
+                    # opposite of its own numbers (at confidence>=0.25 this corpus covers
+                    # 100% of cases, not 25%). The label states both, so the coverage
+                    # half of the coverage/risk tradeoff E4 asks for is actually
+                    # published rather than left to be derived from `n`.
+                    label=(
+                        f"risk @ confidence≥{point.threshold:.2f} (coverage {point.coverage:.2f})"
+                    ),
                     score=point.risk,
                     n=point.n_covered,
                     verdict=verdict,

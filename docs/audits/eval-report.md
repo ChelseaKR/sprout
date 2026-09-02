@@ -48,17 +48,17 @@
 | [0.7,0.8) | 0.833 | 30 | ✅ PASS |
 | [0.8,0.9) | 0.828 | 29 | ✅ PASS |
 | [0.9,1.0) | 0.889 | 9 | ✅ PASS |
-| coverage≥0.00 (risk) | 0.174 | 121 | ✅ PASS |
-| coverage≥0.10 (risk) | 0.174 | 121 | ✅ PASS |
-| coverage≥0.20 (risk) | 0.174 | 121 | ✅ PASS |
-| coverage≥0.25 (risk) | 0.174 | 121 | ✅ PASS |
-| coverage≥0.30 (risk) | 0.174 | 121 | ✅ PASS |
-| coverage≥0.40 (risk) | 0.170 | 118 | ✅ PASS |
-| coverage≥0.50 (risk) | 0.172 | 116 | ✅ PASS |
-| coverage≥0.60 (risk) | 0.202 | 94 | ✅ PASS |
-| coverage≥0.70 (risk) | 0.162 | 68 | ✅ PASS |
-| coverage≥0.80 (risk) | 0.158 | 38 | ✅ PASS |
-| coverage≥0.90 (risk) | 0.111 | 9 | ✅ PASS |
+| risk @ confidence≥0.00 (coverage 1.00) | 0.165 | 121 | ✅ PASS |
+| risk @ confidence≥0.10 (coverage 1.00) | 0.165 | 121 | ✅ PASS |
+| risk @ confidence≥0.20 (coverage 1.00) | 0.165 | 121 | ✅ PASS |
+| risk @ confidence≥0.25 (coverage 1.00) | 0.165 | 121 | ✅ PASS |
+| risk @ confidence≥0.30 (coverage 1.00) | 0.165 | 121 | ✅ PASS |
+| risk @ confidence≥0.40 (coverage 0.98) | 0.161 | 118 | ✅ PASS |
+| risk @ confidence≥0.50 (coverage 0.96) | 0.164 | 116 | ✅ PASS |
+| risk @ confidence≥0.60 (coverage 0.78) | 0.192 | 94 | ✅ PASS |
+| risk @ confidence≥0.70 (coverage 0.56) | 0.162 | 68 | ✅ PASS |
+| risk @ confidence≥0.80 (coverage 0.31) | 0.158 | 38 | ✅ PASS |
+| risk @ confidence≥0.90 (coverage 0.07) | 0.111 | 9 | ✅ PASS |
 
 <details><summary>Failing examples</summary>
 

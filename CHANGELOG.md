@@ -10,6 +10,18 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The calibration report now publishes the coverage/risk tradeoff, not only ECE**
+  (RESEARCH-ROADMAP E4, [ADR-0021](docs/adr/0021-coverage-risk-curve-in-calibration-report.md)).
+  `sprout.confidence.coverage_risk_curve()` reports, at each of a fixed set of confidence
+  cutoffs (including the engine's own 0.25 `abstain_threshold`), what fraction of labeled
+  cases would be answered and what fraction of *those* would be wrong. The `calibration`
+  suite appends the curve to its existing segments. Report-only: the suite's PASS/FAIL is
+  still ECE ≤ 0.15 plus abstention enforcement, unchanged. Rows read
+  `risk @ confidence≥T (coverage C)` — `T` is a confidence cutoff, so labelling them
+  `coverage≥T` named the wrong axis and contradicted the numbers beside them (at
+  `confidence≥0.25` the committed corpus covers 100% of calibration cases, not 25%), and
+  left coverage itself unpublished.
+
 - **The docs claimed an EN/ES parity gate the harness does not have.** Eleven places
   across the README, ROADMAP, ARCHITECTURE, RESPONSIBLE-TECH-AUDITS, USER-RESEARCH,
   DEFINITION_OF_DONE, the AI risk register, the model card and this changelog said the

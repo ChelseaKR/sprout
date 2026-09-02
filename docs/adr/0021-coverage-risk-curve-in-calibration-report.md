@@ -34,7 +34,11 @@ returns one `CoveragePoint(threshold, coverage, risk, n_covered)` per threshold:
 The `calibration` eval suite (`eval/suites/calibration.py`) computes this curve alongside
 the existing reliability bins and appends it to `SuiteResult.segments` — the same generic
 mechanism the reliability diagram already uses, so `report.py` needed no changes to render
-it. Each point additionally carries an informational PASS/FAIL: FAIL when risk rises more
+it. Each row is labelled `risk @ confidence≥T (coverage C)`: `T` is the confidence cutoff
+and `C` the coverage measured at it. Labelling the row `coverage≥T` instead — as the first
+draft did — named the cutoff after the wrong axis and contradicted the numbers beside it
+(at `confidence≥0.25` the committed corpus covers 100% of calibration cases, not 25%), and
+left coverage, half of what E4 asks the report to publish, nowhere in the table. Each point additionally carries an informational PASS/FAIL: FAIL when risk rises more
 than `_RISK_MONOTONICITY_TOLERANCE` (0.05) over the previous, lower-threshold point — a
 weak calibration smell (raising the bar should not make the covered set *riskier*), tuned
 loose enough to absorb small-n jitter.

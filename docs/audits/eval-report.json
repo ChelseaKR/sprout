@@ -80,67 +80,67 @@
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.00 (risk)",
-          "score": 0.1736,
+          "label": "risk @ confidence≥0.00 (coverage 1.00)",
+          "score": 0.1653,
           "n": 121,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.10 (risk)",
-          "score": 0.1736,
+          "label": "risk @ confidence≥0.10 (coverage 1.00)",
+          "score": 0.1653,
           "n": 121,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.20 (risk)",
-          "score": 0.1736,
+          "label": "risk @ confidence≥0.20 (coverage 1.00)",
+          "score": 0.1653,
           "n": 121,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.25 (risk)",
-          "score": 0.1736,
+          "label": "risk @ confidence≥0.25 (coverage 1.00)",
+          "score": 0.1653,
           "n": 121,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.30 (risk)",
-          "score": 0.1736,
+          "label": "risk @ confidence≥0.30 (coverage 1.00)",
+          "score": 0.1653,
           "n": 121,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.40 (risk)",
-          "score": 0.1695,
+          "label": "risk @ confidence≥0.40 (coverage 0.98)",
+          "score": 0.161,
           "n": 118,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.50 (risk)",
-          "score": 0.1724,
+          "label": "risk @ confidence≥0.50 (coverage 0.96)",
+          "score": 0.1638,
           "n": 116,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.60 (risk)",
-          "score": 0.2021,
+          "label": "risk @ confidence≥0.60 (coverage 0.78)",
+          "score": 0.1915,
           "n": 94,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.70 (risk)",
+          "label": "risk @ confidence≥0.70 (coverage 0.56)",
           "score": 0.1618,
           "n": 68,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.80 (risk)",
+          "label": "risk @ confidence≥0.80 (coverage 0.31)",
           "score": 0.1579,
           "n": 38,
           "verdict": "pass"
         },
         {
-          "label": "coverage≥0.90 (risk)",
+          "label": "risk @ confidence≥0.90 (coverage 0.07)",
           "score": 0.1111,
           "n": 9,
           "verdict": "pass"
