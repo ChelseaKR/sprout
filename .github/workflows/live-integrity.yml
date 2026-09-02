@@ -1,0 +1,101 @@
+# Does the page a reader receives answer from the corpus this repository ships?
+#
+# Every gate here grades the build tree. `sprout a11y-check` runs on the built
+# index, the conformance suite runs the browser corpus against the Python pipeline,
+# `mkdocs build --strict` refuses a broken reference, and docs-pages checks four
+# routes are non-empty. All of it runs before the artifact leaves the runner.
+# Nothing has ever looked at the bytes a reader receives, so a pages run that
+# failed, never fired, or published an older commit would leave every gate green
+# while the deployed page answered from a stale corpus index, and nothing in this
+# repository could tell.
+#
+# This is the check for the deployment. The build steps below are the same ones
+# docs-pages runs, in the same order, deliberately: the tree this compares has to
+# be the tree that workflow uploads, and reimplementing the build would let the two
+# drift apart. Then scripts/verify_live_site.py fetches every published file and
+# fails naming every byte-level difference.
+#
+# Two files are not compared byte for byte, both stamped by mkdocs with the day the
+# build ran rather than with anything about the content: sitemap.xml carries a
+# per-URL <lastmod> filled from get_build_date(), and sitemap.xml.gz embeds a gzip
+# MTIME. The sitemap is compared with those elements removed, so its URL set,
+# change frequencies and priorities are all still gated; the gzip is checked by
+# decompressing it and requiring the result to be the live sitemap. Everything else
+# is exact: the corpus index, the config bundle, every ES module, the shell, all 52
+# rendered pages, the theme assets, the search index and the seven audit artifacts.
+# The reasoning is written at the top of the script, where it can be read next to
+# the code that acts on it.
+#
+# It reads the network, deliberately, which the merge gate must never do. That is
+# why it lives in its own workflow, holds only `contents: read`, and is not a
+# required check: it grades the deployment, and a deployment that has not happened
+# yet is not a reason to block a merge.
+#
+# Runs daily and on demand (Actions > live integrity sentinel > Run workflow).
+name: live integrity sentinel
+
+on:
+  schedule:
+    - cron: "53 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-integrity
+  cancel-in-progress: false
+
+jobs:
+  verify-live:
+    name: the live site is what this repository builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+
+      # The five steps docs-pages runs to produce site/, unchanged.
+      - name: Install documentation dependencies
+        run: uv sync --locked --group docs
+
+      - name: Build the deterministic corpus index
+        run: uv run sprout ingest
+
+      - name: Export the browser corpus bundle
+        run: uv run python scripts/export_web_bundle.py
+
+      - name: Build the zero-server reference surface
+        run: npm ci --prefix web-static && npm run build:site --prefix web-static
+
+      - name: Build documentation
+        run: uv run mkdocs build --strict
+
+      - name: Publish the reference surface at the site root
+        run: cp -R web-static/public/. site/
+
+      - name: Compare the live site with what this checkout builds
+        run: |
+          set -uo pipefail
+          expected_sha="$(git rev-parse HEAD)"
+          uv run python scripts/verify_live_site.py --site site
+          verify_rc="$?"
+          # A deploy for a newer commit may have landed while this ran, in which
+          # case the live site differing from THIS commit is the deploy working.
+          # Only that exact case is excused, by re-reading the remote afterwards.
+          remote_sha="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+          if [ "$remote_sha" != "$expected_sha" ]; then
+            echo "::warning::main moved to ${remote_sha} while this ran; re-run once its deploy finishes"
+            exit 0
+          fi
+          exit "$verify_rc"
