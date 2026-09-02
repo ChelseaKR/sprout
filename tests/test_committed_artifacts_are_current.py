@@ -25,18 +25,23 @@ stale, which is the failure being gated.
 
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import json
+import math
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 import yaml
 from typer.testing import CliRunner
 
 from sprout.cli import app
+from sprout.text import content_tokens
 
 _ROOT = Path(__file__).resolve().parents[1]
 _AUDITS = _ROOT / "docs" / "audits"
@@ -47,6 +52,16 @@ _EMBEDDINGS_MANIFEST = _EMBEDDINGS / "manifest.yaml"
 _STATIC_VECTORS = _EMBEDDINGS / "static_vectors.json"
 
 _runner = CliRunner()
+
+
+def _load_generator() -> ModuleType:
+    """Import ``scripts/generate_static_vectors.py`` — it is a script, not a package."""
+    spec = importlib.util.spec_from_file_location("_generate_static_vectors", _GENERATOR)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 
 _STALE = (
     "{name} is stale: it is not what the generator now produces. Regenerate it "
@@ -198,6 +213,99 @@ def test_static_vector_table_matches_its_generator() -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+def _reference_normalize(vec: list[float]) -> list[float]:
+    """L2-normalise using ``math.sqrt``, the correctly-rounded IEEE 754 square root."""
+    norm = math.sqrt(sum(v * v for v in vec))
+    return [v / norm for v in vec] if norm else vec
+
+
+def _raw_seed(name: str, dim: int) -> list[float]:
+    """A cluster's hashed byte stream *before* normalisation — mirrors ``_seed_vector``."""
+    vec: list[float] = []
+    counter = 0
+    while len(vec) < dim:
+        digest = hashlib.sha256(f"{name}::{counter}".encode()).digest()
+        for i in range(0, len(digest) - 1, 2):
+            if len(vec) >= dim:
+                break
+            vec.append((int.from_bytes(digest[i : i + 2], "big") / 32768.0) - 1.0)
+        counter += 1
+    return vec
+
+
+def _unnormalised_generator_inputs(generator: ModuleType) -> dict[str, list[float]]:
+    """Every vector the generator normalises, before it normalises it.
+
+    The per-cluster hash streams and the per-token sums of seed vectors, keyed by a
+    label that names which one, so a failure says which vector disagreed.
+    """
+    clusters: dict[str, list[str]] = yaml.safe_load(
+        generator.CLUSTERS_PATH.read_text(encoding="utf-8")
+    )["clusters"]
+    assert clusters, "clusters.yaml is empty; this check would be vacuous"
+    inputs = {f"cluster {name!r}": _raw_seed(name, generator.DIM) for name in clusters}
+
+    seeds = {name: generator._seed_vector(name) for name in clusters}
+    accumulated: dict[str, list[float]] = {}
+    for name, terms in clusters.items():
+        for term in terms:
+            for token in content_tokens(term):
+                if token in accumulated:
+                    accumulated[token] = generator._add(accumulated[token], seeds[name])
+                else:
+                    accumulated[token] = list(seeds[name])
+    assert accumulated, "no tokens derived from clusters.yaml; this check would be vacuous"
+    inputs.update({f"token {token!r}": vec for token, vec in accumulated.items()})
+    return inputs
+
+
+def test_the_static_vector_table_is_the_same_bytes_on_every_platform() -> None:
+    """The generator normalises with ``math.sqrt``, never with ``x ** 0.5``.
+
+    A committed table plus a regenerate-and-compare gate is only a gate if two machines
+    agree on the arithmetic. ``x ** 0.5`` is libm's ``pow``, which IEEE 754 does not
+    require to be correctly rounded; ``math.sqrt`` is ``sqrt``, which it does. Measured
+    2026-09-01 on macOS (arm64, CPython 3.12.14): 91 of the 276 norms this generator
+    computes gave a different double from ``math.sqrt`` of the same sum, and glibc's
+    ``pow`` agreed with ``sqrt`` on all of them — so the table regenerated on a laptop
+    and the table regenerated on the CI runner differed on 5824 lines, and ``--check``
+    said "is current" on one machine and "is stale" on the other for a file nobody had
+    edited.
+
+    This rebuilds the generator's *un-normalised* inputs from the real ``clusters.yaml``
+    and compares the generator's normalisation of each against a ``math.sqrt``
+    reference, so it fails on any machine whose ``pow`` disagrees rather than only on
+    the one that happened to write the file.
+    """
+    generator = _load_generator()
+    inputs = _unnormalised_generator_inputs(generator)
+    for label, vec in inputs.items():
+        assert generator._normalize(vec) == _reference_normalize(vec), (
+            f"{label} normalises differently from math.sqrt; the generator is using a "
+            "platform-dependent square root, so the committed table is only "
+            "reproducible on the machine that wrote it"
+        )
+
+
+def test_the_seed_vector_helper_uses_the_same_correctly_rounded_square_root() -> None:
+    """``_seed_vector`` normalises its own hash stream; that step must not regress.
+
+    It delegates to ``_normalize`` today. It carried its own inline ``** 0.5`` before,
+    which is how the divergence above got in, so this pins the composed result rather
+    than trusting the delegation to stay.
+    """
+    generator = _load_generator()
+    clusters: dict[str, list[str]] = yaml.safe_load(
+        generator.CLUSTERS_PATH.read_text(encoding="utf-8")
+    )["clusters"]
+    for name in clusters:
+        raw = _raw_seed(name, generator.DIM)
+        assert generator._seed_vector(name) == _reference_normalize(raw), (
+            f"the seed vector for cluster {name!r} is not the correctly-rounded "
+            "normalisation of its hash stream"
+        )
 
 
 def test_static_vector_manifest_describes_the_table_it_ships_with() -> None:

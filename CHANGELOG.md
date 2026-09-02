@@ -31,6 +31,19 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
     same serialiser `main()` writes with and compares without touching the file. Editing
     `src/sprout/data/embeddings/clusters.yaml` and forgetting to regenerate previously
     shipped a table the code no longer produces, with every gate green.
+  - **The static-vector table was not reproducible off the machine that wrote it.**
+    `scripts/generate_static_vectors.py` L2-normalised with `x ** 0.5`, which is libm's
+    `pow` — not required by IEEE 754 to be correctly rounded — rather than `math.sqrt`,
+    which is. Measured 2026-09-01 on macOS (arm64, CPython 3.12.14): 91 of the 276 norms
+    the generator computes gave a different double from `math.sqrt` of the same sum, and
+    glibc's `pow` agreed with `sqrt` on all 91, so the table regenerated on a laptop and
+    the table regenerated on the CI runner differed on 5824 lines. The new `--check`
+    gate above duly said "is current" locally and "is stale" in CI for a file nobody had
+    edited. The generator now uses `math.sqrt` and the committed table is regenerated;
+    every value moved by at most 2.8e-17, so no rendered score or report changed. A test
+    rebuilds the generator's un-normalised inputs from the real `clusters.yaml` and
+    compares its normalisation against a `math.sqrt` reference, so the divergence fails
+    on whichever machine has the disagreeing `pow` rather than only in CI.
   - `src/sprout/data/embeddings/manifest.yaml` restates the table's `dim` by hand and
     names its source, its generator and its ADR. The dimension is now checked against
     the table and the generator, and each named path must exist, so a renamed producer

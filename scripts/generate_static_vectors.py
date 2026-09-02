@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -59,8 +60,7 @@ def _seed_vector(name: str, dim: int = DIM) -> list[float]:
             raw = int.from_bytes(digest[i : i + 2], "big")
             vec.append((raw / 32768.0) - 1.0)
         counter += 1
-    norm = sum(v * v for v in vec) ** 0.5
-    return [v / norm for v in vec] if norm else vec
+    return _normalize(vec)
 
 
 def _add(a: list[float], b: list[float]) -> list[float]:
@@ -68,7 +68,17 @@ def _add(a: list[float], b: list[float]) -> list[float]:
 
 
 def _normalize(vec: list[float]) -> list[float]:
-    norm = sum(v * v for v in vec) ** 0.5
+    """L2-normalise, using ``math.sqrt`` and never ``x ** 0.5``.
+
+    ``x ** 0.5`` is libm's ``pow``, which IEEE 754 does not require to be correctly
+    rounded; ``math.sqrt`` is ``sqrt``, which it does. Measured 2026-09-01 on macOS
+    (arm64, CPython 3.12.14): of the 276 norms this generator computes, **91 give a
+    different double** from ``math.sqrt`` of the same sum. glibc's ``pow`` agrees with
+    ``sqrt`` on those, so a table regenerated on macOS and a table regenerated on Linux
+    were different bytes, and the regenerate-and-compare gate that landed with this
+    module passed locally and failed in CI on a table nobody had touched.
+    """
+    norm = math.sqrt(sum(v * v for v in vec))
     return [v / norm for v in vec] if norm else vec
 
 
