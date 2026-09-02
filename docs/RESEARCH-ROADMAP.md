@@ -185,6 +185,28 @@ state; the tested local CLI/API contract remains available for compatibility. Ve
 
 Shipped: **E1** toxicity-coverage eval slice (`src/sprout/eval/suites/toxicity_coverage.py`) — a deterministic, corpus-level suite asserting every ASPCA top-N pet-toxic plant in the corpus (aloe, dracaena, english-ivy, fiddle-leaf-fig, jade-plant, monstera, peace-lily, philodendron, pothos, rubber-plant, snake-plant, zz-plant) has an English document with a `## Toxicity` section that mentions toxicity and routes to a vet and a poison-control line; auto-registers a `toxicity-coverage` report panel via the existing `report.py` suite-iteration. Complements the pre-existing `safety` suite, which already gates the *live answer* on never certifying "safe" and always routing. Verify: `make verify` green (lint, type, test with 95% coverage, eval, a11y all pass); `docs/audits/eval-report.md` shows `toxicity-coverage` — ✅ PASS, n=12.
 
+## Implementation status — 2026-07-09
+Shipped: **E4** coverage-vs-risk (selective-prediction) curve in the calibration report —
+`sprout.confidence.coverage_risk_curve()` (ADR-0021) computes, at a fixed set of confidence
+thresholds including the engine's own 0.25 `abstain_threshold`, what fraction of labeled
+calibration cases would be answered (coverage) and what fraction of those would be wrong
+(risk); the `calibration` eval suite (`eval/suites/calibration.py`) appends the curve to its
+existing `SuiteResult.segments` table alongside the reliability bins, so `report.py` needed
+no changes to render it. Report-only: the suite's own PASS/FAIL stays keyed to ECE and
+abstention exactly as before, per ADR-0021's reasoning. Verify: `pytest tests/test_confidence.py
+-q`, `ruff check`, `mypy` all green; `sprout eval` regenerates `docs/audits/eval-report.md`
+with the new `coverage≥…` segment rows under `calibration`, and the baseline regression check
+(`diff_against_baseline`) reports no issues — purely additive.
+
+Tuning-scope justification (`src/sprout/confidence.py` is tunable surface per
+`docs/ROADMAP.md` Phase 3): the curve is read directly against the committed calibration
+failures it makes legible — `calibration-003/004/006/008/009/013/014/015/016`, all
+overconfident-and-wrong cases in `docs/audits/eval-baseline.json`. Coverage-vs-risk at each
+threshold is what tells a maintainer, mechanically, whether raising `abstain_threshold` above
+one of these cases's stated confidence would have caught it, and at what coverage cost — the
+question a future *threshold* change (a separate, still-gated PR) would need answered before
+touching the constant. No threshold, weight, or scoring path changes here.
+
 ## Implementation status — 2026-08-04
 
 Shipped: **E5** SME corpus-contribution workflow — `sprout propose template` emits a

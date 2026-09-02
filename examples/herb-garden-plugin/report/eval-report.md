@@ -60,6 +60,16 @@
 | [0.6,0.7) | 1.000 | 1 | ❌ FAIL |
 | [0.7,0.8) | 1.000 | 1 | ❌ FAIL |
 | [0.8,0.9) | 0.500 | 2 | ❌ FAIL |
+| risk @ confidence≥0.00 (coverage 1.00) | 0.167 | 6 | ✅ PASS |
+| risk @ confidence≥0.10 (coverage 1.00) | 0.167 | 6 | ✅ PASS |
+| risk @ confidence≥0.20 (coverage 1.00) | 0.167 | 6 | ✅ PASS |
+| risk @ confidence≥0.25 (coverage 1.00) | 0.167 | 6 | ✅ PASS |
+| risk @ confidence≥0.30 (coverage 1.00) | 0.167 | 6 | ✅ PASS |
+| risk @ confidence≥0.40 (coverage 1.00) | 0.167 | 6 | ✅ PASS |
+| risk @ confidence≥0.50 (coverage 1.00) | 0.167 | 6 | ✅ PASS |
+| risk @ confidence≥0.60 (coverage 0.67) | 0.250 | 4 | ❌ FAIL |
+| risk @ confidence≥0.70 (coverage 0.50) | 0.333 | 3 | ❌ FAIL |
+| risk @ confidence≥0.80 (coverage 0.33) | 0.500 | 2 | ❌ FAIL |
 
 <details><summary>Failing examples</summary>
 
