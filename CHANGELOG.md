@@ -20,7 +20,9 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   `risk @ confidence≥T (coverage C)` — `T` is a confidence cutoff, so labelling them
   `coverage≥T` named the wrong axis and contradicted the numbers beside them (at
   `confidence≥0.25` the committed corpus covers 100% of calibration cases, not 25%), and
-  left coverage itself unpublished.
+  left coverage itself unpublished. A point covering nothing reports `risk: None`, not
+  `0.0` — an error rate over an empty set is undefined, and a "zero risk at zero coverage"
+  point plots as "abstain from everything and be perfectly safe".
 - **Committed artifacts that stand in for a computation had no gate comparing them to
   what the code now produces.** `make verify` runs `make eval`, `make smoke`,
   `make corpus-report` and `make calibrate`, whose recipes *write into* `docs/audits/`,

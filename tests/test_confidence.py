@@ -13,11 +13,12 @@ from pydantic import ValidationError
 from sprout.confidence import DEFAULT_COVERAGE_THRESHOLDS, CoveragePoint, coverage_risk_curve
 
 
-def test_empty_pairs_yield_zero_coverage_and_zero_risk() -> None:
+def test_empty_pairs_yield_zero_coverage_and_no_risk_to_report() -> None:
+    """Zero coverage means no error rate exists, which is not the same as zero risk."""
     curve = coverage_risk_curve([])
     assert len(curve) == len(set(DEFAULT_COVERAGE_THRESHOLDS))
     assert all(p.coverage == 0.0 for p in curve)
-    assert all(p.risk == 0.0 for p in curve)
+    assert all(p.risk is None for p in curve)
     assert all(p.n_covered == 0 for p in curve)
 
 
@@ -31,13 +32,14 @@ def test_threshold_zero_covers_everything() -> None:
     assert curve[0].risk == 0.5
 
 
-def test_threshold_above_all_confidences_covers_nothing() -> None:
+def test_threshold_above_all_confidences_reports_no_risk_rather_than_zero() -> None:
     pairs = [(0.2, True), (0.3, False)]
     curve = coverage_risk_curve(pairs, thresholds=(0.99,))
     assert curve[0].coverage == 0.0
     assert curve[0].n_covered == 0
-    # No error to report when nothing is covered -- not the same claim as "zero risk."
-    assert curve[0].risk == 0.0
+    # An error rate over an empty set is undefined. Publishing 0.0 here would plot as
+    # "abstain from everything and be perfectly safe", a claim no data supports.
+    assert curve[0].risk is None
 
 
 def test_coverage_is_non_increasing_in_threshold() -> None:
@@ -54,7 +56,8 @@ def test_perfectly_calibrated_confidence_gives_monotonically_non_increasing_risk
     curve = coverage_risk_curve(pairs, thresholds=(0.0, 0.3, 0.5, 0.7, 0.9))
     covered = [p for p in curve if p.n_covered]
     risks = [p.risk for p in covered]
-    assert risks == sorted(risks, reverse=True)
+    assert all(r is not None for r in risks), "a covered point must have a measured risk"
+    assert risks == sorted(risks, reverse=True)  # type: ignore[type-var]
     # At the highest threshold only the two always-correct cases remain -> zero risk.
     assert covered[-1].risk == 0.0
 

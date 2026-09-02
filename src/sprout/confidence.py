@@ -257,13 +257,19 @@ class CoveragePoint(BaseModel):
     covered cases. A well-calibrated system trades coverage for risk monotonically: raising
     the threshold should never increase risk. This is a report-only diagnostic (EXP/E4);
     it does not gate anything the ECE/abstention checks do not already gate.
+
+    ``risk`` is ``None`` — not ``0.0`` — when ``n_covered`` is zero. An error rate over an
+    empty set is undefined, and a curve whose top point reports zero risk at zero coverage
+    plots as "abstain from everything and be perfectly safe", which is a claim no data
+    supports. Callers must decide what to do with the absence rather than read a number
+    that was never measured.
     """
 
     model_config = ConfigDict(frozen=True)
 
     threshold: float
     coverage: float
-    risk: float
+    risk: float | None
     n_covered: int
 
 
@@ -294,9 +300,10 @@ def coverage_risk_curve(
     For each threshold, "covered" cases are those with ``confidence >= threshold`` — the
     cases the system would answer if abstention were cut at that threshold. Coverage is
     the covered fraction of ``pairs``; risk is the error rate restricted to the covered
-    subset (0.0 when nothing is covered — there is no error to report, not zero risk).
-    Thresholds are de-duplicated and sorted ascending; ``pairs`` may be empty, in which
-    case every point has zero coverage and zero risk.
+    subset, and ``None`` when nothing is covered, because an error rate over an empty set
+    is undefined and reporting it as ``0.0`` would publish "zero risk" where the truth is
+    "no observation". Thresholds are de-duplicated and sorted ascending; ``pairs`` may be
+    empty, in which case every point has zero coverage and no risk to report.
     """
     total = len(pairs)
     points: list[CoveragePoint] = []
@@ -304,12 +311,12 @@ def coverage_risk_curve(
         covered = [ok for c, ok in pairs if c >= t]
         n_covered = len(covered)
         coverage = n_covered / total if total else 0.0
-        risk = (1.0 - sum(covered) / n_covered) if n_covered else 0.0
+        risk = (1.0 - sum(covered) / n_covered) if n_covered else None
         points.append(
             CoveragePoint(
                 threshold=round(t, 4),
                 coverage=round(coverage, 4),
-                risk=round(risk, 4),
+                risk=None if risk is None else round(risk, 4),
                 n_covered=n_covered,
             )
         )

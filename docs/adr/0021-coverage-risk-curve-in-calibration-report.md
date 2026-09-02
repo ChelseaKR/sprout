@@ -28,8 +28,12 @@ returns one `CoveragePoint(threshold, coverage, risk, n_covered)` per threshold:
 
 - **coverage** — the fraction of labeled cases with confidence at or above the threshold
   (i.e., the fraction the system would answer if abstention were cut there).
-- **risk** — the error rate (1 − accuracy) restricted to exactly that covered subset. Risk
-  is reported as 0.0 when nothing is covered — "no error observed," not "zero risk."
+- **risk** — the error rate (1 − accuracy) restricted to exactly that covered subset, and
+  `None` when nothing is covered. An error rate over an empty set is undefined; publishing
+  it as `0.0` would put a "zero risk at zero coverage" point at the top of the curve, which
+  plots as "abstain from everything and be perfectly safe" and is a claim no data supports.
+  A `None` forces the caller to decide what to do with the absence instead of reading a
+  number nothing measured — the suite skips those rows rather than rendering them.
 
 The `calibration` eval suite (`eval/suites/calibration.py`) computes this curve alongside
 the existing reliability bins and appends it to `SuiteResult.segments` — the same generic

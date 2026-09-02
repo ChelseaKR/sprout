@@ -97,7 +97,10 @@ class CalibrationSuite:
         coverage_segments: list[SegmentScore] = []
         prev_risk: float | None = None
         for point in curve:
-            if point.n_covered == 0:
+            # `risk` is None exactly when nothing is covered -- an error rate over an
+            # empty set, which the curve refuses to report as 0.0. There is no row to
+            # render for a point with no observation behind it.
+            if point.n_covered == 0 or point.risk is None:
                 continue
             verdict = (
                 Verdict.FAIL
