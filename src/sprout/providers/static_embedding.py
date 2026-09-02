@@ -26,6 +26,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from ..text import content_tokens
+from .base import l2_normalize
 
 _TABLE_PATH = Path(__file__).resolve().parent.parent / "data" / "embeddings" / "static_vectors.json"
 
@@ -83,7 +84,4 @@ class StaticEmbedding:
             contribution = known if known is not None else self._fallback(tok)
             for i, v in enumerate(contribution):
                 vec[i] += v
-        norm = sum(v * v for v in vec) ** 0.5
-        if norm == 0.0:
-            return vec
-        return [v / norm for v in vec]
+        return l2_normalize(vec)

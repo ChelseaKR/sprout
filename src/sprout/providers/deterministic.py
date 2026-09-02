@@ -14,6 +14,7 @@ import hashlib
 
 from ..models import RetrievedChunk
 from ..text import content_tokens, extract_facets, split_sentences, token_set
+from .base import l2_normalize
 
 
 class HashingEmbedding:
@@ -41,10 +42,7 @@ class HashingEmbedding:
             idx = int.from_bytes(digest[:4], "big") % self._dim
             sign = 1.0 if digest[4] & 1 else -1.0
             vec[idx] += sign
-        norm = sum(v * v for v in vec) ** 0.5
-        if norm == 0.0:
-            return vec
-        return [v / norm for v in vec]
+        return l2_normalize(vec)
 
 
 class ExtractiveGenerator:

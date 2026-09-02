@@ -10,6 +10,28 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **Every square root that feeds a committed artifact or the browser port is now
+  `math.sqrt`, not `x ** 0.5`.** `x ** 0.5` is libm's `pow`, which IEEE 754 does not
+  require to be correctly rounded; `math.sqrt` is `sqrt`, which it does. The two differ in
+  the last bit on some inputs, and *which* inputs depends on the platform's libm, so the
+  same computation gave different doubles on a laptop and on the CI runner. That already
+  turned one build red on a file nobody had edited (`static_vectors.json`), and since the
+  regenerate-and-compare gate lands this release, any remaining site was the same landmine.
+
+  - `providers/base.py` gains one `l2_normalize`, and the hashing, static-vector and Titan
+    embedders all normalise through it instead of each repeating the expression. The
+    browser port (`web-static/src/hashEmbedding.ts`) has always used `Math.sqrt`, so the
+    CLI and the live site were using different square roots for a pipeline this repo
+    claims agrees bit-for-bit.
+  - `eval/stats.py`'s Wilson margin. Measured on macOS (arm64, CPython 3.12.14): 99 of the
+    80600 `(successes, n)` pairs with n≤400 give a different margin, and the first whose
+    published *bounds* differ is 42 of 62 — an item count this harness reaches. None
+    changed the report's 3-decimal figure today; the gate compares bytes, not figures.
+
+  No committed report, score or fixture changed: measured on the real corpus, 0 of 190
+  texts and 0 of the report's own `(successes, n)` pairs land on an input where the two
+  roots disagree today. This closes the hazard rather than a live failure.
+
 - **Committed artifacts that stand in for a computation had no gate comparing them to
   what the code now produces.** `make verify` runs `make eval`, `make smoke`,
   `make corpus-report` and `make calibrate`, whose recipes *write into* `docs/audits/`,
