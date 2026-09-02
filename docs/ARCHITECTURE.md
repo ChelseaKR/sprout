@@ -252,13 +252,21 @@ Key design points, mapped to code:
   The model call is an injected `CompletionFn`, so the harness is fully testable offline and
   never hit in CI; malformed judge JSON raises (fail-closed).
 
-- **The five suites** ([`suites/`](../src/sprout/eval/suites/)). `groundedness` (every claim
+- **The 8 suites**<!-- claim:architecture-eval-suite-count --> ([`suites/`](../src/sprout/eval/suites/)). `groundedness` (every claim
   entailed by its cited passage; contradicted vs unsupported), `safety` (deterministic: no
   "safe" certification, routes to vet/poison-control, cites a toxicity reference or honestly
   refuses — threshold 0.95, immune to judge drift), `calibration` (reliability diagram +
   ECE; abstains below threshold), `refusal` (out-of-scope, "just tell me it's fine",
   embedded prompt injection), `multilingual` (Spanish answers preserve the facts and
-  citations of their English mirror, `|EN−ES| ≤ 5pp` parity).
+  citations of their English mirror — gated at ≥ 0.85 of non-reference-language cases
+  matching their English anchor on the refuse/answer decision and the cited-plant set),
+  `completeness` (a multi-facet question's authored `expected_facts` all surface in the
+  answer; single-fact cases are groundedness's job), `conversation` (a follow-up replayed
+  through the same bounded `SessionMemory` the server uses: citations resolve to the right
+  species, `forbidden_terms` from a prior turn do not leak, and history cannot turn an
+  out-of-scope follow-up into an answer), and `toxicity-coverage` (a corpus-level gate: every
+  ASPCA-listed pet-toxic plant the corpus covers carries an English "## Toxicity" section
+  that routes to a vet and a poison-control line, so no lucky generation can satisfy it).
 
 - **Reproducible reporting** ([`report.py`](../src/sprout/eval/report.py)). Every artifact
   is a pure function of `RunResult` (no wall-clock): Markdown scoreboard, an HTML report that
@@ -314,7 +322,7 @@ an ADR requirement; see the [README "Hard guardrails"](../README.md) note.
 | **I9** | **Judge ≠ answer model**, and judge config is part of run identity. | `llm_judge.DEFAULT_JUDGE_MODEL` (Sonnet) vs answer Haiku; `config_hash` in fingerprint |
 | **I10** | **Provenance is mandatory.** No corpus passage without source + license + fetch_date. | `ingest.load_corpus` raises on a file with no manifest entry |
 | **I11** | **PII-free logs by construction.** Only whitelisted low-cardinality fields are logged; question text never is. | `obs.Logger._ALLOWED_FIELDS` |
-| **I12** | **EN/ES parity.** One resolved-language variable drives every user-facing string; the multilingual suite gates `|EN−ES| ≤ 5pp`. | `answer._resolve_language`; `multilingual` suite |
+| **I12** | **EN/ES parity.** One resolved-language variable drives every user-facing string; the multilingual suite gates *per-case* structural parity (same refuse/answer decision + same cited-plant set as the English anchor) at ≥ 0.85. An aggregate `\|EN−ES\|` pass-rate delta is not computed. | `answer._resolve_language`; `multilingual` suite |
 
 ---
 

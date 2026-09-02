@@ -291,6 +291,22 @@ def test_check_readme_eval_suite_count_and_names_sources() -> None:
     assert not any("readme-eval-suite-names" in p for p in problems)
 
 
+def test_check_multilingual_parity_threshold_sources() -> None:
+    """The EN/ES parity claim in the README, the ROADMAP and the model card all resolve to the
+    floor the multilingual suite actually enforces (0.85) — not the |EN - ES| <= 5pp pass-rate
+    delta the docs used to assert, which no code computes."""
+    problems = check()
+    assert not any("readme-multilingual-parity-threshold" in p for p in problems)
+    assert not any("roadmap-multilingual-parity-threshold" in p for p in problems)
+    assert not any("model-card-multilingual-parity-threshold" in p for p in problems)
+
+
+def test_resolve_suite_multilingual_threshold() -> None:
+    from sprout.claims import _resolve_suite
+
+    assert _resolve_suite("multilingual.threshold") == "0.85"
+
+
 def test_resolve_suite_calibration_floors() -> None:
     from sprout.claims import _resolve_suite
 
@@ -382,3 +398,33 @@ def test_claims_check_cli_reports_mismatch(tmp_path: Path, monkeypatch: pytest.M
     _write_fixture(tmp_path, abstain="0.99")
     fail = runner.invoke(app, ["claims-check"])
     assert fail.exit_code == 1
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _shipped_suite_names() -> list[str]:
+    """Every suite the committed eval report records, which is what `claims.yaml` resolves."""
+    import json
+
+    report = json.loads((ROOT / "docs" / "audits" / "eval-report.json").read_text(encoding="utf-8"))
+    return sorted(str(result["suite"]) for result in report["suite_results"])
+
+
+def test_the_packaging_metadata_names_every_shipped_suite() -> None:
+    """`CITATION.cff` and `pyproject.toml` cannot carry a claim marker, so they get this.
+
+    Both described the harness by listing its suites, and both still named the original
+    five three suites after they stopped being the whole set. Neither file is Markdown, so
+    neither can hold the HTML comment `claims-check` locates a figure by. The names are
+    checked here instead, against the same committed report `claims.yaml` resolves against.
+    """
+    names = _shipped_suite_names()
+    for relative in ("CITATION.cff", "pyproject.toml"):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        described = text.split(
+            "evaluation harness" if relative == "pyproject.toml" else "eval harness", 1
+        )
+        assert len(described) == 2, f"{relative} no longer describes the eval harness"
+        for name in names:
+            assert name in described[1], f"{relative} does not name the {name} suite"

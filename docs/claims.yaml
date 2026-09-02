@@ -14,6 +14,14 @@
 #                              resolved against config/sprout.yaml.
 #   suite:refusal.threshold  — RefusalSuite().metric.threshold (src/sprout/eval/suites/refusal.py),
 #                              the MetricDefinition the refusal gate actually enforces.
+#   suite:multilingual.threshold
+#                            — MultilingualSuite().metric.threshold (src/sprout/eval/suites/
+#                              multilingual.py), the `multilingual-parity` floor the EN/ES gate
+#                              actually enforces: the fraction of non-reference-language cases
+#                              matching their English anchor on the refuse/answer decision and
+#                              the cited-plant set. Registered 2026-08-29 because the README,
+#                              ROADMAP, model card and three other docs described the gate as an
+#                              |EN - ES| <= 5pp pass-rate delta, a quantity no code computes.
 #   suite:calibration.min_agreement / suite:calibration.min_kappa
 #                            — MIN_AGREEMENT / MIN_KAPPA (src/sprout/eval/calibration.py), the
 #                              enforced CI floors judge-calibration gates on — NOT the value the
@@ -101,6 +109,28 @@ claims:
     expected: "0.90"
     marker: "<!-- claim:roadmap-refusal-target -->"
 
+  # --- Multilingual EN/ES parity floor (src/sprout/eval/suites/multilingual.py) ---------------
+  # Added 2026-08-29. The docs claimed an "|EN - ES| <= 5pp pass-rate parity" gate; the harness
+  # gates `multilingual-parity` >= 0.85, per-case structural parity against the English anchor.
+  # No marker existed at any of those sites, which is why the drift guard could not see them.
+  - id: readme-multilingual-parity-threshold
+    file: README.md
+    source: "suite:multilingual.threshold"
+    expected: "0.85"
+    marker: "<!-- claim:readme-multilingual-parity-threshold -->"
+
+  - id: roadmap-multilingual-parity-threshold
+    file: docs/ROADMAP.md
+    source: "suite:multilingual.threshold"
+    expected: "0.85"
+    marker: "<!-- claim:roadmap-multilingual-parity-threshold -->"
+
+  - id: model-card-multilingual-parity-threshold
+    file: docs/cards/model-card.md
+    source: "suite:multilingual.threshold"
+    expected: "0.85"
+    marker: "<!-- claim:model-card-multilingual-parity-threshold -->"
+
   # --- eval-report.json cross-check (demonstrates the eval-report source kind; groundedness has
   # not drifted, but pinning it here means the ledger row is checked, not merely trusted) -------
   - id: roadmap-groundedness-threshold
@@ -167,3 +197,59 @@ claims:
     source: "eval-report:suites.names"
     expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
     marker: "<!-- claim:readme-eval-suite-names -->"
+
+  # The suite count and the suite names were published in nine places and gated in one.
+  # The README said eight; docs/index.md, docs/ADAPT.md, docs/ARCHITECTURE.md, both cards,
+  # CITATION.cff and pyproject.toml still named the original five by name, three suites
+  # after they stopped being the whole set. Every Markdown site that states the figure is
+  # pinned here now. CITATION.cff and pyproject.toml carry no marker because neither is
+  # Markdown and neither can hold an HTML comment; they are covered instead by
+  # tests/test_claims.py::test_the_packaging_metadata_names_every_shipped_suite.
+
+  - id: index-eval-suite-count
+    file: docs/index.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:index-eval-suite-count -->"
+
+  - id: index-eval-suite-names
+    file: docs/index.md
+    source: "eval-report:suites.names"
+    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    marker: "<!-- claim:index-eval-suite-names -->"
+
+  - id: adapt-eval-suite-count
+    file: docs/ADAPT.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:adapt-eval-suite-count -->"
+
+  - id: adapt-eval-suite-names
+    file: docs/ADAPT.md
+    source: "eval-report:suites.names"
+    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    marker: "<!-- claim:adapt-eval-suite-names -->"
+
+  - id: architecture-eval-suite-count
+    file: docs/ARCHITECTURE.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:architecture-eval-suite-count -->"
+
+  - id: datacard-eval-suite-count
+    file: docs/cards/data-card-corpus.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:datacard-eval-suite-count -->"
+
+  - id: datacard-eval-suite-names
+    file: docs/cards/data-card-corpus.md
+    source: "eval-report:suites.names"
+    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    marker: "<!-- claim:datacard-eval-suite-names -->"
+
+  - id: modelcard-eval-suite-count
+    file: docs/cards/model-card.md
+    source: "eval-report:suites.count"
+    expected: "8"
+    marker: "<!-- claim:modelcard-eval-suite-count -->"

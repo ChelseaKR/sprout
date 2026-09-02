@@ -7,7 +7,8 @@ abstract: >-
   cited horticulture corpus via retrieval-mandatory extractive generation with a post-generation
   citation guard (groundedness 100% by construction); a never-certify-"safe" toxicity guard routes
   ingestion questions to vet/poison-control; calibrated abstention refuses below threshold. The
-  eval harness (groundedness, safety, calibration, refusal, multilingual) blends deterministic
+  eval harness (calibration, completeness, conversation, groundedness, multilingual, refusal,
+  safety, toxicity-coverage) blends deterministic
   checks with an LLM-as-judge whose model differs from the answer model, and is the headline
   artifact.
 type: software
