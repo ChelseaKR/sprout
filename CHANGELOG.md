@@ -10,6 +10,25 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The debug trace and the human review queue reported the safety classifier, not the
+  routing that happened.** Routing to vet / poison-control fires when the input-keyword
+  classifier fires **or** the answer cites toxicity content (issue #107). `Answer` carries
+  that combined decision, but `Assistant.trace` filled `AnswerTrace.is_safety_query` from
+  the classifier alone, so re-running issue #107's own reproduction after the routing fix
+  still printed `safety=False` under `--debug` for an answer that had just rendered a
+  poison-control card — the trace said "unfixed" about a fixed answer. `ReviewQueue.capture`
+  copied the same field, filing those answers for a human reviewer as
+  `is_safety_query: false`.
+
+  `AnswerTrace.is_safety_query` is now the decision the answer took (always equal to
+  `Answer.is_safety_query`), and a new required `AnswerTrace.safety_query_by_keyword`
+  carries what the classifier alone said — the two differing is precisely the
+  content-routed case. `sprout ask --debug` prints
+  `safety=True (cited-content)` / `(keyword)` / `(not-routed)`, and the review record
+  stores the routed value. **Breaking (pre-1.0):** anything constructing an `AnswerTrace`
+  directly must now pass `safety_query_by_keyword`; there is no default, because a default
+  is how the wrong value got written in the first place.
+
 - **The docs claimed an EN/ES parity gate the harness does not have.** Eleven places
   across the README, ROADMAP, ARCHITECTURE, RESPONSIBLE-TECH-AUDITS, USER-RESEARCH,
   DEFINITION_OF_DONE, the AI risk register, the model card and this changelog said the

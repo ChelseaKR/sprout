@@ -86,6 +86,10 @@ class ReviewItem(BaseModel):
     confidence: float
     refused: bool
     refusal_reason: str | None = None
+    #: The routing the answer actually took (``Answer.is_safety_query``), which fires on
+    #: a keyword in the question *or* on the topic of the content cited (issue #107).
+    #: This used to copy the keyword classifier instead, so an item whose answer had
+    #: printed a poison-control card was filed for review as ``is_safety_query: false``.
     is_safety_query: bool = False
     citations: tuple[ReviewCitation, ...] = ()
     retrieved: tuple[str, ...] = ()  # "chunk_id (score)", most-relevant first
@@ -197,7 +201,7 @@ class ReviewQueue:
             confidence=answer.confidence,
             refused=answer.refused,
             refusal_reason=answer.refusal_reason,
-            is_safety_query=trace.is_safety_query,
+            is_safety_query=trace.answer.is_safety_query,
             citations=tuple(ReviewCitation(label=c.label, quote=c.quote) for c in answer.citations),
             retrieved=tuple(f"{rc.chunk.chunk_id} ({rc.score:.3f})" for rc in trace.retrieved),
         )
