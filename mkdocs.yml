@@ -14,6 +14,13 @@ theme:
     - navigation.sections
     - content.code.copy
 
+# Every page shipped mkdocs' fallback site_description, so all 52 published URLs
+# carried one identical sentence. The hook gives each page the description its own
+# opening paragraph already states; it writes no new copy and leaves a page that
+# declares its own description alone.
+hooks:
+  - docs_hooks/page_description.py
+
 markdown_extensions:
   - admonition
   - tables

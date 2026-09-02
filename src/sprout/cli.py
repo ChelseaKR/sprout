@@ -14,8 +14,11 @@ per-row-cited toxicity table — coverage report and table-vs-prose consistency 
 ``corpus-report`` (EXP-12 corpus workbench),
 ``propose template``/``propose check`` (the SME corpus-contribution path: provenance,
 corpus lint, safety, and representational-harm review of an incoming passage + eval case),
-``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff), and ``demo``
-(a scripted session). Everything runs offline by default.
+``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff),
+``corpus verify|install`` (signed third-party corpus bundles, EXP-15), and ``demo``
+(a scripted session). Everything runs offline by default, except ``corpus verify|install``
+against a ``sigstore-keyless`` bundle, which needs the ``corpus`` extra and network access
+to Sigstore's infrastructure.
 """
 
 from __future__ import annotations
@@ -32,6 +35,7 @@ from .answer import Assistant
 from .claims import check as check_claims
 from .config import Config, load_config
 from .models import Answer
+from .site_meta import check_site
 from .slo import check_all
 
 app = typer.Typer(add_completion=False, help="Sprout — grounded, evaluated plant-care assistant.")
@@ -77,6 +81,62 @@ def ingest(config: ConfigOpt = _DEFAULT_CONFIG) -> None:
     cfg = _load(config)
     store = run_ingest(cfg)
     typer.echo(f"Ingested {len(store)} chunks into {cfg.store.path}")
+
+
+corpus_app = typer.Typer(add_completion=False, help="Signed third-party corpus bundles (EXP-15).")
+app.add_typer(corpus_app, name="corpus")
+
+
+@corpus_app.command("verify")
+def corpus_verify_cmd(
+    bundle: Annotated[str, typer.Argument(help="Path to a .sproutcorpus bundle file.")],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Verify a bundle's signature, publisher trust, license allowlist, and integrity
+    tree — without installing it. Exits non-zero on the first failure (fail closed)."""
+    from .corpus_bundle import BundleError
+    from .corpus_registry import verify_bundle
+    from .corpus_signing import SignatureError
+
+    cfg = _load(config)
+    try:
+        report = verify_bundle(bundle, cfg)
+    except (BundleError, SignatureError) as exc:
+        typer.echo(f"REJECTED: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    m = report.manifest
+    typer.echo(f"OK  {m.name} {m.version} by {m.publisher.name} ({m.publisher.id})")
+    typer.echo(f"    signed: {report.signature.scheme} / {report.signature.identity}")
+    typer.echo(f"    license: {m.license}  documents: {len(m.documents)}")
+
+
+@corpus_app.command("install")
+def corpus_install_cmd(
+    bundle: Annotated[str, typer.Argument(help="Path to a .sproutcorpus bundle file.")],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+) -> None:
+    """Verify a bundle, then install it under corpus_registry.registry_path.
+
+    Installed bundles live in their own namespace, separate from ``corpus.path`` /
+    ``corpus.manifest`` and ``config/`` — this command never touches either, so an
+    installed bundle cannot alter Sprout's own routing/deny-list strings. Wiring an
+    installed bundle into live retrieval is a documented follow-up, not done here.
+    """
+    from .corpus_bundle import BundleError
+    from .corpus_registry import install_bundle
+    from .corpus_signing import SignatureError
+
+    cfg = _load(config)
+    try:
+        installed = install_bundle(bundle, cfg)
+    except (BundleError, SignatureError) as exc:
+        typer.echo(f"REJECTED: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"Installed {installed.name} {installed.version} from publisher "
+        f"{installed.publisher_id} -> {installed.install_path}"
+    )
+    typer.echo(f"Provenance recorded at {installed.provenance_path}")
 
 
 @app.command("corpus-report")
@@ -461,6 +521,26 @@ def a11y_check(
     typer.echo(f"{target}: no structural accessibility violations")
 
 
+@app.command("site-check")
+def site_check(
+    directory: Annotated[str, typer.Argument()] = "site",
+    origin: Annotated[
+        str, typer.Option("--origin", help="The https origin the site is served from.")
+    ] = "https://sprout.chelseakr.com",
+) -> None:
+    """Check the published site's metadata: canonicals, robots.txt, and the sitemap."""
+    root = Path(directory)
+    if not root.is_dir():
+        typer.echo(f"not a directory: {root}", err=True)
+        raise typer.Exit(2)
+    problems = check_site(root, origin)
+    if problems:
+        for problem in problems:
+            typer.echo(f"  - {problem}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{root}: every published page's address checks out")
+
+
 @app.command("freshness")
 def freshness_check(
     config: ConfigOpt = _DEFAULT_CONFIG,
@@ -708,7 +788,12 @@ def identify(
     config: ConfigOpt = _DEFAULT_CONFIG,
 ) -> None:
     """Identify a plant from a photo, then answer from the cited corpus (or fall back)."""
-    from .identify import PhotoCareService, build_identifier
+    from .identify import (
+        PhotoCareService,
+        build_identifier,
+        format_candidates,
+        photo_candidates_intro_for,
+    )
 
     cfg = _load(config)
     img = Path(image)
@@ -724,6 +809,14 @@ def identify(
     result = service.identify_and_answer(img.read_bytes(), question=question, language=language)
     if not result.identified or result.answer is None:
         typer.echo(result.message or "Could not identify the plant from the photo.")
+        # R8/E8: "show your work" — a rejected candidate (below min_confidence, or not a
+        # corpus species) is more useful surfaced than silently dropped. Never presented
+        # as a resolved identification: same non-fact framing as the resolved path.
+        if result.identification is not None and result.identification.candidates:
+            lang = assistant.resolve_language(question or "", language)
+            typer.echo(f"\n{photo_candidates_intro_for(lang)}")
+            for line in format_candidates(result.identification):
+                typer.echo(f"  - {line}")
         raise typer.Exit(0)
     typer.echo(result.label or "")
     typer.echo("")

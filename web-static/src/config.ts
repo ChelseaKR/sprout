@@ -27,9 +27,21 @@ export interface GenerationConfig {
   support_overlap: number;
 }
 
+/**
+ * The fitted logistic shape written by `sprout fit-confidence` (ADR-0016) and exported
+ * from `config/sprout.yaml`'s `confidence.fit`. Absent (`null`) until a fit is committed.
+ */
+export interface ConfidenceFit {
+  midpoint: number;
+  steepness: number;
+  margin_bonus: number;
+}
+
 export interface ConfidenceConfig {
   abstain_threshold: number;
   low_confidence_threshold: number;
+  /** `null` or missing means "use the ADR-0012 defaults", exactly as Python does. */
+  fit?: ConfidenceFit | null;
 }
 
 export interface GuardsConfig {

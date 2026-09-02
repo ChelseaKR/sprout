@@ -22,6 +22,24 @@ def slugify(text: str) -> str:
     return _SLUG_RE.sub("-", text.strip().lower()).strip("-") or "general"
 
 
+#: Every heading slug that marks a chunk as carrying toxicity or ingestion prose.
+#:
+#: A chunk's topic is the slugified heading, so a Spanish document heading its section
+#: ``## Toxicidad`` yields ``topic="toxicidad"``, not ``"toxicity"``. 8 of the 16 ES
+#: corpus documents do exactly that, 7 of them ASPCA-listed as toxic to pets. Comparing
+#: a topic against the bare literal ``"toxicity"`` therefore misses them, which is how
+#: the vet / poison-control escort came to depend on the question happening to contain a
+#: lexicon keyword (issue #107). Every place that asks "is this chunk about toxicity?"
+#: reads this set, so the answer cannot differ between the safety router, the proposal
+#: reviewer, and the TypeScript port (``web-static/src/topics.ts`` mirrors it).
+SAFETY_TOPIC_SLUGS: frozenset[str] = frozenset({"toxicity", "toxicidad", "safety", "seguridad"})
+
+
+def is_safety_topic(topic: str | None) -> bool:
+    """True when this chunk's topic marks it as toxicity/ingestion content."""
+    return topic in SAFETY_TOPIC_SLUGS
+
+
 def _sections(text: str, default_topic: str) -> list[tuple[str, str]]:
     """Parse Markdown into (topic, body) pairs, splitting on ``## `` headings."""
     sections: list[tuple[str, str]] = []

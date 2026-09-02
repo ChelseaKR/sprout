@@ -260,6 +260,106 @@ def test_check_eval_report_source() -> None:
     assert not any("roadmap-groundedness-threshold" in p for p in problems)
 
 
+# --- README claims (issue #97): floor vs. measured, and the real suite list -----------------
+
+
+def test_check_readme_calibration_floor_sources() -> None:
+    """suite:calibration.min_agreement / min_kappa resolve to the ENFORCED FLOOR (0.80/0.60),
+    not the last measured value (0.955/0.906) — the exact collapse issue #97 found in the
+    README."""
+    problems = check()
+    assert not any("readme-judge-calibration-floor-agreement" in p for p in problems)
+    assert not any("readme-judge-calibration-floor-kappa" in p for p in problems)
+
+
+def test_check_readme_refusal_target_source() -> None:
+    problems = check()
+    assert not any("readme-refusal-target" in p for p in problems)
+
+
+def test_check_readme_coverage_floor_source() -> None:
+    """pytest:cov-fail-under resolves the real --cov-fail-under value from pyproject.toml."""
+    problems = check()
+    assert not any("readme-coverage-floor" in p for p in problems)
+
+
+def test_check_readme_eval_suite_count_and_names_sources() -> None:
+    """eval-report:suites.count / suites.names resolve from the committed eval report — the
+    README no longer hand-carries a suite list that can silently fall behind a new suite."""
+    problems = check()
+    assert not any("readme-eval-suite-count" in p for p in problems)
+    assert not any("readme-eval-suite-names" in p for p in problems)
+
+
+def test_check_multilingual_parity_threshold_sources() -> None:
+    """The EN/ES parity claim in the README, the ROADMAP and the model card all resolve to the
+    floor the multilingual suite actually enforces (0.85) — not the |EN - ES| <= 5pp pass-rate
+    delta the docs used to assert, which no code computes."""
+    problems = check()
+    assert not any("readme-multilingual-parity-threshold" in p for p in problems)
+    assert not any("roadmap-multilingual-parity-threshold" in p for p in problems)
+    assert not any("model-card-multilingual-parity-threshold" in p for p in problems)
+
+
+def test_resolve_suite_multilingual_threshold() -> None:
+    from sprout.claims import _resolve_suite
+
+    assert _resolve_suite("multilingual.threshold") == "0.85"
+
+
+def test_resolve_suite_calibration_floors() -> None:
+    from sprout.claims import _resolve_suite
+
+    assert _resolve_suite("calibration.min_agreement") == "0.80"
+    assert _resolve_suite("calibration.min_kappa") == "0.60"
+
+
+def test_resolve_suite_unknown_raises() -> None:
+    from sprout.claims import _resolve_suite
+
+    with pytest.raises(ClaimsError, match="unknown suite claim source"):
+        _resolve_suite("nonsense.field")
+
+
+def test_resolve_pytest_cov_fail_under(tmp_path: Path) -> None:
+    from sprout.claims import _resolve_pytest_cov_fail_under
+
+    toml = tmp_path / "pyproject.toml"
+    toml.write_text(
+        '[tool.pytest.ini_options]\naddopts = "--cov=x --cov-fail-under=77 -q"\n',
+        encoding="utf-8",
+    )
+    assert _resolve_pytest_cov_fail_under(toml) == "77"
+
+
+def test_resolve_pytest_cov_fail_under_missing_file(tmp_path: Path) -> None:
+    from sprout.claims import _resolve_pytest_cov_fail_under
+
+    with pytest.raises(FileNotFoundError):
+        _resolve_pytest_cov_fail_under(tmp_path / "nope.toml")
+
+
+def test_resolve_pytest_cov_fail_under_missing_flag(tmp_path: Path) -> None:
+    from sprout.claims import _resolve_pytest_cov_fail_under
+
+    toml = tmp_path / "pyproject.toml"
+    toml.write_text('[tool.pytest.ini_options]\naddopts = "-q"\n', encoding="utf-8")
+    with pytest.raises(ClaimsError, match="no --cov-fail-under"):
+        _resolve_pytest_cov_fail_under(toml)
+
+
+def test_resolve_eval_report_suite_names_and_count(tmp_path: Path) -> None:
+    from sprout.claims import _resolve_eval_report_suite_count, _resolve_eval_report_suite_names
+
+    report = tmp_path / "eval-report.json"
+    report.write_text(
+        '{"suite_results": [{"suite": "a"}, {"suite": "b"}, {"suite": "c"}]}',
+        encoding="utf-8",
+    )
+    assert _resolve_eval_report_suite_names(report) == "a, b, c"
+    assert _resolve_eval_report_suite_count(report) == "3"
+
+
 def test_load_claims_missing_registry(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         check(claims_path=tmp_path / "nope.yaml")
@@ -298,3 +398,33 @@ def test_claims_check_cli_reports_mismatch(tmp_path: Path, monkeypatch: pytest.M
     _write_fixture(tmp_path, abstain="0.99")
     fail = runner.invoke(app, ["claims-check"])
     assert fail.exit_code == 1
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _shipped_suite_names() -> list[str]:
+    """Every suite the committed eval report records, which is what `claims.yaml` resolves."""
+    import json
+
+    report = json.loads((ROOT / "docs" / "audits" / "eval-report.json").read_text(encoding="utf-8"))
+    return sorted(str(result["suite"]) for result in report["suite_results"])
+
+
+def test_the_packaging_metadata_names_every_shipped_suite() -> None:
+    """`CITATION.cff` and `pyproject.toml` cannot carry a claim marker, so they get this.
+
+    Both described the harness by listing its suites, and both still named the original
+    five three suites after they stopped being the whole set. Neither file is Markdown, so
+    neither can hold the HTML comment `claims-check` locates a figure by. The names are
+    checked here instead, against the same committed report `claims.yaml` resolves against.
+    """
+    names = _shipped_suite_names()
+    for relative in ("CITATION.cff", "pyproject.toml"):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        described = text.split(
+            "evaluation harness" if relative == "pyproject.toml" else "eval harness", 1
+        )
+        assert len(described) == 2, f"{relative} no longer describes the eval harness"
+        for name in names:
+            assert name in described[1], f"{relative} does not name the {name} suite"

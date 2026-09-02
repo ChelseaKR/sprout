@@ -63,10 +63,22 @@ _CONFIG_MODULE_PATH = "src/sprout/config.py"
 # sound — no eval-visible module ever grows a read of ``config.server`` /
 # ``config.observability`` — is pinned by
 # ``tests/test_tuning_scope.py::test_eval_visible_modules_never_read_exempt_config``.
-_EVAL_INVISIBLE_CONFIG_CLASSES = frozenset({"ServerConfig", "ObservabilityConfig", "ReviewConfig"})
+# ``CorpusRegistryConfig``/``TrustedPublisher`` (EXP-15) are the same shape: they drive
+# ``sprout corpus verify|install`` only, which installs bundle files under
+# ``corpus_registry.registry_path`` and never wires them into ``corpus.path``/
+# ``corpus.manifest`` — no eval-visible module reads ``config.corpus_registry``.
+_EVAL_INVISIBLE_CONFIG_CLASSES = frozenset(
+    {
+        "ServerConfig",
+        "ObservabilityConfig",
+        "ReviewConfig",
+        "CorpusRegistryConfig",
+        "TrustedPublisher",
+    }
+)
 # The same classes' top-level keys in ``config/sprout.yaml``; a YAML delta confined to
 # these subtrees is operational for the same reason (and with the same pinned invariant).
-_EVAL_INVISIBLE_YAML_KEYS = frozenset({"server", "observability", "review"})
+_EVAL_INVISIBLE_YAML_KEYS = frozenset({"server", "observability", "review", "corpus_registry"})
 _PROVIDER_FACTORY_PATH = "src/sprout/providers/__init__.py"
 _PROVIDER_LIFECYCLE_PATH = "src/sprout/provider_lifecycle.py"
 # One-time bootstrap: origin/main predates the operational lifecycle seam, so the exact

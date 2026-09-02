@@ -68,8 +68,11 @@ ALLOWED_CI_ONLY = {
 ALLOWED_MAKE_ONLY_PREFIXES = (
     # `gitleaks` runs as a GitHub Action in CI (`gitleaks/gitleaks-action`), not a shell command,
     # so it never appears as a `run:` step to diff against. The Makefile recipe documents the
-    # same fallback inline (see CONTRIBUTING.md's "CI parity" note).
-    "command -v gitleaks",
+    # same fallback inline (see CONTRIBUTING.md's "CI parity" note). The prefix matches the
+    # `if`-form the recipe uses since 2026-08-28; the older `command -v gitleaks && ... || ...`
+    # form routed a real finding into the "not installed" branch and exited 0, which is why it
+    # is gone (see tests/test_security_gate.py).
+    "if command -v gitleaks",
 )
 
 # Environment-setup commands are not "tools/thresholds" in the CONTRIBUTING.md sense — both
@@ -91,24 +94,48 @@ class ParityReport:
         return not self.ci_only and not self.make_only
 
 
+#: Every simple, non-recursive Makefile assignment: `NAME := value` or `NAME ?= value`.
+#: Recursive (`=`) assignments are excluded because their right-hand side is only defined
+#: at use time and expanding it here would be a guess.
+#: `[ \t]*`, never `\s*`: `\s` matches newlines, so a variable assigned an empty value
+#: ("RELEASE_TAG ?=") would swallow the blank line after it and capture the next line as
+#: its value.
+_MAKE_ASSIGNMENT = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)[ \t]*(?::=|\?=)[ \t]*(.*)$", re.MULTILINE)
+
+
 def _resolve_make_vars(text: str) -> dict[str, str]:
-    """Pull the handful of Makefile variables our commands reference."""
-    variables: dict[str, str] = {}
-    py_match = re.search(r"^PY\s*:=\s*(.+)$", text, re.MULTILINE)
-    variables["PY"] = py_match.group(1).strip() if py_match else "uv run"
-    config_match = re.search(r"^CONFIG\s*\?=\s*(.+)$", text, re.MULTILINE)
-    variables["CONFIG"] = config_match.group(1).strip() if config_match else "config/sprout.yaml"
+    """Every simple Makefile variable, so `$(NAME)` expands the way `make` expands it.
+
+    This used to read exactly two names, PY and CONFIG. Any other variable a recipe
+    referenced reached the diff unexpanded, as the literal string `$(SAST_PATHS)`, and
+    could never equal the CI side's expansion of it -- so the parity gate reported drift
+    that was not drift, and the honest way to make it green was to stop using variables.
+    Reading them all keeps a Makefile variable from being a reason not to write one.
+    """
+    variables = {name: value.strip() for name, value in _MAKE_ASSIGNMENT.findall(text)}
+    variables.setdefault("PY", "uv run")
+    variables.setdefault("CONFIG", "config/sprout.yaml")
     return variables
 
 
 def _make_target_recipes(makefile_text: str) -> dict[str, list[str]]:
-    """Map each Makefile target name to its raw (still tab-indented-stripped) recipe lines."""
+    """Map each Makefile target name to its raw (still tab-indented-stripped) recipe lines.
+
+    A ``#`` line at column zero does **not** end a recipe as far as ``make`` is concerned,
+    and it must not end one here either. Treating it as a terminator dropped every
+    remaining line of the recipe from the parity diff: the ``security`` target's gitleaks
+    block sat after a block comment and was compared against nothing at all, so a gitleaks
+    step could have been deleted outright without this gate noticing. Blank lines are the
+    same: make ends a recipe at the next non-recipe *rule* line, not at whitespace.
+    """
     recipes: dict[str, list[str]] = {}
     current: str | None = None
     for raw_line in makefile_text.splitlines():
         if raw_line.startswith("\t"):
             if current is not None:
                 recipes.setdefault(current, []).append(raw_line[1:])
+            continue
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
             continue
         header = re.match(r"^([A-Za-z0-9_-]+)\s*:(?!=)", raw_line)
         current = header.group(1) if header else None
@@ -138,7 +165,11 @@ def _normalize(cmd: str, make_vars: dict[str, str] | None = None) -> str:
     if text.startswith("@"):
         text = text[1:].strip()
     if make_vars:
-        text = text.replace("$(PY)", make_vars["PY"]).replace("$(CONFIG)", make_vars["CONFIG"])
+        # Erased before expansion: an empty RELEASE_TAG would otherwise rewrite the
+        # conditional's own text and stop this literal from matching.
+        text = text.replace("$(if $(RELEASE_TAG),--release '$(RELEASE_TAG)')", "")
+        for name, value in make_vars.items():
+            text = text.replace(f"$({name})", value)
         # `--config <default>` is equivalent to omitting `--config` (the CLI default matches the
         # Makefile default; see `test_cli_default_config_matches_makefile_default`), so a run
         # with the explicit default flag reads the same as a run without it.
@@ -146,8 +177,8 @@ def _normalize(cmd: str, make_vars: dict[str, str] | None = None) -> str:
         # The release-only trend-ledger flag (EXP-13) is appended through a make
         # conditional that expands to *nothing* unless RELEASE_TAG is set, and only the
         # release workflow sets it. Parity compares the per-PR/per-push invocation, where
-        # both sides run without the flag, so the unexpanded conditional is erased here.
-        text = text.replace("$(if $(RELEASE_TAG),--release '$(RELEASE_TAG)')", "")
+        # both sides run without the flag, so the unexpanded conditional is erased above,
+        # before variable expansion.
     return re.sub(r"\s+", " ", text).strip()
 
 

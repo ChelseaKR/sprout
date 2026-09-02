@@ -8,7 +8,7 @@ CONFIG ?= config/sprout.yaml
 RELEASE_TAG ?=
 
 .PHONY: help install dev fmt lint type test security ingest eval eval-baseline \
-        smoke a11y claims calibrate gate-inventory slo corpus-report propose-check \
+        smoke a11y site-check claims calibrate gate-inventory slo corpus-report propose-check \
         freshness audits docs \
         workflow-lint ci-parity-check demo verify clean web-static-bundle \
         web-static-fixtures web-static-test web-static-build
@@ -27,8 +27,8 @@ fmt: ## Auto-format the codebase
 	$(PY) ruff format src tests
 
 lint: ## Lint (format check + rules)
-	$(PY) ruff format --check src tests
-	$(PY) ruff check src tests
+	$(PY) ruff format --check src tests docs_hooks
+	$(PY) ruff check src tests docs_hooks
 
 type: ## Strict type-check
 	$(PY) mypy
@@ -36,12 +36,28 @@ type: ## Strict type-check
 test: ## Run the test suite with the coverage gate (>=90%)
 	$(PY) pytest
 
+# Every directory holding tracked Python. Naming only `src` left 62 of the repo's 142
+# Python files — tests/, scripts/, eval/, examples/, infra/ — with no SAST pass ever run
+# over them, including the gate machinery in scripts/. tests/test_security_gate.py fails
+# if a Python root is missing here or if this list and ci.yml's disagree.
+SAST_PATHS := src tests scripts eval examples infra docs_hooks
+
 security: ## Dependency + secret + SAST scanning — the same tools/thresholds CI enforces
 	$(PY) pip-audit
-	uvx --with 'setuptools<81' semgrep scan --config p/python --error src
-	@command -v gitleaks >/dev/null 2>&1 && gitleaks detect --no-banner --redact || \
-	  ( [ -n "$$CI" ] && echo "gitleaks not installed — failing (CI=true; CI runs it via gitleaks-action instead of this target)" && exit 1 || \
-	    echo "gitleaks not installed locally — install it (https://github.com/gitleaks/gitleaks) to run this check; CI enforces it regardless" )
+	uvx --with 'setuptools<81' semgrep scan --config p/python --error $(SAST_PATHS)
+# `cmd && scan || fallback` sent a *finding* down the fallback branch, because a gitleaks
+# that finds a secret exits 1 exactly like a gitleaks that is not there. Measured: with a
+# gitleaks reporting "leaks found: 1", the old recipe printed "gitleaks not installed
+# locally" and exited 0. The install check and the scan are separate statements now, so a
+# finding fails this target and a missing tool says so in its own words.
+	@if command -v gitleaks >/dev/null 2>&1; then \
+	  gitleaks detect --no-banner --redact; \
+	elif [ -n "$$CI" ]; then \
+	  echo "gitleaks not installed — failing (CI=true; CI runs it via gitleaks-action instead of this target)"; \
+	  exit 1; \
+	else \
+	  echo "gitleaks not installed locally — install it (https://github.com/gitleaks/gitleaks) to run this check; CI enforces it regardless"; \
+	fi
 
 ingest: ## Build the index from the bundled corpus (prereq for eval/a11y)
 	$(PY) sprout ingest --config $(CONFIG)
@@ -61,12 +77,18 @@ freshness: ## Fail on citations past their configured freshness SLA (offline, de
 smoke: ingest ## Phase 1 CI smoke suite: corpus-derived questions, no hand-authored YAML
 	$(PY) sprout smoke --config $(CONFIG) --out docs/audits
 
-corpus-report: ## Species x topic x language completeness, EN/ES parity diff, chunk lint (EXP-12)
-	$(PY) sprout corpus-report --config $(CONFIG) --out docs/audits
-
 a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gate)
 	$(PY) sprout a11y-check web/dist/index.html
 	$(PY) sprout a11y-check docs/audits/eval-report.html
+
+# The published tree is not `mkdocs build`'s output: `pages.yml` copies
+# web-static/public over it afterwards, so the page served at / is the reference
+# surface and not mkdocs' own index. Nothing local reproduced that, which is how
+# the root page came to be the one published page with no canonical on it. This
+# target builds what is actually deployed and then reads it.
+site-check: docs web-static-build ## Metadata gate on the deployed tree: canonicals, robots.txt, sitemap
+	cp -R web-static/public/. site/
+	$(PY) sprout site-check site --origin https://sprout.chelseakr.com
 
 claims: ## Claims-integrity gate: docs/claims.yaml vs code/config source of truth
 	$(PY) sprout claims-check
@@ -77,8 +99,11 @@ gate-inventory: ## FIX-02: fail if any ledger AUTO row has no real enforcement m
 slo: ## Schema-check the Tier-A SLO + burn-rate-alert files
 	$(PY) sprout slo-check
 
-corpus-report: ## EXP-12: regenerate the corpus workbench report (advisory; --gate to enforce)
-	$(PY) sprout corpus-report --out docs/audits
+# Defined once. It was defined twice, and make silently discarded the first recipe (the
+# one carrying --config), so `make verify CONFIG=other.yaml` ran this one gate against the
+# default config and printed an "overriding commands" warning on every invocation.
+corpus-report: ## EXP-12: species x topic x language completeness, EN/ES parity, chunk lint
+	$(PY) sprout corpus-report --config $(CONFIG) --out docs/audits
 
 propose-check: ## E5: review every committed corpus proposal, wherever it was filed
 	$(PY) sprout propose check
@@ -110,7 +135,7 @@ web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conf
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
 	cd web-static && npm ci && npm run build:site
 
-verify: lint type test security eval smoke a11y claims calibrate gate-inventory slo corpus-report propose-check docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
+verify: lint type test security eval smoke a11y site-check claims calibrate gate-inventory slo corpus-report propose-check docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
 
 clean: ## Remove caches, build, and runtime artifacts

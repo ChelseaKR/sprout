@@ -1,0 +1,19 @@
+# semgrep ships a default .semgrepignore that excludes `tests/` and `test/`. Because a
+# repository's own file replaces that default rather than adding to it, this file is how
+# sprout's test suite gets scanned at all: naming `tests` on the command line scanned
+# ZERO files while the default was in force, so the SAST gate reported success over the
+# 48 tracked Python files under tests/ without reading one of them.
+#
+# semgrep only ever scans git-tracked files, so the default's other entries (.venv/,
+# node_modules/, dist/, build/) are already excluded by not being tracked, and nothing
+# here needs to repeat them. tests/test_security_gate.py fails if a directory holding
+# tracked Python is excluded here or missing from the Makefile's SAST_PATHS.
+
+# The TS port has its own toolchain (npm run typecheck / npm test) and is not Python.
+web-static/node_modules/
+web-static/public/
+web-static/test/fixtures/
+
+# Generated artifacts, not source.
+site/
+var/

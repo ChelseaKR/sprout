@@ -90,5 +90,5 @@ Bind: `AI-EVALUATION-STANDARD.md` (online loop), `OBSERVABILITY-STANDARD.md`
 
 ## Scope
 Binds every AI-full repo in the author's portfolio — this one included — and the
-AI-partial repos for their
-token/cost surface. Deterministic repos declare N/A per `AI-EVALUATION-STANDARD.md`.
+AI-partial repos for their token/cost surface. Deterministic repos declare N/A
+per `AI-EVALUATION-STANDARD.md`.

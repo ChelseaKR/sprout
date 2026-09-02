@@ -27,14 +27,14 @@ jobs:
       # No caching in this deploy job: it holds pages: write + id-token: write, and a
       # poisoned/stale cache is the standard's canonical cache-poisoning exposure for a
       # credentialed deploy job (CI-CD-STANDARD §8c, CICD-24) — same reasoning as release.yml.
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "20"
       - name: Install documentation dependencies
-        run: uv sync --frozen --group docs
+        run: uv sync --locked --group docs
       - name: Build the deterministic corpus index
         run: uv run sprout ingest
       - name: Export the browser corpus bundle
@@ -47,6 +47,8 @@ jobs:
         run: cp -R web-static/public/. site/
       - name: Check the published root structure
         run: uv run sprout a11y-check site/index.html
+      - name: Check the published site's addresses
+        run: uv run sprout site-check site --origin https://sprout.chelseakr.com
       - name: Verify linked documentation routes
         run: |
           test -s site/ARCHITECTURE/index.html

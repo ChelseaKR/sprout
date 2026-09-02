@@ -10,6 +10,245 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The docs claimed an EN/ES parity gate the harness does not have.** Eleven places
+  across the README, ROADMAP, ARCHITECTURE, RESPONSIBLE-TECH-AUDITS, USER-RESEARCH,
+  DEFINITION_OF_DONE, the AI risk register, the model card and this changelog said the
+  AI-eval harness enforces `|EN - ES| <= 5pp` **pass-rate** parity. It does not, and never
+  did. What `eval/suites/multilingual.py` gates is `multilingual-parity` at a threshold of
+  **0.85**: the fraction of non-reference-language cases that match their English anchor on
+  the refuse/answer decision and the cited-plant set. That is per-case structural parity, a
+  different quantity from an aggregate pass-rate delta between two languages. Nothing in
+  `src/` computes such a delta, and the model card had already recorded `en-es-parity` as
+  `value: null, verified: false` — the repository was contradicting its own honest
+  disclosure.
+
+  - Every occurrence now states the gate that exists. The 5pp delta survives in the ledgers
+    as an explicitly **planned, not implemented** row, so the target is not lost and the
+    claim is not made; `docs/audits/gate-inventory.md` regenerated accordingly and now
+    reports 28 AUTO rows where it reported 29.
+  - The corrected claim is **gated**, which is why it could drift in the first place: it
+    carried no `<!-- claim: -->` marker, so `sprout claims-check` could not see it. A new
+    `suite:multilingual.threshold` source resolves
+    `MultilingualSuite().metric.threshold` live, and three registered claims (README,
+    ROADMAP, model card) pin the doc text to it in both directions.
+  - The model card's fairness section also claimed per-language segment disaggregation in
+    the report. The only `segments` any suite emits are the calibration suite's confidence
+    bins; that sentence is corrected too.
+
+- **The published site could not say where its pages were.** A technical SEO
+  audit of sprout.chelseakr.com found `/robots.txt` a 404, so the sitemap mkdocs
+  already writes was advertised to nothing; the page served at `/` carrying no
+  canonical and no share card, because `pages.yml` copies `web-static/public`
+  over mkdocs' own index and nothing local reproduced that; all 52 published
+  URLs shipping one identical `site_description`; and
+  `/audits/eval-report.html` published, reachable, and in neither the sitemap
+  nor a `noindex` beside `/audits/eval-report/`, which is the same run at a
+  second address.
+
+  - `docs/robots.txt` is copied to the site root by mkdocs and advertises the
+    sitemap. Nothing is disallowed: every page this site publishes is a page it
+    means to publish.
+  - `web-static/public/index.html` carries a canonical and the OpenGraph and
+    Twitter tags, repeating the page's own title and description rather than a
+    second set written for a card. There is deliberately no `og:image`: the
+    project ships no image asset, and an `og:image` naming a file that is not
+    there is worse than none at all.
+  - `docs_hooks/page_description.py` gives each documentation page the
+    description its own opening paragraph already states. It writes no new copy,
+    it leaves a page that declares its own description alone, and it escapes what
+    it produces, because mkdocs-material interpolates the value straight into an
+    attribute and an ADR quoting its own model card closed that attribute early.
+    52 pages, 52 distinct descriptions.
+  - The standalone HTML eval report is `noindex`. It opens from a CI download or
+    a local checkout; the address worth indexing is the docs page rendered from
+    its Markdown twin.
+  - `sprout site-check` and `make site-check` are the gate, in the same shape as
+    `sprout a11y-check`: a pure function over a built directory, no network. It
+    checks self-referencing https canonicals, unique non-empty titles and
+    descriptions, complete share cards that agree with the page, `robots.txt`
+    naming the sitemap and no path the site does not serve, and every built page
+    either listed in the sitemap or saying it is not for indexing. It is in
+    `make verify` and in `pages.yml`, and unlike anything before it, `make
+    site-check` builds what is actually deployed: mkdocs' output with
+    `web-static/public` copied over it. `tests/test_site_meta.py` breaks one
+    property at a time and asserts each is caught, including that an empty tree
+    reports having checked nothing rather than reporting success.
+
+- **The secret scanner was running with no rules at all (ISO 25010: Security /
+  confidentiality).** `.gitleaks.toml` declared only an `[allowlist]`. gitleaks treats a
+  config it finds as the *whole* configuration, so without `[extend] useDefault = true`
+  the default rule set was never loaded: every gitleaks run in this repository — `make
+  security`, the `gitleaks/gitleaks-action` CI job, and the pre-commit hook — scanned
+  with zero detectors and reported "no leaks found" because there was nothing it could
+  find. Measured with a control on 2026-08-28: a file holding a well-formed `ghp_` token
+  is `leaks found: 1` under gitleaks' defaults and `no leaks found` under this
+  repository's config. The full commit history is clean with the defaults restored, so
+  nothing was missed; the gate simply could not have caught it.
+  `tests/test_secret_scanning.py` now plants a synthetic credential and asserts the
+  committed config finds it, and skips rather than passes where gitleaks is absent.
+
+- **`make security` announced a real gitleaks finding as the tool being missing, and
+  exited 0.** The recipe was `command -v gitleaks && gitleaks detect || <fallback>`, and
+  a gitleaks that finds a secret exits 1 exactly like one that is not installed.
+  Measured with a stub reporting `leaks found: 1`: the recipe printed "gitleaks not
+  installed locally" and the target went green. The install check and the scan are now
+  separate statements.
+
+- **SAST read 80 of the repository's 142 Python files, then 0 of the tests.** `semgrep
+  scan --config p/python --error src` named one directory, leaving `tests/`, `scripts/`,
+  `eval/`, `examples/` and `infra/` — the gate machinery included — unscanned in both
+  `make security` and CI. Adding them to the command was not enough: semgrep's default
+  `.semgrepignore` excludes `tests/`, and `semgrep scan ... tests` reported success
+  having scanned **0 files**. A committed `.semgrepignore` fixes that. The scan now
+  reads 146 files. `tests/test_security_gate.py` derives the required roots from `git
+  ls-files` and fails if one is missing from either side or re-excluded.
+
+- **A toxicity fact could render in Spanish with no vet or poison-control routing
+  ([#107](https://github.com/ChelseaKR/sprout/issues/107)).** The routing decision asked
+  whether the answer cited a chunk whose topic was the literal `"toxicity"`. A chunk's
+  topic is its slugified Markdown heading, and 8 of the 16 Spanish corpus documents head
+  that section `## Toxicidad`, 7 of them ASPCA-listed as toxic to pets. For those, the
+  content-based check could never fire, so the mandatory escort survived only where the
+  keyword classifier also happened to fire. Reproduced on the committed corpus: a
+  Spanish question about oral irritation and drooling rendered Monstera's toxicity
+  paragraph with `is_safety_query=False` and no routing. `answer.py` and `answer.ts` now
+  read a shared bilingual slug set (`chunk.SAFETY_TOPIC_SLUGS` /
+  `web-static/src/topics.ts`), which `propose.py` already had for this exact hazard. The
+  committed eval failure `safety-025` ("no vet/poison routing", Spanish, peace lily) now
+  passes: the `safety` suite goes 0.976 to 1.000. Calibration ECE moves 0.126 to 0.134,
+  still inside the 0.15 gate.
+
+- **The browser could not receive a fitted confidence logistic
+  ([#108](https://github.com/ChelseaKR/sprout/issues/108)).** `confidence.py` reads
+  `cfg.confidence.fit` when `sprout fit-confidence` (ADR-0016) has written one, but
+  `export_web_bundle.py` never emitted it, TypeScript's `ConfidenceConfig` had no field
+  for it, and `scoreConfidence()` never read config at all. No fit is committed, so
+  nothing diverged yet; the first use of the documented workflow would have made
+  sprout.chelseakr.com compute a different confidence, and different abstain decisions,
+  than the CLI for the same question, silently. The fit is exported, declared, and read,
+  with the ADR-0012 defaults as the fallback on both sides.
+
+- **`sprout ci-parity-check` lost a recipe at a comment, and could not read a Makefile
+  variable.** `_make_target_recipes` treated any column-zero line as the end of a
+  recipe, so a `#` comment between two recipe lines dropped everything after it from the
+  diff — `make` does not end a recipe there, so the two disagreed about what the recipe
+  even was. `_resolve_make_vars` read exactly `PY` and `CONFIG`, so any other `$(VAR)`
+  reached the diff unexpanded and could never match CI's expansion of it. Both are
+  fixed, and the gitleaks allowlist entry is narrowed to the `if`-form so the old
+  `&&`/`||` shape cannot return unnoticed.
+
+- **`release.yml` ran the tagged commit's own gate inside main's Actions cache scope
+  (ISO 25010: Security / integrity).** The `codeql` workflow has been failing on the default
+  branch since the 2026-08-24 scheduled run with one error-severity finding:
+  `actions/cache-poisoning/poisonable-step` at `.github/workflows/release.yml:50` — "Potential
+  cache poisoning in the context of the default branch due to privilege checkout of untrusted
+  code from `needs.authorize.outputs.release-commit` (`workflow_dispatch`)". A
+  `workflow_dispatch` run executes in the context of the default branch and therefore holds
+  **write** access to main's cache scope; the `verify` job then checks out the release commit
+  and runs that commit's `make verify`, so checked-out code executed somewhere every branch cut
+  from main can later restore from. GitHub's guidance for this query is explicit: "Never run
+  untrusted code in the context of the default branch."
+  The trigger is now `push: tags: ["v*"]`, which scopes the run's cache to `refs/tags/<tag>`,
+  so the gate cannot write anything main will restore. This restores the trigger the file's own
+  comments still described (`# ... this whole workflow triggers on 'push: tags'`), stale since
+  `719c8db` (#79) switched to `workflow_dispatch` and introduced the finding. **The `authorize`
+  trust boundary is unchanged** and remains the real control: the tag must still be annotated,
+  signed by an allowed signer, stable SemVer, and on main before it resolves to a release
+  commit; only the tag name's source changes (`inputs.tag` → `github.ref_name`).
+  Note this is a release-process change: a release now starts when a `v*` tag is pushed rather
+  than from a manual dispatch. Verified with the CodeQL 2.26.3 bundle locally against
+  `scripts/codeql_gate.py`: 1 error-severity finding before, 0 after. An `environment:` gate was
+  tested first and does **not** clear it — every `ControlCheck` in the query only covers
+  `pull_request_target`/`workflow_run`/`issue_comment`-class events, never `workflow_dispatch`.
+  The alert was not dismissed or suppressed.
+- **The container image carried five fixable HIGH CVEs, and could not start
+  (ISO 25010: Security / vulnerability management, plus Reliability).** `container-scan`
+  had been red on both of its last two weekly runs (2026-08-19, 2026-08-26) on
+  `Total: 3 (HIGH: 3)` from Debian and `Total: 2 (HIGH: 2)` from Python packages:
+  - `CVE-2026-14456` (HIGH) in `libssl3t64`, `openssl`, and `openssl-provider-legacy`
+    `3.5.6-1~deb13u2`. `trixie-security` already publishes the fixed `3.5.7-1~deb13u2`;
+    the upstream `python:3.12-slim` tag simply lags it (a freshly pulled base image on
+    2026-08-26 still shipped 3.5.6). The Dockerfile now applies pending Debian security
+    updates, so this is fixed rather than waited on.
+  - `CVE-2025-47273` (setuptools 70.3.0) and `GHSA-6v7p-g79w-8964` (msgpack 1.1.2). These
+    were never direct dependencies -- `uv.lock` already pins the fixed msgpack 1.2.1 and
+    does not carry setuptools at all. They came from **pip's vendored copies**: the base
+    image's bundled pip 25.0.1 and, in the venv, pip 26.2.1 pulled in transitively by
+    `pip-audit`, both of whose `_vendor/vendor.txt` pin `setuptools==70.3.0`. The image
+    was installing the entire dev toolchain (pytest, mypy, ruff, coverage, hypothesis,
+    cyclonedx, pip-audit) into a *runtime* container, because `uv sync` installs the dev
+    group by default. Both syncs are now `--no-dev`, and the interpreter's bundled pip is
+    removed, since uv is the only installer this image uses. Nothing that runtime code can
+    reach is lost: httpx, sigstore, and opentelemetry are all imported lazily inside the
+    optional cloud-provider, corpus-signing, and observability seams.
+
+  Verified by building the image and scanning it with the same Trivy 0.70.0 and the same
+  flags CI uses: **5 HIGH before, 0 after**. No `.trivyignore` and no `ignore-unfixed`
+  widening were used; every finding is fixed at the package level.
+
+  While verifying, the image turned out to be **non-startable on `main`, and to have been
+  so for every build**: the `sprout` user is created with `--no-create-home`, so `$HOME`
+  (`/home/sprout`) does not exist, and the `uv run` entry point died on
+  `Failed to initialize cache at /home/sprout/.cache/uv: Permission denied` before the
+  server started. `container-scan` only builds and scans, so nothing ever ran the image
+  and nothing caught it. The entry point is now the already-built venv console script,
+  which also removes `uv run`'s attempt to re-sync the environment at container start (a
+  network call in an image explicitly built to need none). Confirmed by running the image
+  with `--network none`: `/livez`, `/readyz`, and `/health` return 200 and `/api/chat`
+  returns a grounded, cited toxicity answer.
+
+- **Fixed a stale-claim bug class in the README (issue #97): the enforced CI floor and the
+  last measured value were collapsed into one number.** `README.md`'s AI Evaluation row read
+  "judge-calibration ... gated at agreement 0.955 / κ 0.906" — those are the values the last
+  run *achieved*, not the thresholds it had to clear (`MIN_AGREEMENT = 0.8`, `MIN_KAPPA = 0.6`
+  in `src/sprout/eval/calibration.py`). A regression from 0.955/0.906 down to 0.81/0.61 would
+  still pass CI and the README would still claim the gate sits at 0.955/0.906 — a 15-point and
+  30-point margin between what the README promised and what the pipeline enforced. Every other
+  doc in the repo already stated floor and measurement separately (`docs/ROADMAP.md`,
+  `docs/audits/judge-calibration.md`, `docs/audits/gate-inventory.md`); the README was the one
+  exception, and the one document `docs/claims.yaml`'s drift guard did not reach.
+  `README.md:139` now states the enforced floor (agreement ≥ 0.80, κ ≥ 0.60) and the last
+  measured value (0.955 / 0.906) as separately labeled claims. A second, same-root-cause drift
+  in the same section — "120+ YAML cases across five suites" — undercounted: the harness
+  gates on **8** suites (`calibration, completeness, conversation, groundedness, multilingual,
+  refusal, safety, toxicity-coverage`, per `docs/audits/eval-report.json`), not 5; the suite
+  table and repo-layout tree diagram are corrected and the table no longer omits
+  `completeness`, `conversation`, and `toxicity-coverage`.
+  `sprout claims-check` (`docs/claims.yaml`) now covers the README: six new claims
+  (`readme-refusal-target`, `readme-judge-calibration-floor-agreement`,
+  `readme-judge-calibration-floor-kappa`, `readme-coverage-floor`, `readme-eval-suite-count`,
+  `readme-eval-suite-names`) pin these values to their live source of truth, gaining two new
+  resolver kinds along the way: a generalized `suite:` source (`suite:calibration.min_agreement`
+  / `suite:calibration.min_kappa`, alongside the existing `suite:refusal.threshold`) and
+  `eval-report:suites.names` / `eval-report:suites.count` (the report's real suite list/count)
+  and `pytest:cov-fail-under` (the real `--cov-fail-under` value in `pyproject.toml`). The
+  registry deliberately does **not** pin the *measured* 0.955/0.906 — unlike a floor, a
+  measurement is expected to legitimately drift run to run; pinning it would make the gate
+  brittle rather than honest. `docs/claims.yaml`'s header comment documents all three new
+  source kinds for the next claim added against them.
+
+- Every `uv sync --frozen` is now `uv sync --locked`, across `ci.yml`,
+  `release.yml`, `pages.yml`, `corpus-freshness.yml`, `redteam.yml`, both
+  Dockerfiles, and the CI-parity test fixture. `--frozen` never reads
+  `pyproject.toml`, so it installs the locked set and exits 0 when the lock no
+  longer satisfies the manifest; `--locked` makes the comparison and exits 1.
+  Nineteen invocations across the repository were the weaker flag, which means
+  a drifted lock could have gone through CI, the docs build, the red-team run,
+  the release, and both images without one of them saying so.
+- The README standards-conformance table declares all fifteen standards and is
+  now machine-readable. Performance, Incident Response, Data Governance, and AI
+  Development Measurement had no row, so none of the four was recorded as met,
+  exempt, or a gap; the first three point at gates and artifacts already in the
+  repository (`tests/test_latency.py`, `slos/`, `SECURITY.md`, `docs/cards/`)
+  with their remaining shortfalls named, and AI Development Measurement is
+  declared an open gap. The state column was headed "Applies" and filled with
+  check marks, and the Quality & Metrics row carried a parenthetical in its
+  label, which together made the table unparseable; the header is "State", the
+  verdicts are the word "Applies", and the parenthetical moved into the posture
+  cell. The phrase "gap tracked" reads as a reference to an issue tracker,
+  which is not where this repository records gaps, so those notes now say
+  "open gap" and name `docs/ROADMAP.md`. No row's meaning changed.
+
 - Release authorization now runs from reviewed `main` through the immutable
   portfolio authorizer; verification and builds use the exact selected commit,
   while separate checkout-free jobs recheck the tag object before PyPI and
@@ -214,8 +453,9 @@ the public evaluation harness as the headline artifact.
   `/api/chat/stream` `done` event, the chat UI's `aria-live` meta line), so a screen reader
   announces the calibrated language first while the number stays visible; localized in EN/ES via
   `Config.prompts.confidence_band_labels`.
-- **English/Spanish parity** with enforced |EN − ES| ≤ 5pp pass-rate parity and mirrored
-  facts/citations.
+- **English/Spanish parity** with a gated per-case structural-parity floor (≥ 0.85 of Spanish
+  cases match their English anchor on the refuse/answer decision and the cited-plant set) and
+  mirrored facts/citations.
 - **Provider seam** (`providers/`): deterministic offline generator as default; a Claude-on-Bedrock
   generator (answer model: Claude Haiku) behind a config switch as the production seam.
 - **The eval harness** (`src/sprout/eval/`): five suites — **groundedness, safety, calibration,

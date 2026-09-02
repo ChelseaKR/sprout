@@ -1,3 +1,12 @@
+# gitleaks treats a .gitleaks.toml it finds as the WHOLE configuration. Without this
+# [extend] block the default rule set is not loaded at all, and the scanner runs with
+# an allowlist and no detectors: it reports "no leaks found" on every input because
+# there is nothing it can find. Measured on 2026-08-28 against a synthetic ghp_ token —
+# defaults: `leaks found: 1`, exit 1; this file without [extend]: `no leaks found`,
+# exit 0. tests/test_secret_scanning.py is the regression guard.
+[extend]
+useDefault = true
+
 [allowlist]
 description = "Documented deterministic-token examples are not credentials."
 paths = [

@@ -5,7 +5,7 @@ Maps every ledger row to the mechanism its `Measured by` cell names, and mechani
 resolves that mechanism against `Makefile` / `.github/workflows/*.yml` / the repo tree.
 An `AUTO` row that cannot be resolved is a declared-but-unenforced gate.
 
-**29 AUTO rows · 0 unresolved.**
+**28 AUTO rows · 0 unresolved.**
 
 | Section | Metric | Gate | Measured by | Resolution |
 |---|---|---|---|---|
@@ -19,7 +19,7 @@ An `AUTO` row that cannot be resolved is a declared-but-unenforced gate.
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | **multilingual** (ES preserves the facts + citations of its EN mirror) | AUTO | `eval/suites/multilingual` + judge equivalence | ✅ resolved |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | **calibration** (stated confidence tracks correctness) | AUTO | `eval/suites/calibration` (reliability diagram + ECE) | ✅ resolved |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | Abstention enforced below threshold | AUTO | `eval/suites/calibration` invariant | ✅ resolved |
-| AI evaluation suites — `AI-EVALUATION-STANDARD` | EN/ES pass-rate parity | AUTO | `eval/suites/multilingual` bilingual slice | ✅ resolved |
+| AI evaluation suites — `AI-EVALUATION-STANDARD` | EN/ES pass-rate parity (aggregate delta between languages) | **not implemented — corrected 2026-08-29: this row declared AUTO and named the bilingual slice, but `eval/suites/multilingual` gates *per-case* structural parity at ≥ 0.85 (the row above), which is a different quantity from an EN-vs-ES pass-rate delta; no code computes that delta (no `parity_gap`, `pass_rate_parity` or `en_es` symbol exists anywhere under `src/`) and `docs/cards/model-card.md` already records `en-es-parity` as `value: null, verified: false`. Implementing it means scoring the EN anchors as their own slice and comparing pass rates — tracked, not claimed.** | nothing computes it | — exempt (not an unconditional AUTO claim) |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | Hallucination rate | AUTO | `tests/test_rag.py` citation-guard tests + `eval/suites/groundedness` | ✅ resolved |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | Judge ↔ human agreement (deterministic judge, CI floor) | **AUTO (gated 2026-07-08, P0-4) — probe set expanded 12 → 66 (within the 50–100 target) across all 16 corpus species, and the judge’s negation-only polarity guard gained `has_antonym_conflict` for antonym flips carrying no negation marker ("safe" vs "toxic"); measured on the combined set: agreement 0.955, κ 0.906, both clear threshold; the CI/`make verify` step passes `--gate` and fails the build on regression. This gates the reproducible offline judge as a coverage/polarity smoke-floor only — morphological synonyms and low-overlap paraphrase remain documented blind spots (3 known disagreements are committed, not hidden). See `docs/audits/judge-calibration.md`.** | `sprout calibrate --gate` on the dated probe set | — exempt (not an unconditional AUTO claim) |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | Judge ↔ human agreement (LLM judge, production gate) | **not yet done — the LLM judge needs a live Anthropic credential and is deliberately never invoked in CI (see `eval/llm_judge.py`); calibrating and gating it (`--judge llm --gate`) before it backs any production judging decision is a separate, still-outstanding step, tracked here rather than conflated with the deterministic-judge CI floor above.** | `sprout calibrate --judge llm` | — exempt (not an unconditional AUTO claim) |
@@ -42,7 +42,8 @@ An `AUTO` row that cannot be resolved is a declared-but-unenforced gate.
 | Security and supply chain — `SECURITY-AND-SUPPLY-CHAIN-STANDARD` | SBOM | AUTO | `.github/workflows/release.yml` (Generate SBOM step; never `|| true`) | ✅ resolved |
 | Security and supply chain — `SECURITY-AND-SUPPLY-CHAIN-STANDARD` | PII in logs | AUTO (never N/A) | `obs.py` `_ALLOWED_FIELDS` + Semgrep/bandit | — exempt (not an unconditional AUTO claim) |
 | Internationalization — `INTERNATIONALIZATION-STANDARD` | EN/ES key + placeholder parity | AUTO (wired 2026-07-08 — see FIX-02; previously declared AUTO with no such diff implemented) | `tests/test_i18n_parity.py` | ✅ resolved |
-| Internationalization — `INTERNATIONALIZATION-STANDARD` | EN/ES eval pass-rate parity | AUTO | `eval/suites/multilingual` (also in the AI ledger above) | ✅ resolved |
+| Internationalization — `INTERNATIONALIZATION-STANDARD` | EN/ES eval per-case structural parity | AUTO | `eval/suites/multilingual` (also in the AI ledger above) | ✅ resolved |
+| Internationalization — `INTERNATIONALIZATION-STANDARD` | EN/ES eval pass-rate parity (aggregate delta between languages) | **not implemented — corrected 2026-08-29; see the identically-corrected row in the AI-evaluation ledger above** | nothing computes it | — exempt (not an unconditional AUTO claim) |
 | Quality, release, CI/CD — `QUALITY-AND-METRICS` · `RELEASE-AND-VERSIONING` · `CI-CD-STANDARD` | First-token latency (offline) | AUTO (wired 2026-07-05 — previously declared AUTO with no test; see P1-10) | `tests/test_latency.py` | ✅ resolved |
 | Quality, release, CI/CD — `QUALITY-AND-METRICS` · `RELEASE-AND-VERSIONING` · `CI-CD-STANDARD` | Reproducibility | AUTO | `tests/test_eval_suites.py` (`test_run_is_byte_identical`) | ✅ resolved |
 | Quality, release, CI/CD — `QUALITY-AND-METRICS` · `RELEASE-AND-VERSIONING` · `CI-CD-STANDARD` | Versioning | AUTO (mechanism wired; **never yet exercised** — no tag has ever been cut, corrected 2026-07-05; see CHANGELOG.md) | `.github/workflows/release.yml` | ✅ resolved |

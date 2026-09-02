@@ -301,7 +301,8 @@ def test_mixed_config_module_change_fails_closed(repo: Path) -> None:
 def test_eval_visible_modules_never_read_exempt_config() -> None:
     # The invariant that keeps the ServerConfig exemption sound: no eval-visible module
     # ever reads `<anything>.server`. If one starts to, this fails and the class must be
-    # removed from _EVAL_INVISIBLE_CONFIG_CLASSES before the change can proceed.
+    # removed from _EVAL_INVISIBLE_CONFIG_CLASSES before the change can proceed. Same
+    # invariant, same reasoning, for `corpus_registry` (EXP-15's CorpusRegistryConfig).
     import ast as _ast
 
     eval_visible = [
@@ -321,9 +322,10 @@ def test_eval_visible_modules_never_read_exempt_config() -> None:
                 "server",
                 "observability",
                 "review",
+                "corpus_registry",
             }:
                 offenders.append(f"{module}:{node.lineno}")
-    assert not offenders, f"eval-visible module(s) read `.server`: {offenders}"
+    assert not offenders, f"eval-visible module(s) read exempt config: {offenders}"
 
 
 def test_semantic_config_change_still_requires_real_case(repo: Path) -> None:
