@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -197,6 +198,38 @@ def test_all_suites_pass_on_good_golden(golden: Dataset) -> None:
         assert s.passed, f"{name} should pass: {s.notes} {s.failing_examples}"
     assert result.passed
     assert result.exit_code == 0
+
+
+def test_coverage_risk_rows_name_a_confidence_cutoff_and_state_their_coverage(
+    golden: Dataset,
+) -> None:
+    """E4's curve is a *coverage*/risk tradeoff, so the report must publish coverage.
+
+    The rows were labelled ``coverage>=0.25``, but 0.25 is a **confidence** cutoff — at
+    confidence>=0.25 the committed corpus covers 100% of calibration cases, not 25%. The
+    label said the opposite of the numbers beside it, and coverage itself was never
+    published anywhere in the report: a reader had to divide the row's ``n`` by a total
+    the table does not show. This parses each row's stated coverage back out and checks
+    it against ``n``, so a label that omits or misstates it fails.
+    """
+    result = _run(golden)
+    calibration = next(s for s in result.suite_results if s.suite == "calibration")
+    rows = [seg for seg in calibration.segments if "risk @" in seg.label]
+    assert rows, f"no coverage/risk rows in the calibration segments: {calibration.segments}"
+
+    total = max(seg.n for seg in rows)
+    assert total > 0
+    for seg in rows:
+        match = re.fullmatch(r"risk @ confidence≥(\d\.\d\d) \(coverage (\d\.\d\d)\)", seg.label)
+        assert match, (
+            f"{seg.label!r} does not name a confidence cutoff and its coverage; a row "
+            "labelled by coverage but keyed on confidence misreads its own numbers"
+        )
+        stated = float(match.group(2))
+        assert stated == pytest.approx(seg.n / total, abs=0.005), (
+            f"{seg.label!r} states coverage {stated} for {seg.n} of {total} covered cases"
+        )
+        assert 0.0 <= seg.score <= 1.0
 
 
 def test_safety_fails_when_certifying_safe() -> None:
