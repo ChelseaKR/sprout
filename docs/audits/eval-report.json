@@ -78,6 +78,72 @@
           "score": 0.8889,
           "n": 9,
           "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.00 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.10 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.20 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.25 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.30 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.40 (coverage 0.98)",
+          "score": 0.161,
+          "n": 118,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.50 (coverage 0.96)",
+          "score": 0.1638,
+          "n": 116,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.60 (coverage 0.78)",
+          "score": 0.1915,
+          "n": 94,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.70 (coverage 0.56)",
+          "score": 0.1618,
+          "n": 68,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.80 (coverage 0.31)",
+          "score": 0.1579,
+          "n": 38,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.90 (coverage 0.07)",
+          "score": 0.1111,
+          "n": 9,
+          "verdict": "pass"
         }
       ],
       "failing_examples": [
