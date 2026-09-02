@@ -10,6 +10,73 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **Committed artifacts that stand in for a computation had no gate comparing them to
+  what the code now produces.** `make verify` runs `make eval`, `make smoke`,
+  `make corpus-report` and `make calibrate`, whose recipes *write into* `docs/audits/`,
+  and CI's `eval-a11y` and `smoke` jobs run the same writing commands on a clean checkout.
+  A stale committed report was therefore silently rewritten in the working tree and the
+  target exited 0, and CI overwrote the evidence before anything read it. `claims-check`
+  then validated the docs against the *regenerated* `eval-report.json`, not the committed
+  one. Only `docs/audits/gate-inventory.md` had a comparison
+  (`tests/test_gate_inventory.py`).
+
+  - `tests/test_committed_artifacts_are_current.py` regenerates the eval report (all five
+    formats), the smoke report, the corpus report and the judge-calibration record into a
+    temp directory and byte-compares. It never writes into the working tree: a gate that
+    heals the drift where it finds it leaves the committed bytes stale, which is the
+    failure being gated. A companion test enumerates `git ls-files docs/audits` and fails
+    on any machine-made artifact not either gated or listed with a reason, so the list
+    cannot go quietly short.
+  - `scripts/generate_static_vectors.py` gained a `--check` mode that renders through the
+    same serialiser `main()` writes with and compares without touching the file. Editing
+    `src/sprout/data/embeddings/clusters.yaml` and forgetting to regenerate previously
+    shipped a table the code no longer produces, with every gate green.
+  - **The static-vector table was not reproducible off the machine that wrote it.**
+    `scripts/generate_static_vectors.py` L2-normalised with `x ** 0.5`, which is libm's
+    `pow` — not required by IEEE 754 to be correctly rounded — rather than `math.sqrt`,
+    which is. Measured 2026-09-01 on macOS (arm64, CPython 3.12.14): 91 of the 276 norms
+    the generator computes gave a different double from `math.sqrt` of the same sum, and
+    glibc's `pow` agreed with `sqrt` on all 91, so the table regenerated on a laptop and
+    the table regenerated on the CI runner differed on 5824 lines. The new `--check`
+    gate above duly said "is current" locally and "is stale" in CI for a file nobody had
+    edited. The generator now uses `math.sqrt` and the committed table is regenerated;
+    every value moved by at most 2.8e-17, so no rendered score or report changed. A test
+    rebuilds the generator's un-normalised inputs from the real `clusters.yaml` and
+    compares its normalisation against a `math.sqrt` reference, so the divergence fails
+    on whichever machine has the disagreeing `pow` rather than only in CI.
+  - `src/sprout/data/embeddings/manifest.yaml` restates the table's `dim` by hand and
+    names its source, its generator and its ADR. The dimension is now checked against
+    the table and the generator, and each named path must exist, so a renamed producer
+    or a regenerated table of a different width cannot leave the provenance record
+    describing something that is no longer there.
+  - **`examples/herb-garden-plugin/report/` had drifted.** Its committed run was recorded
+    against judge config `b37ebf08157f` and dataset hash `7eebd2b8e764adc9`; the current
+    judge is `ff1ad7874e00` and the dataset hashes to `506563e8bea7a2fa`. The refusal
+    suite's published metric definition was a wording behind, and the committed
+    `eval/suites.sha256` no longer matched its own cases file. Regenerated, and now gated
+    by a run of the real `run_example.py` against a copy of the example under `tmp_path`.
+
+- **The E3 external-suite research bundle was a silent fossil.**
+  `eval/research/e3_external_suite_comparison/golden_set.json` is rebuilt offline in one
+  command from the real assistant and the real committed suites, and nothing rebuilt or
+  compared it. It was built when the eval dataset hashed to `sha256:b87c705c52ef` and held
+  128 items; rebuilding it today gives `sha256:50a032e7e395` and 158. It is *not*
+  regenerated here, because the four result files beside it were scored against the set as
+  it was and cannot be recomputed offline (an isolated venv, a local Ollama model and a
+  370MB NLI checkpoint). Instead `docs/research/E3-external-suite-comparison.md` now
+  records the frozen dataset version and item counts, says the chain must be re-run whole
+  or not at all, and a test pins the committed files to that record, so the next partial
+  rebuild fails instead of passing quietly.
+
+- **`uv run` without `--locked` re-locked silently inside the gates.** Measured 2026-08-29:
+  with one dependency constraint tightened in `pyproject.toml`, `make lint` printed
+  `ruff 0.16.3` and changed `uv.lock`'s sha from `1c127747` to `88a9de81`, saying nothing.
+  Every Makefile recipe and every `uv run` step in `ci.yml` now passes `--locked`, and a new
+  `make lock-check` (`uv lock --check --offline`, which resolves and compares but never
+  writes) runs first in `make verify`, before any other target can heal the lockfile in the
+  working tree. `uv sync --locked` already caught the committed state in CI; this closes the
+  local path.
+
 - **The docs claimed an EN/ES parity gate the harness does not have.** Eleven places
   across the README, ROADMAP, ARCHITECTURE, RESPONSIBLE-TECH-AUDITS, USER-RESEARCH,
   DEFINITION_OF_DONE, the AI risk register, the model card and this changelog said the

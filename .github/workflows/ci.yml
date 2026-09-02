@@ -28,13 +28,13 @@ jobs:
       - name: Install (dev + serve) on ${{ matrix.python }}
         run: uv sync --locked --extra serve --python ${{ matrix.python }}
       - name: Ruff format check
-        run: uv run ruff format --check src tests docs_hooks
+        run: uv run --locked ruff format --check src tests docs_hooks
       - name: Ruff lint
-        run: uv run ruff check src tests docs_hooks
+        run: uv run --locked ruff check src tests docs_hooks
       - name: Mypy (strict)
-        run: uv run mypy
+        run: uv run --locked mypy
       - name: Pytest (branch coverage gate >=90% from pyproject)
-        run: uv run pytest
+        run: uv run --locked pytest
       - name: Build sdist + wheel (packaging regression check — CQ-10)
         run: uv build
 
@@ -62,7 +62,7 @@ jobs:
       - name: Semgrep (SAST)
         run: uvx --with 'setuptools<81' semgrep scan --config p/python --error src tests scripts eval examples infra docs_hooks
       - name: pip-audit (blocking — not muted)
-        run: uv run pip-audit
+        run: uv run --locked pip-audit
       # Runs on pull_request too, as of 2026-08-01. It used to carry
       # `if: github.event_name != 'pull_request'`, which meant a secret introduced in a
       # PR was not caught until it had already been merged to main — the PR's own
@@ -87,25 +87,25 @@ jobs:
       - name: Install (dev + serve)
         run: uv sync --locked --extra serve
       - name: Ingest the bundled corpus
-        run: uv run sprout ingest
+        run: uv run --locked sprout ingest
       - name: Eval suites (offline deterministic judge, merge-blocking)
-        run: uv run sprout eval --out docs/audits
+        run: uv run --locked sprout eval --out docs/audits
       - name: Structural a11y gate (chat UI + HTML report)
         run: |
-          uv run sprout a11y-check web/dist/index.html
-          uv run sprout a11y-check docs/audits/eval-report.html
+          uv run --locked sprout a11y-check web/dist/index.html
+          uv run --locked sprout a11y-check docs/audits/eval-report.html
       - name: Claims-integrity gate (docs vs code/config source of truth)
-        run: uv run sprout claims-check
+        run: uv run --locked sprout claims-check
       - name: Judge calibration (gated — deterministic judge, 66 probes; see docs/ROADMAP.md)
-        run: uv run sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
+        run: uv run --locked sprout calibrate eval/judge_probes.yaml --out docs/audits --gate
       - name: Gate inventory (FIX-02 — every ledger AUTO row must map to a real mechanism)
-        run: uv run sprout gate-inventory --out docs/audits
+        run: uv run --locked sprout gate-inventory --out docs/audits
       - name: Tier-A SLO + burn-rate-alert schema gate
-        run: uv run sprout slo-check
+        run: uv run --locked sprout slo-check
       - name: Corpus report (report-only — EXP-12 heuristics advisory until tuned)
-        run: uv run sprout corpus-report --out docs/audits
+        run: uv run --locked sprout corpus-report --out docs/audits
       - name: Corpus proposal review (E5 — every submitted proposal, merge-blocking on errors)
-        run: uv run sprout propose check
+        run: uv run --locked sprout propose check
 
   smoke:
     # Phase 1: a dedicated CI smoke suite of corpus-derived questions, distinct from the
@@ -122,9 +122,9 @@ jobs:
       - name: Install (dev + serve)
         run: uv sync --locked --extra serve
       - name: Ingest the bundled corpus
-        run: uv run sprout ingest
+        run: uv run --locked sprout ingest
       - name: Corpus-derived smoke suite (merge-blocking)
-        run: uv run sprout smoke --out docs/audits
+        run: uv run --locked sprout smoke --out docs/audits
 
   tuning-scope:
     # ROADMAP Phase 3: tune retrieval/prompts only against committed eval failures, never a
@@ -141,7 +141,7 @@ jobs:
       - name: Tuning-scope gate
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
-        run: uv run sprout check-tuning-scope --base "origin/${BASE_REF}"
+        run: uv run --locked sprout check-tuning-scope --base "origin/${BASE_REF}"
 
   web-static:
     # EXP-08 (docs/ideation/03-expansions.md): the TypeScript port's cross-language
@@ -161,11 +161,11 @@ jobs:
       - name: Install (dev + serve)
         run: uv sync --locked --extra serve
       - name: Ingest the bundled corpus
-        run: uv run sprout ingest
+        run: uv run --locked sprout ingest
       - name: Export the static bundle (index.json + config.json)
-        run: uv run python scripts/export_web_bundle.py
+        run: uv run --locked python scripts/export_web_bundle.py
       - name: Generate cross-language conformance fixtures from the Python pipeline
-        run: uv run python scripts/generate_conformance_fixtures.py
+        run: uv run --locked python scripts/generate_conformance_fixtures.py
       - name: Install web-static deps
         run: cd web-static && npm ci
       - name: Typecheck
@@ -175,7 +175,7 @@ jobs:
       - name: Build the deployable static site
         run: cd web-static && npm run build:site
       - name: Structural accessibility check on the published surface
-        run: uv run sprout a11y-check web-static/public/index.html
+        run: uv run --locked sprout a11y-check web-static/public/index.html
 
   pa11y:
     # Browser cross-check (axe + htmlcs runners, see web/.pa11yci.json) against the live-rendered
@@ -192,10 +192,10 @@ jobs:
         with:
           node-version: "20"
       - name: Install + ingest
-        run: uv sync --locked --extra serve && uv run sprout ingest
+        run: uv sync --locked --extra serve && uv run --locked sprout ingest
       - name: Serve and pa11y the UI (axe + htmlcs runners, merge-blocking)
         run: |
-          uv run sprout serve &
+          uv run --locked sprout serve &
           sleep 5
           npx --yes pa11y-ci --config web/.pa11yci.json
 
@@ -214,12 +214,12 @@ jobs:
         with:
           node-version: "20"
       - name: Install + ingest
-        run: uv sync --locked --extra serve && uv run sprout ingest
+        run: uv sync --locked --extra serve && uv run --locked sprout ingest
       - name: Regenerate the HTML eval report
-        run: uv run sprout eval --out docs/audits
+        run: uv run --locked sprout eval --out docs/audits
       - name: Serve + Lighthouse accessibility audit (chat UI + eval report, merge-blocking, threshold 0.95)
         run: |
-          uv run sprout serve &
+          uv run --locked sprout serve &
           python3 -m http.server 4173 --directory docs/audits &
           sleep 5
 
@@ -260,7 +260,7 @@ jobs:
       - name: Install (docs)
         run: uv sync --locked --group docs
       - name: MkDocs strict build
-        run: uv run mkdocs build --strict
+        run: uv run --locked mkdocs build --strict
 
   zizmor:
     # Workflow-SAST review, RTA §F claim (CICD-19): any PR touching workflows is scanned.
@@ -286,7 +286,7 @@ jobs:
       - name: Install (dev)
         run: uv sync --locked
       - name: make verify vs. ci-gate invocation diff
-        run: uv run sprout ci-parity-check
+        run: uv run --locked sprout ci-parity-check
 
   ci-gate:
     # The ONLY required status check for branch protection. axe, pa11y, and Lighthouse
