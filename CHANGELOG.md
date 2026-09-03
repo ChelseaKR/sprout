@@ -10,6 +10,58 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The README told readers to install someone else's package.** It said that after the first
+  release, `pipx install sprout` would be the supported path. The name `sprout` on PyPI is not
+  ours: it is [Sprout 1.1.1](https://pypi.org/project/sprout/) by Martijn Faassen / Infrae, "a
+  common Python library which contains reusable components", last released years before this
+  project existed. Nothing here has ever been published to PyPI, so anyone who followed that
+  instruction would have installed a stranger's code and gotten no plant-care assistant at all.
+  The forward-looking promise is removed and replaced with an `## Install` section that names
+  the collision outright and documents the source checkout, which is the only install this repo
+  actually supports today. Nothing was renamed and no PyPI name is claimed; choosing an
+  available distribution name is now part of the release work.
+
+  The two other places that gave a *runnable* command with that name are corrected the same
+  way: `docs/corpus-bundle-format.md` said `pip install sprout[corpus]` and now says
+  `uv sync --extra corpus`, and `docs/ARCHITECTURE.md`'s note about lazy provider imports no
+  longer illustrates itself with `pip install sprout`. Four files still carry the name as
+  *future state* rather than as an instruction — `CLAUDE.md`, `DEFINITION_OF_DONE.md` (its
+  "a fresh user can `pipx install sprout`" acceptance criterion is currently unachievable),
+  and ADRs [0001](docs/adr/0001-offline-deterministic-generator-as-default.md) and
+  [0022](docs/adr/0022-signed-corpus-bundle-trust-model.md), which are dated records and are
+  left as written. They all resolve with the distribution-name decision.
+
+- **The README called the eval scoreboard "the headline artifact" and printed no scores and no
+  answers.** A reader had to clone the repo and run it to find out whether any of it was real —
+  the one thing a reader of an evaluation project will not do on faith. Two additions fix that,
+  and both are gated so they cannot become the stale numbers they replaced:
+
+  - The committed scoreboard from `docs/audits/eval-report.json` is now in the README, with the
+    run's dataset hash, judge-config hash, seed and target under it so the numbers have a run
+    attached. `test_readme_scoreboard_matches_the_committed_report` re-renders the table from
+    that JSON and fails on any drift; the report is itself already gated against a fresh
+    regeneration, so the chain runs all the way back to the engine. The two weakest rows are
+    called out rather than rounded away: `completeness` is 1.000 on n=3 (95% CI [0.439, 1.000]),
+    and `refusal` is 0.923 against a 0.90 offline floor, below the 0.95 portfolio target.
+  - Two real transcripts — a toxicity question and an out-of-corpus question — are quoted
+    verbatim from `sprout ask` over the bundled corpus.
+    `test_readme_transcripts_are_what_the_engine_says` re-asks both through the CLI and compares,
+    so a corpus edit or a guard change that alters what the assistant says fails the build
+    instead of leaving the README quoting an answer the software no longer gives.
+
+- **The published site's root page now has a link-preview card.** `web-static/public/index.html`
+  declared the full OpenGraph and Twitter set except an image, on the explicit reasoning that
+  "an og:image naming a file that is not there is worse than none" — sound, but it left every
+  shared sprout.chelseakr.com link unfurling as a blank grey box. `og.png` (1280x640) ships with
+  the static bundle, and the page names it with `twitter:card` raised to `summary_large_image`.
+
+  The comment's reasoning is now enforced rather than trusted. `sprout site-check` fails a
+  declared `og:image`/`twitter:image` that is relative, points off-origin, carries no alt text,
+  or names a file the build did not write — the failure that is invisible on the page itself,
+  because an unfurler fetches the URL once and caches whatever came back. The mkdocs-rendered
+  documentation pages declare no social tags at all and are unaffected; a card for those is a
+  separate, larger change.
+
 - **The calibration report now publishes the coverage/risk tradeoff, not only ECE**
   (RESEARCH-ROADMAP E4, [ADR-0021](docs/adr/0021-coverage-risk-curve-in-calibration-report.md)).
   `sprout.confidence.coverage_risk_curve()` reports, at each of a fixed set of confidence
