@@ -10,6 +10,48 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The EN/ES pass-rate parity target was in the ledger for months with nothing computing it
+  — now it is a suite, a gate, and a number** (#128). The metrics ledger declared
+  `|EN − ES| ≤ 5 pp` and the row itself admitted the gap: no `parity_gap`, `pass_rate_parity`
+  or `en_es` symbol existed anywhere under `src/`, and the model card recorded `en-es-parity`
+  as `value: null, verified: false`. The trap the 2026-08-29 correction named is that
+  `eval/suites/multilingual` looks like it already covers this and does not: it gates *per-case
+  structural* parity at ≥ 0.85, scoring each Spanish case against its own English anchor, and
+  it never scores the anchors at all — so it is structurally incapable of seeing an EN-vs-ES
+  *rate* difference.
+
+  - New `language-parity` suite (`src/sprout/eval/suites/language_parity.py`, metric
+    `en-es-pass-rate-gap`, threshold ≤ 0.05, lower is better). It scores every recorded case —
+    English anchors included — as a slice of its own language, using the same per-case
+    correctness label the calibration suite already trusts, and gates the gap between the
+    slices' pass rates. It is a **separate suite on purpose**: two quantities with two written
+    `MetricDefinition`s and two rows in the report cannot be collapsed back into one claim the
+    way the prose did. Fewer than two language slices is a fail-closed FAIL, never a 0.0 gap.
+  - **Measured: 0.011 (1.1 pp)** — EN 0.826 over 121 cases vs ES 0.838 over 37 — inside the
+    5 pp target, so the gate is honest at the threshold the ledger already declared and nothing
+    was widened to make it pass. The suite publishes the caveats beside the number rather than
+    behind it: the 95% Newcombe interval on the *gap* is [0.000, 0.127], so a 37-case Spanish
+    slice can only catch a large disparity; and because the EN/ES case sets are not matched
+    (English carries all 24 calibration cases, most groundedness cases), the pooled figure
+    mixes a language effect with a case-mix effect. Report-only stratum diagnostics recompute
+    the same gap inside strata common to both languages and **all three exceed 5 pp** — matched
+    pairs 0.083, `behavior=answer` 0.068, `behavior=refuse-and-redirect` 0.052. They do not
+    gate (the ledger's declared metric is the aggregate), but they are published, and they say
+    plainly that the fix is a deeper Spanish slice rather than a better-looking headline.
+  - The report is disaggregated by language for the first time: a `pass rate · <language>`
+    segment per slice, which the model card had listed as a known gap.
+  - `aggregate()` gained `ci_override` and `underpowered_override`. A suite that overrides its
+    score was previously stuck publishing a Wilson interval and an under-powered flag computed
+    from the per-item pass rate — a different quantity from the score printed beside them. The
+    parity suite supplies a Newcombe interval on the gap (`wilson_difference_interval`, new in
+    `eval/stats.py`) and keys under-powered to its *smallest slice*, because 158 pooled items
+    do not make a comparison powered when one side contributes 37.
+  - The model card's `en-es-parity` front-matter value is no longer `null`; it carries the
+    measured figure and `tests/test_model_card.py` pins it to the `language-parity` score in
+    the committed `docs/audits/eval-report.json`, so it cannot outlive the run that produced
+    it. The suite count moves 8 → 9 across every site the claims registry pins, and both
+    thresholds (per-case 0.85, aggregate 0.05) are now registered claims.
+
 - **The README told readers to install someone else's package.** It said that after the first
   release, `pipx install sprout` would be the supported path. The name `sprout` on PyPI is not
   ours: it is [Sprout 1.1.1](https://pypi.org/project/sprout/) by Martijn Faassen / Infrae, "a

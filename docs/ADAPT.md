@@ -232,7 +232,7 @@ make verify   # full local gate set: lint · type · test · security · eval ·
 
 `make ingest` rebuilds the index from your corpus and manifest — rerun it any time you edit a
 corpus file, add a document, or change `chunk.*`/`corpus.*` config. `make eval` then runs the
-8 eval suites<!-- claim:adapt-eval-suite-count --> (calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage)<!-- claim:adapt-eval-suite-names --> against the rebuilt
+9 eval suites<!-- claim:adapt-eval-suite-count --> (calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage)<!-- claim:adapt-eval-suite-names --> against the rebuilt
 index and regenerates the committed eval report.
 
 **The eval suites under `eval/suites/` (`groundedness.yaml`, `safety.yaml`, `calibration.yaml`,

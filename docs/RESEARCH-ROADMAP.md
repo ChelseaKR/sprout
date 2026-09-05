@@ -67,7 +67,7 @@ Priority: **P0** now · **P1** next · **P2** soon. Effort: **S** ≈ an afterno
 | E7 | **Citation freshness / link-liveness check**: flag when a cited source's `fetch_date` is stale or the URL no longer supports the claim — especially toxicity refs that get revised | C1,B1,E1 | P2 | M | EV6 · **[NET-NEW]** · **[shipped: `sprout freshness`]** |
 | E8 | **Photo-ID "show your work"**: top-N candidate species with scores + an explicit corpus-coverage gate; never auto-act on the match | A3,A1 | P2 | M | EV9 · **[corroborates ADR-0010]** (extend) |
 | E10 | **Family Greenhouse personalization (A→B→C)**: toxicity cross-check against the user's *actual* pets/plants ("a plant in your Greenhouse is listed toxic to cats, and your profile notes a cat") — deferred, opt-in, household-data ASVS L2 | A1,A2,E1 | Later | L | EV2 · **[corroborates ROADMAP deferred]** |
-| E11 | **`corpus.yaml` generalization + "adapt this to your domain" guide** so any cited care corpus can be swapped in | E1,C2 | Later | M | — · **[corroborates ROADMAP Phase 4]** |
+| E11 | **`corpus.yaml` generalization + "adapt this to your domain" guide** so any cited care corpus can be swapped in | E1,C2 | Later | M | — · **[corroborates ROADMAP Phase 4]** · **[shipped: [`docs/ADAPT.md`](ADAPT.md) + the `corpus.*` config seam; proved end to end by [`examples/herb-garden-plugin/`](../examples/herb-garden-plugin/README.md), a different care corpus run through the unmodified engine]** |
 
 ---
 
@@ -91,7 +91,7 @@ bottleneck and keep safety current; E6 (gated language expansion); R9, R10 finis
 honest-limits and CI polish.
 
 **Later (deferred, already in ROADMAP).** E10 (Family Greenhouse personalization, ASVS
-L2), E11 (`corpus.yaml` generalization).
+L2). E11 (`corpus.yaml` generalization) has since shipped — see its row above.
 
 ## Recommended first sprint (highest-leverage, mostly "finish what's specced")
 

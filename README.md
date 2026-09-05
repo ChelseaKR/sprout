@@ -157,7 +157,7 @@ cited plant-care corpus. This is not veterinary advice.]
 
 ## The eval harness (the actual product)
 
-**8 suites**<!-- claim:readme-eval-suite-count --> — calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage<!-- claim:readme-eval-suite-names --> — cover the harness end to end,
+**9 suites**<!-- claim:readme-eval-suite-count --> — calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage<!-- claim:readme-eval-suite-names --> — cover the harness end to end,
 scored by **deterministic checks** blended with an **LLM-as-judge** (judge model ≠ answer model),
 reported in `docs/audits/eval-report.{md,html,json}` plus JUnit + SARIF. Runs are content-hashed
 and **byte-identical for identical inputs**.
@@ -170,7 +170,8 @@ and **byte-identical for identical inputs**.
 | **toxicity-coverage** | Does every ASPCA top-N pet-toxic plant in the corpus carry a toxicity section that routes to a vet/poison-control line? |
 | **calibration** | Do stated confidences track correctness? (reliability diagram, ECE; abstain below threshold) |
 | **refusal** | Out-of-scope, "just tell me it's fine," and prompt-injection embedded in questions |
-| **multilingual** | Spanish answers preserve the facts and citations of their English mirror |
+| **multilingual** | Spanish answers preserve the facts and citations of their English mirror (per-case, each against its own anchor) |
+| **language-parity** | Do EN and ES *pass at the same rate*? Every case is scored as a slice of its own language — English anchors included — and the aggregate \|EN−ES\| gap is gated. A different quantity from **multilingual**, deliberately kept in its own suite |
 | **conversation** | Do follow-ups resolve species/topic from turn history, without a prior turn's species leaking into one it doesn't belong to? |
 
 Everything is **fail-closed**: a dataset hash mismatch, a malformed case, an empty suite,
@@ -189,6 +190,7 @@ regenerate it with `make eval`, offline, and get the same fingerprint. ↑ means
 | `completeness` | ✅ PASS | **1.000** | 0.900 ↑ | 3 |
 | `conversation` | ✅ PASS | **1.000** | 0.950 ↑ | 9 |
 | `groundedness` | ✅ PASS | **1.000** | 0.950 ↑ | 121 |
+| `language-parity` | ✅ PASS | **0.011** | 0.050 ↓ | 158 |
 | `multilingual` | ✅ PASS | **0.917** | 0.850 ↑ | 12 |
 | `refusal` | ✅ PASS | **0.923** | 0.900 ↑ | 39 |
 | `safety` | ✅ PASS | **1.000** | 0.950 ↑ | 42 |
@@ -229,7 +231,7 @@ targets, and evidence are recorded in this public repository. Per-repo *values* 
 | Release & Versioning | Applies | SemVer; Keep-a-Changelog; PyPI Trusted Publishing (OIDC) wired; **no tag has ever been cut yet** — signed tags apply starting the first real release (corrected 2026-07-05; see `CHANGELOG.md`) |
 | Accessibility | Applies | WCAG 2.2 AA target; structural `sprout a11y-check`, axe/pa11y, and Lighthouse accessibility (threshold 0.95) are all **merge-blocking** (wired 2026-07-08); transcript view; ACR (VPAT 2.5 Rev 508) |
 | Observability | Applies | Tier C (offline CLI: structured JSON logs, PII-free, integration-tested); Tier A for the optional serverless API |
-| Internationalization | Applies | EN/ES key + placeholder parity; the `multilingual` eval suite gates *per-case* EN/ES structural parity — each Spanish case must match its English anchor on the refuse/answer decision and the cited-plant set — at **≥ 0.85**<!-- claim:readme-multilingual-parity-threshold -->. An \|EN−ES\| *pass-rate delta* is a planned metric that nothing computes or gates; the model card records it `value: null, verified: false` |
+| Internationalization | Applies | EN/ES key + placeholder parity; the `multilingual` eval suite gates *per-case* EN/ES structural parity — each Spanish case must match its English anchor on the refuse/answer decision and the cited-plant set — at **≥ 0.85**<!-- claim:readme-multilingual-parity-threshold -->. The aggregate \|EN−ES\| *pass-rate delta* — a different quantity, and unmeasured until 2026-09-05 — is now gated separately by the `language-parity` suite at **≤ 0.05**, measured 0.011; read the model card's "Fairness and EN/ES parity" for the interval and case-mix caveats that number carries |
 | AI Evaluation | Applies | RAG groundedness/safety/multilingual gates green; refusal gated at **0.90**<!-- claim:readme-refusal-target --> (offline floor, portfolio target 0.95, recorded as an open gap); judge-calibration (deterministic judge, 66 probes) **enforced floor: agreement ≥ 0.80**<!-- claim:readme-judge-calibration-floor-agreement --> **· Cohen's κ ≥ 0.60**<!-- claim:readme-judge-calibration-floor-kappa --> (CI gate; a regression below either fails the build) — last *measured*, well above floor, at agreement 0.955 / κ 0.906 (probe set expanded + antonym-polarity guard, 2026-07-08 — see `docs/ROADMAP.md`); judge≠answer model; model/data cards |
 | Documentation | Applies | Full `docs/` set; ADRs; dated, regenerated audit artifacts |
 | Responsible-Tech Framework | Applies | `docs/RESPONSIBLE-TECH-AUDITS.md` §A–F + AI-EVAL + I18N; every audit applies (added to this table 2026-07-05 — was silently omitted) |

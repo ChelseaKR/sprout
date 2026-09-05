@@ -21,7 +21,7 @@ from sprout.eval.dataset import (
     write_sidecar,
 )
 from sprout.eval.judge import DeterministicJudge, build_judge
-from sprout.eval.stats import is_underpowered, wilson_interval
+from sprout.eval.stats import is_underpowered, wilson_difference_interval, wilson_interval
 
 PROV = {"source": "synthetic", "license": "CC0-1.0", "added": "2026-06-22"}
 
@@ -112,6 +112,32 @@ def test_wilson_interval_bounds() -> None:
 def test_is_underpowered() -> None:
     assert is_underpowered(29)
     assert not is_underpowered(30)
+
+
+def test_wilson_difference_interval_brackets_the_difference() -> None:
+    low, high = wilson_difference_interval(90, 100, 80, 100)
+    assert low < 0.10 < high
+    assert low >= -1.0 and high <= 1.0
+
+
+def test_wilson_difference_interval_widens_as_a_slice_thins() -> None:
+    """The comparison is limited by its smallest slice, and the interval must say so."""
+    wide_low, wide_high = wilson_difference_interval(9, 10, 8, 10)
+    narrow_low, narrow_high = wilson_difference_interval(900, 1000, 800, 1000)
+    assert (wide_high - wide_low) > (narrow_high - narrow_low)
+
+
+def test_wilson_difference_interval_is_vacuous_on_an_empty_slice() -> None:
+    """A difference against nothing is not 0.0 — absence must not render as agreement."""
+    assert wilson_difference_interval(5, 5, 0, 0) == (-1.0, 1.0)
+    assert wilson_difference_interval(0, 0, 5, 5) == (-1.0, 1.0)
+
+
+def test_wilson_difference_interval_is_antisymmetric() -> None:
+    low, high = wilson_difference_interval(9, 12, 4, 11)
+    flipped_low, flipped_high = wilson_difference_interval(4, 11, 9, 12)
+    assert flipped_low == pytest.approx(-high)
+    assert flipped_high == pytest.approx(-low)
 
 
 # --- judge -----------------------------------------------------------------------
