@@ -16,6 +16,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +26,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - name: Install (dev + serve) on ${{ matrix.python }}
         run: uv sync --locked --extra serve --python ${{ matrix.python }}
       - name: Ruff format check
@@ -40,6 +43,7 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       # gitleaks-action resolves a pull_request's commit range through
@@ -55,6 +59,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - name: Install (dev)
         run: uv sync --locked
       # Every directory holding tracked Python. Keep in step with the Makefile's
@@ -79,11 +85,14 @@ jobs:
 
   eval-a11y:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - name: Install (dev + serve)
         run: uv sync --locked --extra serve
       - name: Ingest the bundled corpus
@@ -114,11 +123,14 @@ jobs:
     # coverage tracks the corpus automatically — see src/sprout/smoke.py and
     # docs/ROADMAP.md Phase 1.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - name: Install (dev + serve)
         run: uv sync --locked --extra serve
       - name: Ingest the bundled corpus
@@ -130,12 +142,15 @@ jobs:
     # ROADMAP Phase 3: tune retrieval/prompts only against committed eval failures, never a
     # held-out set. Mechanical enforcement — see AIEV-30 / docs/ROADMAP.md.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0 # full history + all remote branch refs; the gate diffs against origin/<base>
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - name: Install (dev)
         run: uv sync --locked
       - name: Tuning-scope gate
@@ -148,11 +163,14 @@ jobs:
     # conformance test — the deliverable's spine. Regenerates the fixtures from the
     # *current* Python pipeline on every run, so drift fails here, not later.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "20"
@@ -183,11 +201,14 @@ jobs:
     # docs/ROADMAP.md gap tracking once the one real finding it caught (empty reminders table
     # tripping axe's th-has-data-cells) was fixed rather than papered over.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "20"
@@ -205,11 +226,14 @@ jobs:
     # HTML eval report, per the WCAG 2.2 AA conformance row in docs/ROADMAP.md. Was previously
     # not wired into CI at all.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "20"
@@ -252,11 +276,14 @@ jobs:
 
   docs:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - name: Install (docs)
         run: uv sync --locked --group docs
       - name: MkDocs strict build
@@ -265,11 +292,14 @@ jobs:
   zizmor:
     # Workflow-SAST review, RTA §F claim (CICD-19): any PR touching workflows is scanned.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - name: zizmor (workflow SAST)
         run: uvx zizmor --offline --min-severity high .github/workflows/
 
@@ -278,11 +308,14 @@ jobs:
     # (CONTRIBUTING.md "CI parity" note; ROADMAP.md ci-parity-no-mechanical-diff). Fails if this
     # workflow or the Makefile changes on one side without the other.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - name: Install (dev)
         run: uv sync --locked
       - name: make verify vs. ci-gate invocation diff
@@ -294,6 +327,7 @@ jobs:
     if: always()
     needs: [test, security, eval-a11y, smoke, tuning-scope, web-static, pa11y, lighthouse, docs, zizmor, ci-parity]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Require all gates to pass (skipped path-filtered jobs are OK)
         # Interpolating join(needs.*.result) straight into the script body reads as a
