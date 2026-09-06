@@ -386,6 +386,31 @@ def test_claims_check_cli_passes() -> None:
     ok = runner.invoke(app, ["claims-check"])
     assert ok.exit_code == 0
     assert "reconciled" in ok.stdout
+    # The pass names how many claims it reconciled, so a shrinking registry is visible
+    # in the gate's own output rather than only in a diff nobody reads.
+    assert "all 0 claims" not in ok.stdout
+
+
+def test_claims_check_cli_refuses_a_registry_that_reconciles_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`claims-check` is merge-blocking, and it used to exit 0 over an empty registry.
+
+    `check()` returns an empty problem list for "every claim reconciled" and for "there
+    were no claims", and the command printed "all claims reconciled with their source of
+    truth" for both -- so emptying `docs/claims.yaml` would read as documentation
+    integrity rather than as its absence. Exit 2, because a registry that registers
+    nothing is a broken input, not a claim that failed.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "claims.yaml").write_text("claims: []\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["claims-check"])
+
+    assert result.exit_code == 2, result.output
+    assert "NOTHING CHECKED" in result.output
+    assert "This is not a pass" in result.output
 
 
 def test_claims_check_cli_missing_file(tmp_path: Path) -> None:
