@@ -422,6 +422,13 @@ def _baseline_check_passes(
         typer.echo("\nBaseline regression check FAILED:", err=True)
         for issue in issues:
             typer.echo(f"  - {issue}", err=True)
+        # The issues above name suites. Which case flipped, and on which check, is in the
+        # two reports; this is the command that reads them out.
+        typer.echo(
+            f"  Run `sprout eval-diff {baseline_path} <out>/eval-report.json` to see which "
+            "cases flipped and why.",
+            err=True,
+        )
         return False
     typer.echo("\nBaseline regression check: no issues.")
     return True
@@ -436,6 +443,54 @@ def _drift_check_passes(history: Any, drift_k: int, check_drift: Any) -> bool:
         return False
     typer.echo(f"\nEval trend drift check ({drift_k}-release window): no issues.")
     return True
+
+
+@app.command("eval-diff")
+def eval_diff(
+    before: Annotated[
+        Path,
+        typer.Argument(help="The earlier eval report (or the committed baseline)."),
+    ],
+    after: Annotated[Path, typer.Argument(help="The later eval report.")],
+    as_json: Annotated[
+        bool, typer.Option("--json", help="Emit the comparison as JSON instead of Markdown.")
+    ] = False,
+    fail_on_regression: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-regression",
+            help="Exit 1 if a case broke or a suite's verdict left `pass`.",
+        ),
+    ] = False,
+) -> None:
+    """Say which eval cases flipped between two reports, and on which check.
+
+    Named `eval-diff` rather than `eval diff` because `eval` is a command with its own
+    options, not a group; the repo spells related commands the same way
+    (`corpus-report`, `check-tuning-scope`, `ci-parity-check`).
+
+    Re-runs nothing. When the two reports disagree on `dataset_hash`, `judge_config_hash`,
+    `target` or `harness_version`, numeric deltas are refused with the differing fields
+    named, and a case that stopped failing is reported as not comparable rather than
+    fixed — a report records only its failures, so a removed case and a fixed case look
+    identical from here.
+    """
+
+    from .eval.diffing import diff_reports, exit_code_for, load_report, render_markdown
+
+    try:
+        earlier = load_report(before.read_text(encoding="utf-8"))
+        later = load_report(after.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        typer.echo(f"cannot read an eval report: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    comparison = diff_reports(earlier, later)
+    if as_json:
+        typer.echo(comparison.model_dump_json(indent=2))
+    else:
+        typer.echo(render_markdown(comparison))
+    raise typer.Exit(code=exit_code_for(comparison, fail_on_regression=fail_on_regression))
 
 
 @app.command()
