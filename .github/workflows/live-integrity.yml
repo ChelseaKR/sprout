@@ -88,8 +88,18 @@ jobs:
         run: |
           set -uo pipefail
           expected_sha="$(git rev-parse HEAD)"
-          uv run python scripts/verify_live_site.py --site site
-          verify_rc="$?"
+
+          # GitHub's default shell is `bash -e {0}`, and a `set` line cannot remove an
+          # already-applied `-e`. So `uv run ...` on its own line aborted the step the
+          # moment the verifier exited nonzero, and every line below it -- including the
+          # deploy-race excuse this step exists for, and the exit 4 vs exit 1 distinction
+          # the script goes to the trouble of providing -- was unreachable on exactly the
+          # runs it was written for. Capturing the status with `|| verify_rc=$?` is what
+          # actually keeps the step alive. transit-delivery-atlas fixed the same bug in
+          # its copy of this step; this one never got it.
+          verify_rc=0
+          uv run python scripts/verify_live_site.py --site site || verify_rc=$?
+
           # A deploy for a newer commit may have landed while this ran, in which
           # case the live site differing from THIS commit is the deploy working.
           # Only that exact case is excused, by re-reading the remote afterwards.

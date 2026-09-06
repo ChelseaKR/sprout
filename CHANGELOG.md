@@ -10,6 +10,25 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The live-site integrity step could not reach its own exit-code handling.**
+  `live-integrity.yml` ran the verifier on its own line and read `verify_rc="$?"` on the
+  next one. GitHub runs `run:` blocks under `bash -e {0}`, and a `set -uo pipefail` line
+  inside the block cannot remove an already-applied `-e` — `set +e` can, that spelling
+  cannot — so a failing verifier aborted the step at the command, and every line below it
+  was unreachable *on exactly the runs it was written for*: the deploy-race excuse the
+  block exists for, and the `exit 4` vs `exit 1` distinction `scripts/verify_live_site.py`
+  goes to the trouble of providing. The status is now captured on the command
+  (`... || verify_rc=$?`), which is the fix `transit-delivery-atlas` made to its copy of
+  this step and wrote down; this repository's copy never got it.
+
+  It failed closed, so it produced false alarms rather than false greens. `--no-verify`
+  would still have been the wrong response, and a check is better than a memory:
+  `tests/test_workflow_exit_codes.py` now sweeps every `run:` block in every workflow for
+  an assignment from `$?` on a line of its own, exempts a block that genuinely does
+  `set +e`, and pins this step's shape by structure rather than by its text. It asserts it
+  found workflows and more than twenty run blocks first, so it cannot pass by sweeping
+  nothing.
+
 - **`sprout eval-diff` — which cases flipped, and on which check.** A red eval step named
   a suite; finding the case meant opening two JSON reports and reading them side by side.
   `sprout eval-diff BEFORE.json AFTER.json [--json] [--fail-on-regression]` reads two
