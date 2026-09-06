@@ -10,6 +10,25 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The published confidence bounds were computed with `pow`, which is not required
+  to be correctly rounded.** `x ** 0.5` is libm's `pow`; `math.sqrt` is `sqrt`, which
+  IEEE 754 *does* require to be correctly rounded. The two differ in the last bit on
+  some inputs, and which inputs depends on the platform's libm -- so the same
+  `(successes, n)` pair did not have to give the same double on a laptop and on the CI
+  runner. `eval/stats.py`'s Wilson margin and its Newcombe interval on the EN/ES
+  pass-rate gap both print into `docs/audits/eval-report.*`, which is byte-compared
+  against a fresh regeneration, so a last-bit platform difference there is a red build
+  on a file nobody edited. Both now use `math.sqrt`.
+
+  Measured on macOS (arm64, CPython 3.12.14): 99 of the 80600 `(successes, n)` pairs
+  with n<=400 give a different margin, and the first whose published *bounds* differ is
+  42 of 62 -- an item count this harness reaches. **No committed report or figure
+  changed**: none of the report's own pairs lands on a disagreeing input today. This
+  closes a hazard, not a live failure. The new test asserts the property over the whole
+  module rather than one function, because `wilson_difference_interval` arrived with two
+  inline `** 0.5` calls of its own and would have merged cleanly beside a fix that
+  removed only the first.
+
 - **The 2026-07-05 citation correction was prose, and nothing enforced it.**
   `CITATION.cff` had carried `date-released: 2026-06-22` for a release that was
   never cut; it was corrected to `version: "0.1.0-dev"` with no release date and
