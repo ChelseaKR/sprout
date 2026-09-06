@@ -639,14 +639,35 @@ def freshness_check(
     if check_links:
         findings = findings + check_liveness(manifest)
 
+    # The denominator, printed on every path. "No stale citations found" was the same
+    # sentence whether thirty-two entries had been checked or none had, and this runs on
+    # a weekly schedule where nobody reads the log of a green run -- so a corpus that had
+    # quietly shrunk would have read exactly like a clean one.
+    #
+    # The zero case itself is already fail-closed one layer down: ``ingest.load_manifest``
+    # rejects a manifest with no ``documents`` list rather than returning an empty dict,
+    # so this command cannot reach a vacuous run. That floor is pinned by
+    # ``tests/test_ingest.py::test_load_manifest_empty``; the count here makes a
+    # *shrinking* manifest visible as well as an emptied one.
+    checked = len(manifest)
+
     if not findings:
-        typer.echo("freshness: no stale or dead citations found")
+        typer.echo(f"freshness: {checked} citation(s) checked; none stale or dead")
         raise typer.Exit(0)
 
     for f in findings:
         typer.echo(f"  - [{f.severity}] {f.file} ({f.url}): {f.reason}", err=True)
     counts = summarize(findings)
-    typer.echo(f"freshness: {counts['high']} high, {counts['warning']} warning", err=True)
+    typer.echo(
+        f"freshness: {checked} citation(s) checked; "
+        f"{counts['high']} high, {counts['warning']} warning",
+        err=True,
+    )
+    # Deliberately unchanged: only a high-severity finding fails. A warning-severity
+    # stale citation therefore cannot fail this gate, which is a real hole and a policy
+    # question -- what the SLA is for a non-toxicity citation past its age limit -- not
+    # something to settle in a bug fix. Measured 2026-09-06 on the committed corpus:
+    # 32 citations, 0 findings of either severity, so the hole is latent today.
     raise typer.Exit(1 if counts["high"] else 0)
 
 

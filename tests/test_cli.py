@@ -202,7 +202,10 @@ def test_freshness_check(tmp_path: Path) -> None:
     cfg = _project(tmp_path)
     fresh = runner.invoke(app, ["freshness", "--config", str(cfg)])
     assert fresh.exit_code == 0
-    assert "no stale or dead citations" in fresh.stdout
+    assert "none stale or dead" in fresh.stdout
+    # The pass carries its own denominator, so a manifest that lost rows is visible in
+    # the weekly log rather than reading exactly like a clean one.
+    assert "citation(s) checked" in fresh.stdout
 
     stale_date = (date.today() - timedelta(days=900)).isoformat()
     stale_manifest = {
