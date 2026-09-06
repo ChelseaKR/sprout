@@ -28,6 +28,18 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   stores the routed value. **Breaking (pre-1.0):** anything constructing an `AnswerTrace`
   directly must now pass `safety_query_by_keyword`; there is no default, because a default
   is how the wrong value got written in the first place.
+
+  The tuning-scope gate blocked that fix, and could only have been satisfied by a false
+  statement. `src/sprout/answer.py` is tunable surface, so *any* edit to it demands a
+  `Tunes-Against: <case-id>` trailer citing a committed eval failure the change responds to —
+  and this change responds to none: it edits `Assistant.trace`, the `--debug` dump, which
+  `sprout eval` never calls (the harness replays `Assistant.answer`, `src/sprout/eval/record.py`).
+  The gate now normalizes `answer.py` the way it already normalizes `config.py`: the
+  `Assistant` methods an eval run does not execute are dropped from both sides of the
+  fingerprint, and everything else — module-level imports and constants, `answer`, retrieval,
+  guards, confidence — is still compared exactly, so a mixed change still fails closed. A gate
+  that can only be passed by writing something untrue is not a stricter gate; it is a gate that
+  teaches people to write untrue trailers.
 - **The EN/ES pass-rate parity target was in the ledger for months with nothing computing it
   — now it is a suite, a gate, and a number** (#128). The metrics ledger declared
   `|EN − ES| ≤ 5 pp` and the row itself admitted the gap: no `parity_gap`, `pass_rate_parity`
