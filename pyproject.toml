@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "sprout"
 version = "0.1.0"
-description = "A grounded, evaluated, multilingual plant-care assistant: retrieval-mandatory extractive generation with enforced citations, a never-certify-safe toxicity guard, calibrated abstention, a WCAG 2.2 chat UI, and a public evaluation harness (calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage) wired into CI from day one."
+description = "A grounded, evaluated, multilingual plant-care assistant: retrieval-mandatory extractive generation with enforced citations, a never-certify-safe toxicity guard, calibrated abstention, a WCAG 2.2 chat UI, and a public evaluation harness (calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage) wired into CI from day one."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"

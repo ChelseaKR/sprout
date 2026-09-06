@@ -21,7 +21,14 @@
 #                              matching their English anchor on the refuse/answer decision and
 #                              the cited-plant set. Registered 2026-08-29 because the README,
 #                              ROADMAP, model card and three other docs described the gate as an
-#                              |EN - ES| <= 5pp pass-rate delta, a quantity no code computes.
+#                              |EN - ES| <= 5pp pass-rate delta, a quantity no code computed.
+#   suite:language-parity.threshold
+#                            — LanguageParitySuite().metric.threshold (src/sprout/eval/suites/
+#                              language_parity.py), the aggregate |EN - ES| pass-rate gap the
+#                              `language-parity` gate enforces. Registered 2026-09-05 alongside
+#                              the suite (#128): the delta above finally has code behind it, and
+#                              pinning both thresholds separately is what keeps the per-case and
+#                              aggregate quantities from collapsing back into one claim.
 #   suite:calibration.min_agreement / suite:calibration.min_kappa
 #                            — MIN_AGREEMENT / MIN_KAPPA (src/sprout/eval/calibration.py), the
 #                              enforced CI floors judge-calibration gates on — NOT the value the
@@ -131,6 +138,26 @@ claims:
     expected: "0.85"
     marker: "<!-- claim:model-card-multilingual-parity-threshold -->"
 
+  # --- Aggregate EN/ES pass-rate gap (src/sprout/eval/suites/language_parity.py) --------------
+  # Added 2026-09-05 with the gate itself (#128). This is the *other* quantity — the aggregate
+  # |EN - ES| delta between the language slices' pass rates, not the per-case structural parity
+  # pinned above. The two were conflated in the docs for months; each now has its own suite, its
+  # own written MetricDefinition, and its own registry entry, so drifting one into the other
+  # fails this gate. The *measured* gap is deliberately not pinned here (it moves run to run,
+  # like every other measurement); it is pinned to the committed eval report by
+  # tests/test_model_card.py instead. Only the threshold is a fixed claim to guard.
+  - id: roadmap-language-parity-threshold
+    file: docs/ROADMAP.md
+    source: "suite:language-parity.threshold"
+    expected: "0.05"
+    marker: "<!-- claim:roadmap-language-parity-threshold -->"
+
+  - id: model-card-language-parity-threshold
+    file: docs/cards/model-card.md
+    source: "suite:language-parity.threshold"
+    expected: "0.05"
+    marker: "<!-- claim:model-card-language-parity-threshold -->"
+
   # --- eval-report.json cross-check (demonstrates the eval-report source kind; groundedness has
   # not drifted, but pinning it here means the ledger row is checked, not merely trusted) -------
   - id: roadmap-groundedness-threshold
@@ -189,13 +216,13 @@ claims:
   - id: readme-eval-suite-count
     file: README.md
     source: "eval-report:suites.count"
-    expected: "8"
+    expected: "9"
     marker: "<!-- claim:readme-eval-suite-count -->"
 
   - id: readme-eval-suite-names
     file: README.md
     source: "eval-report:suites.names"
-    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    expected: "calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage"
     marker: "<!-- claim:readme-eval-suite-names -->"
 
   # The suite count and the suite names were published in nine places and gated in one.
@@ -209,47 +236,47 @@ claims:
   - id: index-eval-suite-count
     file: docs/index.md
     source: "eval-report:suites.count"
-    expected: "8"
+    expected: "9"
     marker: "<!-- claim:index-eval-suite-count -->"
 
   - id: index-eval-suite-names
     file: docs/index.md
     source: "eval-report:suites.names"
-    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    expected: "calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage"
     marker: "<!-- claim:index-eval-suite-names -->"
 
   - id: adapt-eval-suite-count
     file: docs/ADAPT.md
     source: "eval-report:suites.count"
-    expected: "8"
+    expected: "9"
     marker: "<!-- claim:adapt-eval-suite-count -->"
 
   - id: adapt-eval-suite-names
     file: docs/ADAPT.md
     source: "eval-report:suites.names"
-    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    expected: "calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage"
     marker: "<!-- claim:adapt-eval-suite-names -->"
 
   - id: architecture-eval-suite-count
     file: docs/ARCHITECTURE.md
     source: "eval-report:suites.count"
-    expected: "8"
+    expected: "9"
     marker: "<!-- claim:architecture-eval-suite-count -->"
 
   - id: datacard-eval-suite-count
     file: docs/cards/data-card-corpus.md
     source: "eval-report:suites.count"
-    expected: "8"
+    expected: "9"
     marker: "<!-- claim:datacard-eval-suite-count -->"
 
   - id: datacard-eval-suite-names
     file: docs/cards/data-card-corpus.md
     source: "eval-report:suites.names"
-    expected: "calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage"
+    expected: "calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage"
     marker: "<!-- claim:datacard-eval-suite-names -->"
 
   - id: modelcard-eval-suite-count
     file: docs/cards/model-card.md
     source: "eval-report:suites.count"
-    expected: "8"
+    expected: "9"
     marker: "<!-- claim:modelcard-eval-suite-count -->"
