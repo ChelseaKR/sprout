@@ -139,10 +139,18 @@ people (see the inferred-attributes stance below).
   the facts and citations of its English mirror, and the harness gates **per-case structural
   parity at ≥ 0.85** — the fraction of non-reference-language cases that match their English
   anchor on the refuse/answer decision and the cited-plant set
-  (`multilingual-parity`, `src/sprout/eval/suites/multilingual.py`). An aggregate
-  **|EN − ES| pass-rate delta is not computed and not gated**; it is a planned metric,
-  recorded unmeasured in the model card as `en-es-parity: value: null, verified: false`
-  (corrected 2026-08-29 — this section previously called the 5pp delta a gate).
+  (`multilingual-parity`, `src/sprout/eval/suites/multilingual.py`).
+- *Rate parity*: the aggregate **|EN − ES| pass-rate delta** is a **different quantity** from
+  the per-case check above, and until 2026-09-05 nothing computed it (corrected 2026-08-29 —
+  this section had called the 5pp delta a gate while the model card correctly recorded
+  `en-es-parity: value: null, verified: false`). It is now its own suite: `language-parity`
+  (`src/sprout/eval/suites/language_parity.py`) scores every case — English anchors included,
+  which the per-case suite never scores — as a slice of its own language and gates the gap
+  between the slices' pass rates at **≤ 0.05**. Measured 0.011 (EN 0.826 n=121, ES 0.838
+  n=37). The suite publishes, in the same report panel, the two facts that limit how far that
+  number can be pushed: a 95% Newcombe interval on the gap of [0.000, 0.127], and report-only
+  stratum diagnostics that all exceed 5 pp because the EN and ES case sets are not matched.
+  The 37-case Spanish slice, not the metric, is the binding constraint on this claim.
   Language detection is deterministic and dependency-free (`lang.py`), so the segment
   assignment is itself reproducible.
 

@@ -36,6 +36,13 @@
               }
             },
             {
+              "id": "sprout-eval/language-parity",
+              "name": "en-es-pass-rate-gap",
+              "shortDescription": {
+                "text": "Largest absolute difference between any two language slices' pass rates over the recorded per-case correctness label, applied identically in every language (|EN - ES| for this corpus; English anchors are scored as their own slice). Distinct from the multilingual suite's per-case structural parity. Lower is better; the interval shown is a Newcombe interval on the gap and the under-powered flag is keyed to the smallest slice. Segment rows marked report-only are diagnostics and do not gate."
+              }
+            },
+            {
               "id": "sprout-eval/multilingual",
               "name": "multilingual-parity",
               "shortDescription": {

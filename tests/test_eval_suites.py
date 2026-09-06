@@ -128,6 +128,10 @@ def _golden() -> Dataset:
                 text=yellow,
                 citations=["Monstera care — monstera.md (as of 2026-05-01)"],
             ),
+            # The English anchor carries its own correctness label so `language-parity` can
+            # score it as a slice of its own — the quantity `multilingual` never measures,
+            # because it only ever scores the non-reference member of a pair.
+            is_correct=True,
         ),
         _mk(
             id="ml-es",
@@ -138,6 +142,7 @@ def _golden() -> Dataset:
                 text="Las hojas amarillas de la Monstera indican exceso de riego.",
                 citations=["Cuidado de la Monstera — monstera.es.md (as of 2026-05-01)"],
             ),
+            is_correct=True,
         ),
         _mk(
             id="c1",
@@ -190,6 +195,7 @@ def test_all_suites_pass_on_good_golden(golden: Dataset) -> None:
         "calibration",
         "refusal",
         "multilingual",
+        "language-parity",
         "toxicity-coverage",
         "completeness",
         "conversation",
@@ -411,8 +417,148 @@ def test_completeness_fails_when_a_facet_is_missing() -> None:
     assert "missing facets" in suite.failing_examples[0].detail
 
 
+# --- language parity (issue #128) ------------------------------------------------
+def _parity_items(en: list[bool], es: list[bool], **extra: object) -> Dataset:
+    """A dataset of correctness-labelled cases in two languages and nothing else."""
+    items = [
+        _mk(id=f"{lang}-{i}", question="q", language=lang, is_correct=ok, **extra)
+        for lang, labels in (("en", en), ("es", es))
+        for i, ok in enumerate(labels)
+    ]
+    return Dataset.from_items(items)
+
+
+def _parity(dataset: Dataset) -> SuiteResult:
+    return run_evaluation(
+        dataset, JUDGE, resolve_suites("language-parity"), target="t"
+    ).suite_results[0]
+
+
+def test_language_parity_measures_the_gap_between_slices_not_structural_parity() -> None:
+    """The ledger's metric: |EN - ES| over pass rates, English anchors scored too.
+
+    The `multilingual` suite gates a *different* quantity (per-case structural parity of
+    each translation against its English anchor, >= 0.85) and never scores the anchors at
+    all, so it cannot see an EN-vs-ES pass-rate gap. This does.
+    """
+    # EN 8/10 = 0.80, ES 4/10 = 0.40 -> a 40 pp gap the structural suite would not report.
+    suite = _parity(_parity_items([True] * 8 + [False] * 2, [True] * 4 + [False] * 6))
+    assert suite.suite == "language-parity"
+    assert suite.metric.name == "en-es-pass-rate-gap"
+    assert not suite.metric.higher_is_better
+    assert suite.score == pytest.approx(0.4)
+    assert not suite.passed
+    by_label = {seg.label: seg for seg in suite.segments}
+    assert by_label["pass rate · en"].score == pytest.approx(0.8)
+    assert by_label["pass rate · es"].score == pytest.approx(0.4)
+    # The row that names the slice dragging parity down is the one that fails.
+    assert by_label["pass rate · en"].verdict is Verdict.PASS
+    assert by_label["pass rate · es"].verdict is Verdict.FAIL
+
+
+def test_language_parity_passes_within_five_points() -> None:
+    # EN 19/20 = 0.95, ES 19/20 = 0.95 -> gap 0.0, inside the 5 pp target.
+    suite = _parity(_parity_items([True] * 19 + [False], [True] * 19 + [False]))
+    assert suite.score == pytest.approx(0.0)
+    assert suite.passed
+    assert suite.metric.threshold == pytest.approx(0.05)
+
+
+def test_language_parity_reports_an_interval_on_the_gap_not_on_the_pass_rate() -> None:
+    """Overriding the score without overriding the interval publishes a number about a
+    different quantity beside it — the defect this suite must not reintroduce."""
+    suite = _parity(_parity_items([True] * 8 + [False] * 2, [True] * 4 + [False] * 6))
+    # A Wilson interval on the pooled pass rate (12/20 = 0.60) would sit near [0.39, 0.78];
+    # an interval on a 0.40 gap must bracket the gap instead.
+    assert suite.ci_low <= suite.score <= suite.ci_high
+    assert suite.ci_low >= 0.0  # the gap is an absolute value; its bound cannot go negative
+    assert "Newcombe" in suite.notes
+
+
+def test_language_parity_is_underpowered_on_its_smallest_slice() -> None:
+    """158 pooled items do not make a comparison powered when one side contributes 3."""
+    suite = _parity(_parity_items([True] * 100, [True] * 3))
+    assert suite.n_items == 103
+    assert suite.underpowered, "the smallest slice, not the pooled count, limits the gap"
+
+
+def test_language_parity_fails_closed_on_a_single_language() -> None:
+    """A monolingual run is not a parity result; reporting 0.0 would pass it silently."""
+    suite = _parity(_parity_items([True] * 5, []))
+    assert not suite.passed
+    assert suite.n_items == 0
+    assert "at least two language slices" in suite.notes
+
+
+def test_language_parity_diagnostics_are_report_only() -> None:
+    """A stratum gap above the threshold is published, but never flips the suite."""
+    # Pooled: EN 5/10 = 0.50, ES 3/6 = 0.50 -> gap 0.0. Within the `refuse-and-redirect`
+    # stratum, though, EN is 3/4 and ES is 0/2 — a 75 pp gap the pooled number hides.
+    items = [
+        _mk(id=f"en-a{i}", question="q", language="en", expected_behavior="answer", is_correct=ok)
+        for i, ok in enumerate([True, True, False, False, False, False])
+    ]
+    items += [
+        _mk(
+            id=f"en-r{i}",
+            question="q",
+            language="en",
+            expected_behavior="refuse-and-redirect",
+            is_correct=ok,
+        )
+        for i, ok in enumerate([True, True, True, False])
+    ]
+    items += [
+        _mk(id=f"es-a{i}", question="q", language="es", expected_behavior="answer", is_correct=ok)
+        for i, ok in enumerate([True, True, True, False])
+    ]
+    items += [
+        _mk(
+            id=f"es-r{i}",
+            question="q",
+            language="es",
+            expected_behavior="refuse-and-redirect",
+            is_correct=False,
+        )
+        for i in range(2)
+    ]
+    suite = _parity(Dataset.from_items(items))
+    assert suite.score == pytest.approx(0.0)
+    assert suite.passed, "a report-only diagnostic must not gate"
+    diagnostics = {seg.label: seg for seg in suite.segments if "report-only" in seg.label}
+    redirect = diagnostics["gap · behavior=refuse-and-redirect (report-only)"]
+    assert redirect.score == pytest.approx(0.75)
+    assert redirect.verdict is Verdict.FAIL, "the hidden gap is still shown as failing"
+
+
+def test_language_parity_drops_a_stratum_only_one_language_reaches() -> None:
+    """A gap needs two slices; a single-language stratum has none to report."""
+    items = [
+        _mk(id=f"en-{i}", question="q", language="en", expected_behavior="answer", is_correct=True)
+        for i in range(4)
+    ]
+    items += [
+        _mk(
+            id=f"en-r{i}",
+            question="q",
+            language="en",
+            expected_behavior="refuse-and-redirect",
+            is_correct=True,
+        )
+        for i in range(2)
+    ]
+    items += [
+        _mk(id=f"es-{i}", question="q", language="es", expected_behavior="answer", is_correct=True)
+        for i in range(3)
+    ]
+    suite = _parity(Dataset.from_items(items))
+    labels = {seg.label for seg in suite.segments}
+    assert "gap · behavior=answer (report-only)" in labels
+    assert "gap · behavior=refuse-and-redirect (report-only)" not in labels
+
+
 def test_resolve_suites() -> None:
-    assert len(resolve_suites("all")) == 8
+    assert len(resolve_suites("all")) == 9
     assert [s.name for s in resolve_suites("safety,refusal")] == ["safety", "refusal"]
     with pytest.raises(KeyError, match="unknown suite"):
         resolve_suites("nope")
