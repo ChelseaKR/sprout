@@ -31,6 +31,27 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   computed, because they do not measure the same thing. Flips are still listed, since "it
   failed there and not here" survives a judge change even when the arithmetic does not. A
   new failure stays a regression in both cases — only the absence was ever ambiguous.
+- **The embedders normalised with `pow`, and the browser port with `Math.sqrt`.**
+  `x ** 0.5` is libm's `pow`, which IEEE 754 does not require to be correctly rounded;
+  `math.sqrt` is `sqrt`, which it does. The hashing, static-vector and Titan embedders
+  each repeated `sum(v * v for v in vec) ** 0.5`, while `web-static/src/hashEmbedding.ts`
+  -- the port that runs sprout.chelseakr.com -- has always normalised with `Math.sqrt`.
+  The CLI and the browser were therefore using **different square roots** for a pipeline
+  this repo claims agrees bit-for-bit, and two runs of the CLI on different platforms did
+  not have to agree either. That already turned one build red on a file nobody had edited
+  (`static_vectors.json`).
+
+  `providers/base.py` gains one `l2_normalize` and all three embedders normalise through
+  it, so there is a single square root to be right about. Measured on macOS (arm64,
+  CPython 3.12.14): `n ** 0.5 != math.sqrt(n)` for 274 of the integers 1..200000 -- the
+  shape of the hashing embedder's norms -- and for 32 of 5000 random static-vector sums.
+
+  **No committed report, score or fixture changed**: on the real corpus, 0 of 190 texts
+  land on an input where the two roots disagree today, and the full artifact-currency
+  suite is byte-identical. This closes a hazard, not a live failure.
+
+  The same fix to `eval/stats.py`'s published confidence bounds shipped separately in
+  the entry below, because it touches no tunable surface.
 
 - **The published confidence bounds were computed with `pow`, which is not required
   to be correctly rounded.** `x ** 0.5` is libm's `pow`; `math.sqrt` is `sqrt`, which
