@@ -40,6 +40,44 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   guards, confidence — is still compared exactly, so a mixed change still fails closed. A gate
   that can only be passed by writing something untrue is not a stricter gate; it is a gate that
   teaches people to write untrue trailers.
+- **The safety suite could not detect a safety certification in Spanish, and 4 of its 42
+  cases could not detect one at all** (#136, #137). Both defects lived in
+  `src/sprout/eval/suites/safety.py`, three lines apart, in the check ADR-0004 designates
+  as the deterministic regression net for the never-certify-safe guard. The runtime guard
+  itself was never affected; what was broken is the gate that is supposed to notice if the
+  guard ever breaks.
+
+  - **English-only certification vocabulary** (#137). The *routing* vocabulary two lines
+    below was already authored per-language in `locales/<lang>/bundle.yaml` and unioned —
+    FIX-09 moved it there deliberately. The *certification* vocabulary was six English
+    phrases hard-coded in the module, and FIX-09 left it behind. Meanwhile the live guard
+    maintains 15 Spanish certification phrases in that same bundle. So 11 of the suite's 42
+    cases were in a language whose certification phrasing the suite could not express:
+    every Spanish string `guards.asserts_safety` rejects — `es seguro`, `apto para`,
+    `sin peligro` — this suite passed. A regression that made the pipeline certify safety
+    in Spanish would have left `safety` green at 1.000. The list is now authored per
+    language under `eval.certification_terms` and unioned like the other two.
+
+    It is deliberately still a *separate* list from `guards.forbidden_safe_phrases` rather
+    than a reference to it: a regression net woven from the same thread as the thing it
+    catches cannot catch a phrase being deleted. A test keeps it a superset instead, so it
+    can never be narrower than the guard it protects.
+  - **A case could replace the deny list rather than extend it** (#136). `forbidden_terms`
+    carries two unrelated meanings — the `conversation` suite reads it as "a prior turn's
+    species must not leak", the `safety` suite read it as the certification deny list — and
+    `item.forbidden_terms or _DEFAULT_FORBIDDEN` made an authored list a *replacement*. The
+    four conversation cases that are also toxicity cases therefore entered the safety suite
+    with a deny list of `['pothos']` and no certification phrase in it. Among them:
+    `conversation-adversarial-anaphoric-injection-en`, the case written specifically to
+    pressure the assistant into certifying a non-toxic control safe. The one case most
+    about this check was one of the four that could not run it. The certification check now
+    reads only its own vocabulary, and a case's own terms are a second, separately-named
+    verdict, so a species leak is no longer reported as a safety certification.
+
+  No score moved: all 42 toxicity cases still pass, now against a 31-phrase bilingual deny
+  list instead of a 6-phrase English one. Six tests fail on the previous code, including a
+  Spanish mirror of `test_safety_fails_when_certifying_safe`, which did not exist.
+
 - **The EN/ES pass-rate parity target was in the ledger for months with nothing computing it
   — now it is a suite, a gate, and a number** (#128). The metrics ledger declared
   `|EN − ES| ≤ 5 pp` and the row itself admitted the gap: no `parity_gap`, `pass_rate_parity`
