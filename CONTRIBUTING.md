@@ -140,9 +140,14 @@ failures** — never against results only visible from a private/local run. Mech
   normalizes exactly one operational seam: `observe_generation` / `observe_embedding` may wrap an
   otherwise-identical provider constructor, with the configured cost ceiling forwarded exactly.
   The initial `provider_lifecycle.py` is admitted once by an exact reviewed digest because it is
-  absent at this branch's merge base. Model literals, prompts, decoding parameters, real config
-  values, retrieval/guard edits, every later lifecycle edit, and every unknown provider hunk
-  remain fail-closed and require a real pre-existing case.
+  absent at this branch's merge base. It also drops the `Assistant` methods an eval run never
+  executes — today just `Assistant.trace`, the `--debug` retrieval dump — because `sprout eval`
+  replays `Assistant.answer` and never calls them, so nothing inside them can move an eval
+  outcome; `tests/test_tuning_scope.py::test_eval_visible_modules_never_call_debug_only_methods`
+  fails the moment an eval-visible module calls one. Model literals, prompts, decoding parameters,
+  real config values, retrieval/guard edits, module-level code in `answer.py`, every later
+  lifecycle edit, and every unknown provider hunk remain fail-closed and require a real
+  pre-existing case.
 - This does not (and cannot) stop a contributor from *looking* at more than the committed
   failures before writing the trailer; what it enforces is a checkable, falsifiable citation
   trail for every tuning change, the same spirit as the coverage and baseline-regression gates.

@@ -136,6 +136,17 @@ def repo(tmp_path: Path) -> Path:
         "DENIED = {'unsafe'}  # guards v1\n", encoding="utf-8"
     )
     (root / "src" / "sprout" / "server.py").write_text("# server\n", encoding="utf-8")
+    (root / "src" / "sprout" / "answer.py").write_text(
+        "SAFETY_DIRECTIVE = 'cite, never certify'\n"
+        "\n"
+        "class Assistant:\n"
+        "    def answer(self, query):\n"
+        "        return self._render(query)\n"
+        "\n"
+        "    def trace(self, query):\n"
+        "        return {'query': query, 'answer': self.answer(query)}\n",
+        encoding="utf-8",
+    )
     (root / "src" / "sprout" / "config.py").write_text(
         "class GenerationConfig:\n"
         "    relevance_floor = 0.30\n"
@@ -326,6 +337,97 @@ def test_eval_visible_modules_never_read_exempt_config() -> None:
             }:
                 offenders.append(f"{module}:{node.lineno}")
     assert not offenders, f"eval-visible module(s) read exempt config: {offenders}"
+
+
+def test_debug_only_assistant_method_passes_without_trailer(repo: Path) -> None:
+    # `Assistant.trace` is the `--debug` dump; `sprout eval` replays `Assistant.answer` and
+    # never calls it, so a change confined to it cannot move an eval outcome. Demanding a
+    # `Tunes-Against` citation here would only be satisfiable by writing a false one.
+    (repo / "src" / "sprout" / "answer.py").write_text(
+        "SAFETY_DIRECTIVE = 'cite, never certify'\n"
+        "\n"
+        "class Assistant:\n"
+        "    def answer(self, query):\n"
+        "        return self._render(query)\n"
+        "\n"
+        "    def trace(self, query):\n"
+        "        answer = self.answer(query)\n"
+        "        return {'query': query, 'answer': answer, 'routed': answer.is_safety_query}\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "fix(trace): report the routing that happened"], repo)
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+def test_answer_change_outside_the_debug_method_still_requires_real_case(repo: Path) -> None:
+    # The exemption is confined to the named methods: the same commit that edits `trace`
+    # also edits `answer`, and the gate fires on the second edit.
+    (repo / "src" / "sprout" / "answer.py").write_text(
+        "SAFETY_DIRECTIVE = 'cite, never certify'\n"
+        "\n"
+        "class Assistant:\n"
+        "    def answer(self, query):\n"
+        "        return self._render(query, temperature=0.7)\n"
+        "\n"
+        "    def trace(self, query):\n"
+        "        answer = self.answer(query)\n"
+        "        return {'query': query, 'answer': answer, 'routed': answer.is_safety_query}\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "fix(trace): report the routing, and also tune generation"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/answer.py" in issues[0]
+
+
+def test_module_level_answer_change_is_not_exempt(repo: Path) -> None:
+    # Only the class methods are dropped. A module-level constant an eval run *does* read
+    # is compared as usual, even when `Assistant` itself is untouched.
+    (repo / "src" / "sprout" / "answer.py").write_text(
+        "SAFETY_DIRECTIVE = 'answer freely'\n"
+        "\n"
+        "class Assistant:\n"
+        "    def answer(self, query):\n"
+        "        return self._render(query)\n"
+        "\n"
+        "    def trace(self, query):\n"
+        "        return {'query': query, 'answer': self.answer(query)}\n",
+        encoding="utf-8",
+    )
+    _git(["commit", "-q", "-am", "chore(answer): reword the directive"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/answer.py" in issues[0]
+
+
+def test_eval_visible_modules_never_call_debug_only_methods() -> None:
+    # The invariant that keeps the `Assistant.trace` exemption sound: no module an eval run
+    # executes may call one of the exempt methods. If one starts to, the method is no longer
+    # unreachable from an eval and must leave _EVAL_INVISIBLE_ASSISTANT_METHODS first.
+    import ast as _ast
+
+    from sprout.eval.tuning_scope import _EVAL_INVISIBLE_ASSISTANT_METHODS
+
+    eval_visible = [
+        Path("src/sprout/answer.py"),
+        Path("src/sprout/retrieve.py"),
+        Path("src/sprout/guards.py"),
+        Path("src/sprout/confidence.py"),
+        Path("src/sprout/lexical.py"),
+        *sorted(Path("src/sprout/providers").glob("*.py")),
+        *sorted(Path("src/sprout/eval").rglob("*.py")),
+    ]
+    offenders = []
+    for module in eval_visible:
+        tree = _ast.parse(module.read_text(encoding="utf-8"))
+        for node in _ast.walk(tree):
+            if (
+                isinstance(node, _ast.Call)
+                and isinstance(node.func, _ast.Attribute)
+                and node.func.attr in _EVAL_INVISIBLE_ASSISTANT_METHODS
+            ):
+                offenders.append(f"{module}:{node.lineno}")
+    assert not offenders, f"eval-visible module(s) call a debug-only method: {offenders}"
 
 
 def test_semantic_config_change_still_requires_real_case(repo: Path) -> None:
