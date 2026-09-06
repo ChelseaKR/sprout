@@ -8,7 +8,7 @@ CLI layer in ``test_cli.py``.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -246,6 +246,65 @@ def test_export_judge_probes_skips_refusals(tmp_path: Path) -> None:
     queue.label(item.item_id, "should-have-refused")
     payload = export_judge_probes(queue.labeled())
     assert payload["probes"] == []
+
+
+def test_export_judge_probes_labeled_date_is_the_oldest_label_not_the_export_date(
+    tmp_path: Path,
+) -> None:
+    """The freshness clock must not restart just because someone re-ran the exporter.
+
+    `sprout calibrate` treats `labeled_date` as the 30-day judge-calibration freshness
+    clock. This used to be stamped `date.today()`, so re-exporting a queue last labeled in
+    January produced a file dated today and the staleness warning could never fire. It is
+    now the oldest label date in the exported set -- a set is only as fresh as its stalest
+    member.
+    """
+    queue = _queue(tmp_path)
+    old = queue.capture(_low_confidence_trace("q-old"))
+    recent = queue.capture(_low_confidence_trace("q-recent"))
+    assert old is not None and recent is not None
+    queue.label(old.item_id, "correct", as_of=datetime(2026, 1, 9, tzinfo=UTC))
+    queue.label(recent.item_id, "correct", as_of=datetime(2026, 6, 30, tzinfo=UTC))
+
+    payload = export_judge_probes(queue.labeled())
+
+    assert payload["labeled_date"] == "2026-01-09"
+    assert payload["labeled_date"] != date.today().isoformat()
+    assert len(payload["probes"]) == 2
+
+
+def test_export_judge_probes_omits_labeled_date_when_no_probe_is_exported(
+    tmp_path: Path,
+) -> None:
+    """An export that dates nothing must not claim a date. A refusal-only queue produces
+    zero probes; stamping today's date on that file would hand `calibrate` a freshness
+    reading for a set with nothing in it."""
+    queue = _queue(tmp_path)
+    item = queue.capture(_refused_trace())
+    assert item is not None
+    queue.label(item.item_id, "should-have-refused")
+
+    payload = export_judge_probes(queue.labeled())
+
+    assert payload["probes"] == []
+    assert "labeled_date" not in payload
+
+
+def test_export_judge_probes_omits_labeled_date_when_a_label_carries_no_date(
+    tmp_path: Path,
+) -> None:
+    """`labeled_at` is optional on the record. If any exported probe has none, the set's
+    oldest label date is unknown, and unknown is reported by omission -- not by today."""
+    queue = _queue(tmp_path)
+    item = queue.capture(_low_confidence_trace())
+    assert item is not None
+    queue.label(item.item_id, "correct")
+    undated = queue.get(item.item_id).model_copy(update={"labeled_at": None})
+
+    payload = export_judge_probes([undated])
+
+    assert len(payload["probes"]) == 1
+    assert "labeled_date" not in payload
 
 
 def test_export_confidence_fit_cases_carries_confidence_and_correctness(tmp_path: Path) -> None:

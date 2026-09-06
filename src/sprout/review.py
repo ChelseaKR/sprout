@@ -250,7 +250,23 @@ def export_judge_probes(
     only for ``correct``: every other label means the rendered text should *not* be judged
     as entailed by its cited sources, which is exactly the ``entails`` probe question.
     Skips unlabeled items (no human judgment yet).
+
+    ``labeled_date`` is the **oldest label date among the exported probes**, never the
+    export date. ``sprout calibrate`` reads that field as the 30-day judge-calibration
+    freshness clock (ROADMAP "judge-calibration freshness"; issue #130 is about making it
+    fail rather than warn). Stamping ``date.today()`` here meant re-exporting a review
+    queue nobody had touched in a year produced a file dated today, silently resetting the
+    clock: an export is not a re-label. A probe set is only as fresh as its stalest member,
+    so the minimum is the honest summary.
+
+    When there is nothing to date -- no probeable items, or a labeled item whose record
+    carries no ``labeled_at`` -- the key is **omitted** rather than filled in with today.
+    ``calibrate`` then reports that freshness cannot be checked, which is true, instead of
+    publishing a date that measures nothing.
     """
+    probeable = [
+        item for item in items if item.label is not None and not item.refused and item.citations
+    ]
     probes = [
         {
             "id": f"{id_prefix}-{item.item_id}",
@@ -259,10 +275,14 @@ def export_judge_probes(
             "sources": [c.quote for c in item.citations],
             "human_label": item.label in _POSITIVE_LABELS,
         }
-        for item in items
-        if item.label is not None and not item.refused and item.citations
+        for item in probeable
     ]
-    return {"labeled_date": date.today().isoformat(), "probes": probes}
+    payload: dict[str, Any] = {}
+    labeled_days = [item.labeled_at[:10] for item in probeable if item.labeled_at]
+    if probeable and len(labeled_days) == len(probeable):
+        payload["labeled_date"] = min(labeled_days)
+    payload["probes"] = probes
+    return payload
 
 
 def export_confidence_fit_cases(
