@@ -747,6 +747,37 @@ def test_calibrate_warns_when_labeled_date_missing(tmp_path: Path) -> None:
     assert "no labeled_date field" in result.output
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"labeled_date": "2026-06-22", "probes": []},
+        {"labeled_date": "2026-06-22", "probe": _PROBES["probes"]},
+    ],
+    ids=["empty-probe-list", "mis-keyed-probes"],
+)
+def test_calibrate_refuses_a_probe_file_that_scores_nothing(
+    tmp_path: Path, payload: dict[str, object]
+) -> None:
+    """`calibrate --gate` is merge-blocking, and it used to pass over an empty probe file.
+
+    A record built from zero probes carried `agreement` and `cohens_kappa` of 1.0, so the
+    gate exited 0 and `docs/audits/judge-calibration.md` published "Raw agreement 1.000,
+    κ 1.000, ✅ meets" for a measurement that never happened. Exit 2, not 1, because a
+    probe file that scores nothing is a broken input rather than a judge that scored badly.
+    """
+    probes_path = tmp_path / "probes.yaml"
+    probes_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+    out = tmp_path / "audits"
+
+    result = runner.invoke(app, ["calibrate", str(probes_path), "--out", str(out)])
+
+    assert result.exit_code == 2, result.output
+    assert "cannot calibrate" in result.output
+    # Nothing is written, so a stale report cannot survive as the current one either.
+    assert not (out / "judge-calibration.json").exists()
+    assert not (out / "judge-calibration.md").exists()
+
+
 def test_check_tuning_scope_cli_smoke(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """CLI wrapper: no tunable-surface change in range is a clean pass, run from any cwd."""
     import subprocess

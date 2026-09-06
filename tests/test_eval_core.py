@@ -11,10 +11,13 @@ import pytest
 
 from sprout.eval import stats
 from sprout.eval.calibration import (
+    CalibrationError,
+    CalibrationRecord,
     JudgeProbe,
     calibrate,
     cohens_kappa,
     is_stale,
+    to_markdown,
 )
 from sprout.eval.dataset import (
     Dataset,
@@ -201,11 +204,47 @@ def test_build_judge() -> None:
 # --- calibration -----------------------------------------------------------------
 def test_cohens_kappa() -> None:
     assert cohens_kappa([True, True, False, False], [True, True, False, False]) == 1.0
-    assert cohens_kappa([], []) == 1.0
     # Perfectly imbalanced (all same) -> degenerate expected agreement -> 1.0.
     assert cohens_kappa([True, True], [True, True]) == 1.0
     partial = cohens_kappa([True, False, True, False], [True, True, False, False])
     assert -1.0 <= partial < 1.0
+
+
+def test_cohens_kappa_over_no_observations_is_undefined_not_perfect() -> None:
+    """The two degenerate cases are not the same thing, and this file used to say they were.
+
+    `cohens_kappa([], []) == 1.0` was asserted here as intended behaviour. Degenerate
+    *expected* agreement (every label identical, above) is an observation whose kappa is
+    genuinely 1.0. No labels at all is not an observation, and scoring it 1.0 is what made
+    `sprout calibrate --gate` — a merge-blocking CI step — pass over an empty probe file
+    while publishing "Raw agreement 1.000, κ 1.000, ✅ meets".
+    """
+    with pytest.raises(CalibrationError, match="undefined with no observations"):
+        cohens_kappa([], [])
+
+
+def test_calibrating_over_no_probes_is_refused_rather_than_scored() -> None:
+    with pytest.raises(CalibrationError, match="no probes to calibrate against"):
+        calibrate(DeterministicJudge(), [])
+
+
+def test_a_record_over_no_probes_never_meets_the_threshold() -> None:
+    """A record read back from JSON written before the fix must still fail closed."""
+    stale = CalibrationRecord(
+        judge_method="deterministic-lexical",
+        judge_config_hash="0" * 64,
+        n_probes=0,
+        n_agree=0,
+        agreement=1.0,
+        cohens_kappa=1.0,
+        per_operation={},
+        disagreements=(),
+    )
+
+    assert not stale.meets_threshold
+    report = to_markdown(stale)
+    assert "not measured" in report
+    assert "1.000" not in report
 
 
 def test_calibrate_and_staleness() -> None:
