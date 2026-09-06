@@ -240,6 +240,8 @@ def test_freshness_check(tmp_path: Path) -> None:
 def test_slo_check(tmp_path: Path) -> None:
     ok = runner.invoke(app, ["slo-check"])
     assert ok.exit_code == 0, ok.output
+    # A pass says what it read, so a shrinking gate is visible in its own output.
+    assert "2 SLO and 1 alert rule file(s) valid" in ok.output
 
     bad_slo_dir = tmp_path / "slos"
     bad_slo_dir.mkdir()
@@ -252,6 +254,17 @@ def test_slo_check(tmp_path: Path) -> None:
     )
     assert fail.exit_code == 1
 
+
+def test_slo_check_refuses_to_pass_over_directories_it_never_read(tmp_path: Path) -> None:
+    """`slo-check` is merge-blocking, and it used to exit 0 over two absent directories.
+
+    `slo.check_all` returns an empty problem list for "every file was valid" and for
+    "there were no files", and the command printed "all SLO/alert files valid" for both.
+    Deleting `slos/` therefore read as compliance. It now exits 2 -- a broken input, not
+    a schema failure -- and names both counts. The library keeps its tolerant contract for
+    a repo that has genuinely not opted into Tier A; this command is the gate for one that
+    has.
+    """
     empty = runner.invoke(
         app,
         [
@@ -262,7 +275,35 @@ def test_slo_check(tmp_path: Path) -> None:
             str(tmp_path / "no-alerts"),
         ],
     )
-    assert empty.exit_code == 0
+    assert empty.exit_code == 2, empty.output
+    assert "NOTHING CHECKED" in empty.output
+    assert "This is not a pass" in empty.output
+
+
+def test_slo_check_refuses_alerts_without_slos_and_slos_without_alerts(
+    tmp_path: Path,
+) -> None:
+    """Half a Tier-A surface is still a gate that validated nothing on the other half."""
+    slo_dir = tmp_path / "slos"
+    slo_dir.mkdir()
+    (slo_dir / "ok.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "name": "availability",
+                "sli_query": "sum(rate(ok[5m]))/sum(rate(all[5m]))",
+                "target_percentage": 99.9,
+                "window_days": 30,
+                "error_budget_policy": "page on a 14.4x burn",
+            }
+        ),
+        encoding="utf-8",
+    )
+    slos_only = runner.invoke(
+        app, ["slo-check", "--slo-dir", str(slo_dir), "--alerts-dir", str(tmp_path / "none")]
+    )
+    assert slos_only.exit_code == 2, slos_only.output
+    assert "1 SLO file(s)" in slos_only.output
+    assert "0 alert rule file(s)" in slos_only.output
 
 
 def test_identify_offline_falls_back(tmp_path: Path) -> None:

@@ -33,10 +33,11 @@ from . import __version__
 from .a11y import check_html
 from .answer import Assistant
 from .claims import check as check_claims
+from .claims import load_claims
 from .config import Config, load_config
 from .models import Answer
 from .site_meta import check_site
-from .slo import check_all
+from .slo import check_all, covered_files
 
 app = typer.Typer(add_completion=False, help="Sprout — grounded, evaluated plant-care assistant.")
 
@@ -674,17 +675,32 @@ def freshness_check(
 def claims_check(
     path: Annotated[str, typer.Argument()] = "docs/claims.yaml",
 ) -> None:
-    """Check every registered doc claim against its code/config source of truth."""
+    """Check every registered doc claim against its code/config source of truth.
+
+    Merge-blocking, so it refuses to report success over an input it did not read: a
+    registry with no claims produces the same empty problem list as a fully reconciled
+    one, and printing "all claims reconciled" over zero claims would let an emptied
+    registry read as compliance. Exit 2 (a broken input, not a failed claim) names the
+    count instead.
+    """
     target = Path(path)
     if not target.exists():
         typer.echo(f"file not found: {target}", err=True)
         raise typer.Exit(2)
+    registered = load_claims(target)
     problems = check_claims(target)
     if problems:
         for p in problems:
             typer.echo(f"  - {p}", err=True)
         raise typer.Exit(1)
-    typer.echo(f"{target}: all claims reconciled with their source of truth")
+    if not registered:
+        typer.echo(
+            f"NOTHING CHECKED: {target} registers no claims, so this gate reconciled "
+            "nothing against its source of truth. This is not a pass.",
+            err=True,
+        )
+        raise typer.Exit(2)
+    typer.echo(f"{target}: all {len(registered)} claims reconciled with their source of truth")
 
 
 @app.command("slo-check")
@@ -696,13 +712,31 @@ def slo_check(
     STANDARD.md §§4-5): every ``slos/*.yaml`` has the five required keys, every
     ``alerts/*.yml`` rule is a well-formed record/alert with an expr, and each SLO has
     both a critical and a high burn-rate alert defined. Complements, but does not
-    replace, ``promtool check rules`` (see docstring in ``sprout.slo``)."""
+    replace, ``promtool check rules`` (see docstring in ``sprout.slo``).
+
+    Merge-blocking, so a run that read no files is reported as such rather than as a
+    pass. ``slo.check_all`` deliberately tolerates absent directories -- a repo that has
+    not opted into Tier A has none -- but this command *is* Tier A's gate for a repo that
+    has, and an empty problem list over zero files is the absence of a check, not a
+    passing one. Exit 2 (a broken input, not a schema failure) names both counts."""
+    slo_files, alert_files = covered_files(Path(slo_dir), Path(alerts_dir))
     problems = check_all(Path(slo_dir), Path(alerts_dir))
     if problems:
         for p in problems:
             typer.echo(f"  - {p}", err=True)
         raise typer.Exit(1)
-    typer.echo(f"{slo_dir}/ and {alerts_dir}/: all SLO/alert files valid")
+    if not slo_files or not alert_files:
+        typer.echo(
+            f"NOTHING CHECKED: {slo_dir}/ holds {len(slo_files)} SLO file(s) and "
+            f"{alerts_dir}/ holds {len(alert_files)} alert rule file(s). A Tier-A schema "
+            "gate that read no files validated nothing. This is not a pass.",
+            err=True,
+        )
+        raise typer.Exit(2)
+    typer.echo(
+        f"{slo_dir}/ and {alerts_dir}/: {len(slo_files)} SLO and "
+        f"{len(alert_files)} alert rule file(s) valid"
+    )
 
 
 @app.command()
