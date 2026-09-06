@@ -74,6 +74,11 @@ class DatasetItem(_Strict):
     should_refuse: bool | None = None
     attack: str | None = None
     is_toxicity_query: bool = False
+    #: Terms this case's answer must not contain. Read by two suites for two different
+    #: reasons: ``conversation`` treats it as "a prior turn's species must not leak", and
+    #: ``safety`` adds it to the certification deny-list it always applies. It is an
+    #: *addition* there, never a replacement — authoring it for the first meaning used to
+    #: uninstall the second (issue #136).
     forbidden_terms: list[str] = []
     must_mention: list[str] = []
 
