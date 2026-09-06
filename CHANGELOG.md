@@ -28,6 +28,100 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   stores the routed value. **Breaking (pre-1.0):** anything constructing an `AnswerTrace`
   directly must now pass `safety_query_by_keyword`; there is no default, because a default
   is how the wrong value got written in the first place.
+- **The EN/ES pass-rate parity target was in the ledger for months with nothing computing it
+  — now it is a suite, a gate, and a number** (#128). The metrics ledger declared
+  `|EN − ES| ≤ 5 pp` and the row itself admitted the gap: no `parity_gap`, `pass_rate_parity`
+  or `en_es` symbol existed anywhere under `src/`, and the model card recorded `en-es-parity`
+  as `value: null, verified: false`. The trap the 2026-08-29 correction named is that
+  `eval/suites/multilingual` looks like it already covers this and does not: it gates *per-case
+  structural* parity at ≥ 0.85, scoring each Spanish case against its own English anchor, and
+  it never scores the anchors at all — so it is structurally incapable of seeing an EN-vs-ES
+  *rate* difference.
+
+  - New `language-parity` suite (`src/sprout/eval/suites/language_parity.py`, metric
+    `en-es-pass-rate-gap`, threshold ≤ 0.05, lower is better). It scores every recorded case —
+    English anchors included — as a slice of its own language, using the same per-case
+    correctness label the calibration suite already trusts, and gates the gap between the
+    slices' pass rates. It is a **separate suite on purpose**: two quantities with two written
+    `MetricDefinition`s and two rows in the report cannot be collapsed back into one claim the
+    way the prose did. Fewer than two language slices is a fail-closed FAIL, never a 0.0 gap.
+  - **Measured: 0.011 (1.1 pp)** — EN 0.826 over 121 cases vs ES 0.838 over 37 — inside the
+    5 pp target, so the gate is honest at the threshold the ledger already declared and nothing
+    was widened to make it pass. The suite publishes the caveats beside the number rather than
+    behind it: the 95% Newcombe interval on the *gap* is [0.000, 0.127], so a 37-case Spanish
+    slice can only catch a large disparity; and because the EN/ES case sets are not matched
+    (English carries all 24 calibration cases, most groundedness cases), the pooled figure
+    mixes a language effect with a case-mix effect. Report-only stratum diagnostics recompute
+    the same gap inside strata common to both languages and **all three exceed 5 pp** — matched
+    pairs 0.083, `behavior=answer` 0.068, `behavior=refuse-and-redirect` 0.052. They do not
+    gate (the ledger's declared metric is the aggregate), but they are published, and they say
+    plainly that the fix is a deeper Spanish slice rather than a better-looking headline.
+  - The report is disaggregated by language for the first time: a `pass rate · <language>`
+    segment per slice, which the model card had listed as a known gap.
+  - `aggregate()` gained `ci_override` and `underpowered_override`. A suite that overrides its
+    score was previously stuck publishing a Wilson interval and an under-powered flag computed
+    from the per-item pass rate — a different quantity from the score printed beside them. The
+    parity suite supplies a Newcombe interval on the gap (`wilson_difference_interval`, new in
+    `eval/stats.py`) and keys under-powered to its *smallest slice*, because 158 pooled items
+    do not make a comparison powered when one side contributes 37.
+  - The model card's `en-es-parity` front-matter value is no longer `null`; it carries the
+    measured figure and `tests/test_model_card.py` pins it to the `language-parity` score in
+    the committed `docs/audits/eval-report.json`, so it cannot outlive the run that produced
+    it. The suite count moves 8 → 9 across every site the claims registry pins, and both
+    thresholds (per-case 0.85, aggregate 0.05) are now registered claims.
+
+- **The README told readers to install someone else's package.** It said that after the first
+  release, `pipx install sprout` would be the supported path. The name `sprout` on PyPI is not
+  ours: it is [Sprout 1.1.1](https://pypi.org/project/sprout/) by Martijn Faassen / Infrae, "a
+  common Python library which contains reusable components", last released years before this
+  project existed. Nothing here has ever been published to PyPI, so anyone who followed that
+  instruction would have installed a stranger's code and gotten no plant-care assistant at all.
+  The forward-looking promise is removed and replaced with an `## Install` section that names
+  the collision outright and documents the source checkout, which is the only install this repo
+  actually supports today. Nothing was renamed and no PyPI name is claimed; choosing an
+  available distribution name is now part of the release work.
+
+  The two other places that gave a *runnable* command with that name are corrected the same
+  way: `docs/corpus-bundle-format.md` said `pip install sprout[corpus]` and now says
+  `uv sync --extra corpus`, and `docs/ARCHITECTURE.md`'s note about lazy provider imports no
+  longer illustrates itself with `pip install sprout`. Four files still carry the name as
+  *future state* rather than as an instruction — `CLAUDE.md`, `DEFINITION_OF_DONE.md` (its
+  "a fresh user can `pipx install sprout`" acceptance criterion is currently unachievable),
+  and ADRs [0001](docs/adr/0001-offline-deterministic-generator-as-default.md) and
+  [0022](docs/adr/0022-signed-corpus-bundle-trust-model.md), which are dated records and are
+  left as written. They all resolve with the distribution-name decision.
+
+- **The README called the eval scoreboard "the headline artifact" and printed no scores and no
+  answers.** A reader had to clone the repo and run it to find out whether any of it was real —
+  the one thing a reader of an evaluation project will not do on faith. Two additions fix that,
+  and both are gated so they cannot become the stale numbers they replaced:
+
+  - The committed scoreboard from `docs/audits/eval-report.json` is now in the README, with the
+    run's dataset hash, judge-config hash, seed and target under it so the numbers have a run
+    attached. `test_readme_scoreboard_matches_the_committed_report` re-renders the table from
+    that JSON and fails on any drift; the report is itself already gated against a fresh
+    regeneration, so the chain runs all the way back to the engine. The two weakest rows are
+    called out rather than rounded away: `completeness` is 1.000 on n=3 (95% CI [0.439, 1.000]),
+    and `refusal` is 0.923 against a 0.90 offline floor, below the 0.95 portfolio target.
+  - Two real transcripts — a toxicity question and an out-of-corpus question — are quoted
+    verbatim from `sprout ask` over the bundled corpus.
+    `test_readme_transcripts_are_what_the_engine_says` re-asks both through the CLI and compares,
+    so a corpus edit or a guard change that alters what the assistant says fails the build
+    instead of leaving the README quoting an answer the software no longer gives.
+
+- **The published site's root page now has a link-preview card.** `web-static/public/index.html`
+  declared the full OpenGraph and Twitter set except an image, on the explicit reasoning that
+  "an og:image naming a file that is not there is worse than none" — sound, but it left every
+  shared sprout.chelseakr.com link unfurling as a blank grey box. `og.png` (1280x640) ships with
+  the static bundle, and the page names it with `twitter:card` raised to `summary_large_image`.
+
+  The comment's reasoning is now enforced rather than trusted. `sprout site-check` fails a
+  declared `og:image`/`twitter:image` that is relative, points off-origin, carries no alt text,
+  or names a file the build did not write — the failure that is invisible on the page itself,
+  because an unfurler fetches the URL once and caches whatever came back. The mkdocs-rendered
+  documentation pages declare no social tags at all and are unaffected; a card for those is a
+  separate, larger change.
+
 - **The calibration report now publishes the coverage/risk tradeoff, not only ECE**
   (RESEARCH-ROADMAP E4, [ADR-0021](docs/adr/0021-coverage-risk-curve-in-calibration-report.md)).
   `sprout.confidence.coverage_risk_curve()` reports, at each of a fixed set of confidence

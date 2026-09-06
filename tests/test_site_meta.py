@@ -308,3 +308,81 @@ def test_a_quotation_mark_cannot_break_out_of_the_attribute() -> None:
     )
     assert '"' not in page.meta["description"]
     assert "&quot;" in page.meta["description"]
+
+
+# --- Card images -----------------------------------------------------------------------------
+#
+# The root page carries an og:image now, and the tag's whole job is done by a machine that
+# fetches the URL once and caches whatever came back. Every way that can go wrong is silent on
+# the page itself, so each one is broken here and asserted against.
+
+_CARD = f"{_ORIGIN}/og.png"
+_CARD_TAGS = (
+    f'<meta property="og:image" content="{_CARD}">'
+    '<meta property="og:image:alt" content="A card.">'
+    f'<meta name="twitter:image" content="{_CARD}">'
+    '<meta name="twitter:image:alt" content="A card.">'
+)
+
+
+def _with_card(site: Path, tags: str = _CARD_TAGS, *, publish: bool = True) -> Path:
+    """Give the home page a card, optionally without publishing the file it names."""
+    if publish:
+        (site / "og.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    page = site / "index.html"
+    page.write_text(page.read_text(encoding="utf-8").replace("</head>", tags + "</head>"), "utf-8")
+    return page
+
+
+def test_a_published_card_image_passes(site: Path) -> None:
+    _with_card(site)
+    assert check_site(site, _ORIGIN) == []
+
+
+def test_a_card_naming_a_file_the_build_did_not_write_is_reported(site: Path) -> None:
+    _with_card(site, publish=False)
+    problems = check_site(site, _ORIGIN)
+    assert any("this build did not write" in p for p in problems)
+    assert any("unfurl empty" in p for p in problems)
+
+
+def test_a_relative_card_image_is_reported(site: Path) -> None:
+    _with_card(
+        site,
+        '<meta property="og:image" content="og.png">'
+        '<meta property="og:image:alt" content="A card.">',
+    )
+    problems = check_site(site, _ORIGIN)
+    assert any("not an absolute URL" in p for p in problems)
+    assert any("resolves against the site doing the sharing" in p for p in problems)
+
+
+def test_a_card_image_on_another_origin_is_reported(site: Path) -> None:
+    _with_card(
+        site,
+        '<meta property="og:image" content="https://cdn.example/og.png">'
+        '<meta property="og:image:alt" content="A card.">',
+    )
+    assert any("not an absolute URL" in p for p in check_site(site, _ORIGIN))
+
+
+def test_a_card_image_without_alt_text_is_reported(site: Path) -> None:
+    _with_card(site, f'<meta property="og:image" content="{_CARD}">')
+    assert any("og:image is declared with no og:image:alt" in p for p in check_site(site, _ORIGIN))
+
+
+def test_a_card_image_with_empty_alt_text_is_reported(site: Path) -> None:
+    _with_card(
+        site,
+        f'<meta property="og:image" content="{_CARD}"><meta property="og:image:alt" content="   ">',
+    )
+    assert any("no og:image:alt" in p for p in check_site(site, _ORIGIN))
+
+
+def test_a_page_with_no_card_image_is_still_fine(site: Path) -> None:
+    """The gate asks for a card image where one is claimed, not everywhere.
+
+    The mkdocs-rendered documentation pages declare no social tags at all, and this
+    check must not start failing them by implication.
+    """
+    assert check_site(site, _ORIGIN) == []

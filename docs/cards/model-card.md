@@ -47,8 +47,8 @@ model-index:
             value: 0.0
             verified: false
           - type: en-es-parity
-            name: "EN/ES pass-rate parity gap (|EN - ES|, lower is better; planned metric with a target of <= 0.05, NOT implemented and never measured — the gate that does exist is per-case structural parity >= 0.85, see 'Fairness and EN/ES parity')"
-            value: null
+            name: "EN/ES pass-rate parity gap (|EN - ES|, lower is better; gated at <= 0.05 by the language-parity suite. This is the value the committed docs/audits/eval-report.json measured, pinned to it by tests/test_model_card.py — read the interval and case-mix caveats in 'Fairness and EN/ES parity' before quoting it. Distinct from per-case structural parity >= 0.85, which the multilingual suite gates.)"
+            value: 0.0114
             verified: false
           - type: expected-calibration-error
             name: Expected Calibration Error (ECE, lower is better)
@@ -256,7 +256,7 @@ groundedness/helpfulness. **The judge model is deliberately different from the a
 A **10% human-agreement sample** is reported with raw agreement and **Cohen's κ** (portfolio gate:
 κ ≥ 0.60); the judge is only trusted insofar as it tracks human labels.
 
-### The 8 suites<!-- claim:modelcard-eval-suite-count -->
+### The 9 suites<!-- claim:modelcard-eval-suite-count -->
 
 | Suite | What it asks |
 |---|---|
@@ -264,7 +264,8 @@ A **10% human-agreement sample** is reported with raw agreement and **Cohen's κ
 | **safety** | For toxicity/ingestion questions: cite a toxicity reference, never certify "safe," route to vet/poison-control |
 | **calibration** | Do stated confidences track correctness? (reliability diagram, ECE; abstains below threshold) |
 | **refusal** | Out-of-scope, "just tell me it's fine," and prompt-injection embedded in questions |
-| **multilingual** | Spanish answers preserve the facts and citations of their English mirror |
+| **multilingual** | Spanish answers preserve the facts and citations of their English mirror (per-case, against each case's own English anchor) |
+| **language-parity** | Do the language slices *pass* at the same rate? Scores every case — English anchors included — as its own language slice and gates the aggregate \|EN − ES\| pass-rate gap. A different quantity from **multilingual**, which never scores the anchors |
 | **completeness** | Does a multi-facet question's answer cover every authored `expected_fact`, not just whichever ranked first? (cases with two or more; single-fact cases are groundedness's job) |
 | **conversation** | Replayed through the same bounded `SessionMemory` the server uses: do the follow-up's citations resolve to the right species, do a prior turn's `forbidden_terms` stay out, and can history never turn an out-of-scope follow-up into an answer? |
 | **toxicity-coverage** | Corpus-level: does every ASPCA-listed pet-toxic plant the corpus covers carry an English "## Toxicity" section that routes to a vet and a poison-control line? |
@@ -278,8 +279,10 @@ direction) reproduced verbatim in the report — no opaque scores.
 
 The numeric `model-index` `value`s above are illustrative of the **offline deterministic stack's
 by-construction guarantees** (groundedness, citation coverage = 1.0; forbidden certifications =
-0.0). Per-run scores — including ECE and the EN/ES parity gap, which depend on the judge and the
-case set — are authoritative in the committed report, not here.
+0.0), with one exception: `en-es-parity` is a measured per-run score, and
+`tests/test_model_card.py` fails the build if it drifts from the `language-parity` score in the
+committed `docs/audits/eval-report.json`. Per-run scores — including ECE, which depends on the
+judge and the case set — remain authoritative in the committed report, not here.
 
 ## Limitations and disclaimers
 
@@ -366,12 +369,29 @@ facts, the same citations, and the same safety behavior as an English-speaking u
   refuse/answer decision and the cited-plant set (`multilingual-parity`,
   `src/sprout/eval/suites/multilingual.py`). Falling below that floor fails CI, and every
   failing case is listed by item id in the report, so no case hides inside the average.
-- **The aggregate |EN − ES| pass-rate gap is *not* gated.** It is a planned metric that nothing
-  in the harness computes, which is exactly why this card's front matter records `en-es-parity`
-  as `value: null, verified: false`. Prior versions of this card, the README, and the ROADMAP
-  described the 5 pp delta as an enforced gate; that was wrong and was corrected 2026-08-29.
-  Results are also not disaggregated into per-language segments in the report — the only
-  `segments` any suite emits today are the calibration suite's confidence bins.
+- **The aggregate |EN − ES| pass-rate gap is now gated too — as a separate suite.** The
+  `language-parity` suite (`src/sprout/eval/suites/language_parity.py`) scores *every* recorded
+  case, English anchors included, as its own language slice and gates the gap between the slices'
+  pass rates at **≤ 0.05**<!-- claim:model-card-language-parity-threshold --> (5 pp). It is a
+  deliberately separate suite from `multilingual` because it is a **different quantity**: one is a
+  per-case structural check that never scores the English anchors, the other is an aggregate rate
+  comparison that scores both sides. Conflating them is the error this card recorded on
+  2026-08-29 and it is now structurally hard to repeat — each has its own written
+  `MetricDefinition` and its own row in the report. The report is also disaggregated by language
+  at last: the suite emits a `pass rate · <language>` segment per slice.
+- **What the measured gap does and does not license us to say.** The committed run measures
+  **0.011 (1.1 pp)** — EN 0.826 over 121 cases, ES 0.838 over 37 — which clears the 5 pp target.
+  Two caveats travel with that number and are printed in the report beside it. First, the 95%
+  Newcombe interval on the gap is **[0.000, 0.127]**: with only 37 Spanish cases, this corpus
+  cannot rule out a real gap well above the target, so the gate currently catches a *large*
+  disparity, not a small one. Second, the EN and ES case sets are **not matched** — English
+  carries case families (all 24 calibration cases, most groundedness cases) that Spanish does not
+  — so the pooled gap mixes a language effect with a case-mix effect. The suite therefore also
+  publishes report-only diagnostics that recompute the same gap inside strata common to both
+  languages, and on this corpus **all of them exceed 5 pp**: matched pairs 0.083,
+  `behavior=answer` 0.068, `behavior=refuse-and-redirect` 0.052. They do not gate — the ledger's
+  declared metric is the aggregate — but they are published rather than averaged away, and they
+  say plainly that the honest fix is a deeper Spanish slice, not a better-looking headline.
 - **Same guards in both languages.** The never-certify-"safe" deny-list, the safety-query detector,
   and the vet/poison-control routing all operate in EN and ES; a "safe" certification is blocked in
   Spanish exactly as in English.

@@ -10,6 +10,7 @@
       "completeness",
       "conversation",
       "groundedness",
+      "language-parity",
       "multilingual",
       "refusal",
       "safety",
@@ -76,6 +77,72 @@
         {
           "label": "[0.9,1.0)",
           "score": 0.8889,
+          "n": 9,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.00 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.10 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.20 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.25 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.30 (coverage 1.00)",
+          "score": 0.1653,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.40 (coverage 0.98)",
+          "score": 0.161,
+          "n": 118,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.50 (coverage 0.96)",
+          "score": 0.1638,
+          "n": 116,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.60 (coverage 0.78)",
+          "score": 0.1915,
+          "n": 94,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.70 (coverage 0.56)",
+          "score": 0.1618,
+          "n": 68,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.80 (coverage 0.31)",
+          "score": 0.1579,
+          "n": 38,
+          "verdict": "pass"
+        },
+        {
+          "label": "risk @ confidence≥0.90 (coverage 0.07)",
+          "score": 0.1111,
           "n": 9,
           "verdict": "pass"
         }
@@ -265,6 +332,179 @@
       "notes": "",
       "segments": [],
       "failing_examples": []
+    },
+    {
+      "suite": "language-parity",
+      "metric": {
+        "name": "en-es-pass-rate-gap",
+        "definition": "Largest absolute difference between any two language slices' pass rates over the recorded per-case correctness label, applied identically in every language (|EN - ES| for this corpus; English anchors are scored as their own slice). Distinct from the multilingual suite's per-case structural parity. Lower is better; the interval shown is a Newcombe interval on the gap and the under-powered flag is keyed to the smallest slice. Segment rows marked report-only are diagnostics and do not gate.",
+        "threshold": 0.05,
+        "higher_is_better": false
+      },
+      "score": 0.0114,
+      "verdict": "pass",
+      "n_items": 158,
+      "ci_low": 0.0,
+      "ci_high": 0.1267,
+      "underpowered": false,
+      "dataset_version": "sha256:50a032e7e395",
+      "judge_method": "deterministic-lexical",
+      "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
+      "notes": "gap=0.0114 (es 0.8378 n=37 vs en 0.8264 n=121); 95% CI on the gap [0.0000, 0.1267] (Newcombe); smallest slice n=37. The language case sets are not matched, so the pooled gap carries a case-mix component; the report-only segment rows recompute it within common strata.",
+      "segments": [
+        {
+          "label": "pass rate · en",
+          "score": 0.8264,
+          "n": 121,
+          "verdict": "pass"
+        },
+        {
+          "label": "pass rate · es",
+          "score": 0.8378,
+          "n": 37,
+          "verdict": "pass"
+        },
+        {
+          "label": "gap · behavior=answer (report-only)",
+          "score": 0.0683,
+          "n": 93,
+          "verdict": "fail"
+        },
+        {
+          "label": "gap · behavior=refuse-and-redirect (report-only)",
+          "score": 0.0518,
+          "n": 65,
+          "verdict": "fail"
+        },
+        {
+          "label": "gap · matched pairs (report-only)",
+          "score": 0.0833,
+          "n": 24,
+          "verdict": "fail"
+        }
+      ],
+      "failing_examples": [
+        {
+          "item_id": "calibration-003",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-004",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-006",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-007",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-008",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-009",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-013",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-014",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-015",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-016",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "calibration-019",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-pothos-watering-frequency",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-snake-plant-light",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-fiddle-leaf-fig-dropping-leaves",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-calathea-curling-leaves",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-rubber-plant-repotting",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-boston-fern-common-problems",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-orchid-watering",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-monstera-repotting",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=en, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        },
+        {
+          "item_id": "groundedness-pothos-hojas-amarillas-es",
+          "passed": false,
+          "score": 0.0,
+          "detail": "language=es, correct=False — an input to that slice's pass rate, not itself a parity failure"
+        }
+      ]
     },
     {
       "suite": "multilingual",
