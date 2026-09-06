@@ -38,6 +38,10 @@ class OpAgreement(BaseModel):
     agreement: float
 
 
+class CalibrationError(ValueError):
+    """Raised when calibration is asked to score something it cannot score."""
+
+
 class CalibrationRecord(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -52,14 +56,39 @@ class CalibrationRecord(BaseModel):
 
     @property
     def meets_threshold(self) -> bool:
-        return self.agreement >= MIN_AGREEMENT and self.cohens_kappa >= MIN_KAPPA
+        """A record over no probes never meets the threshold, whatever it holds.
+
+        `calibrate` now refuses an empty probe set outright, so a fresh record cannot
+        reach this with ``n_probes == 0``. The floor stays here as well because a record
+        is also loaded back from committed JSON (`sprout calibrate` writes
+        ``judge-calibration.json``, and `is_stale` reads it), and a record written before
+        this fix carries ``agreement`` and ``cohens_kappa`` of ``1.0`` over zero
+        observations. Reading that as "meets" is the thing being fixed, so the check that
+        a reader actually calls has to fail closed too.
+        """
+
+        return (
+            self.n_probes > 0 and self.agreement >= MIN_AGREEMENT and self.cohens_kappa >= MIN_KAPPA
+        )
 
 
 def cohens_kappa(judge_labels: Sequence[bool], human_labels: Sequence[bool]) -> float:
-    """Cohen's kappa for two binary label sequences. Degenerate expected-agreement -> 1.0."""
+    """Cohen's kappa for two binary label sequences. Degenerate expected-agreement -> 1.0.
+
+    Raises :class:`CalibrationError` on empty input. κ over no observations is not 1.0 and
+    is not 0.0; it is undefined, and the two degenerate cases are not the same thing. When
+    every label agrees and expected agreement is therefore 1.0 (below), perfect agreement
+    was *observed* and κ of 1.0 is the correct reading of it. When there are no labels,
+    nothing was observed at all, and returning 1.0 published a perfect score for a
+    measurement that never happened — which made ``sprout calibrate --gate`` a
+    merge-blocking step that passed on an empty probe file.
+    """
     n = len(judge_labels)
     if n == 0:
-        return 1.0
+        raise CalibrationError(
+            "Cohen's kappa is undefined with no observations; a probe set that scores "
+            "nothing has not been calibrated."
+        )
     po = sum(1 for a, b in zip(judge_labels, human_labels, strict=True) if a == b) / n
     pj = sum(judge_labels) / n
     ph = sum(human_labels) / n
@@ -80,7 +109,21 @@ def _decide(judge: Judge, probe: JudgeProbe) -> bool:
 
 
 def calibrate(judge: Judge, probes: Sequence[JudgeProbe]) -> CalibrationRecord:
-    """Run ``judge`` over labeled ``probes`` and compute agreement + kappa."""
+    """Run ``judge`` over labeled ``probes`` and compute agreement + kappa.
+
+    Raises :class:`CalibrationError` when ``probes`` is empty. An empty probe set is a
+    broken input, not a low score, and the difference matters: `sprout calibrate --gate`
+    is a merge-blocking CI step, and a record over zero probes used to be built with
+    ``agreement`` and ``cohens_kappa`` of ``1.0`` — so an empty or mis-keyed
+    ``eval/judge_probes.yaml`` published "Raw agreement 1.000, κ 1.000, ✅ meets" and
+    exited 0. Failing here is what makes the gate able to fail at all.
+    """
+    if not probes:
+        raise CalibrationError(
+            "no probes to calibrate against; a judge scored over zero labeled probes has "
+            "not been calibrated, and reporting agreement or kappa for it would publish a "
+            "number no observation supports."
+        )
     judge_labels: list[bool] = []
     human_labels: list[bool] = []
     disagreements: list[str] = []
@@ -105,7 +148,7 @@ def calibrate(judge: Judge, probes: Sequence[JudgeProbe]) -> CalibrationRecord:
         judge_config_hash=judge.config_hash,
         n_probes=n,
         n_agree=n_agree,
-        agreement=round(n_agree / n, 4) if n else 1.0,
+        agreement=round(n_agree / n, 4),
         cohens_kappa=round(cohens_kappa(judge_labels, human_labels), 4),
         per_operation=per_op,
         disagreements=tuple(disagreements),
@@ -124,6 +167,12 @@ def to_markdown(record: CalibrationRecord) -> str:
         for op, oa in sorted(record.per_operation.items())
     )
     verdict = "✅ meets" if record.meets_threshold else "❌ below"
+    # A record with no probes can only arrive here from committed JSON written before
+    # `calibrate` refused to build one. Its stored 1.0s are an artifact of that bug, and
+    # rendering them as figures would republish it, so they are named as unmeasured.
+    measured = record.n_probes > 0
+    agreement = f"**{record.agreement:.3f}**" if measured else "**not measured** (no probes)"
+    kappa = f"**{record.cohens_kappa:.3f}**" if measured else "**not measured** (no probes)"
     return "\n".join(
         [
             "# Judge calibration report",
@@ -131,9 +180,8 @@ def to_markdown(record: CalibrationRecord) -> str:
             f"**Judge:** `{record.judge_method}` (config `{record.judge_config_hash[:12]}`)",
             "",
             f"- Probes: {record.n_probes}",
-            f"- Raw agreement with human labels: **{record.agreement:.3f}** "
-            f"(threshold {MIN_AGREEMENT})",
-            f"- Cohen's κ: **{record.cohens_kappa:.3f}** (threshold {MIN_KAPPA}) — {verdict}",
+            f"- Raw agreement with human labels: {agreement} (threshold {MIN_AGREEMENT})",
+            f"- Cohen's κ: {kappa} (threshold {MIN_KAPPA}) — {verdict}",
             "",
             "| Operation | Agree | Agreement |",
             "|---|---|---|",

@@ -708,7 +708,7 @@ def calibrate(
     """
     from datetime import date
 
-    from .eval.calibration import JudgeProbe, to_markdown
+    from .eval.calibration import CalibrationError, JudgeProbe, to_markdown
     from .eval.calibration import calibrate as run_calibrate
     from .eval.judge import build_judge
 
@@ -728,8 +728,30 @@ def calibrate(
             "freshness.",
             err=True,
         )
-    items = [JudgeProbe.model_validate(p) for p in (raw.get("probes", raw))]
-    record = run_calibrate(build_judge(judge), items)
+    if isinstance(raw, dict) and "probes" not in raw:
+        # `raw.get("probes", raw)` exists so a file that is a bare list of probes works.
+        # A *dict* without a `probes` key is a mis-keyed file, and falling through iterated
+        # its keys and handed pydantic a string, which failed with a validation trace about
+        # a field nobody wrote. Name the actual problem instead.
+        typer.echo(
+            f"cannot calibrate {probes}: the file is a mapping with no `probes:` key. "
+            "Give it a `probes:` list, or make the file a bare list of probes.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    items = [
+        JudgeProbe.model_validate(p)
+        for p in (raw.get("probes", raw) if isinstance(raw, dict) else raw)
+    ]
+    try:
+        record = run_calibrate(build_judge(judge), items)
+    except CalibrationError as error:
+        # Exit 2, not 1: an empty or mis-keyed probe file is a broken input, not a judge
+        # that scored badly, and the two should not read the same to whoever is looking at
+        # a red CI step. Raised whether or not --gate was passed, because writing a report
+        # over nothing is the failure.
+        typer.echo(f"cannot calibrate {probes}: {error}", err=True)
+        raise typer.Exit(code=2) from error
     out_dir = Path(out)
     out_dir.mkdir(
         parents=True, exist_ok=True

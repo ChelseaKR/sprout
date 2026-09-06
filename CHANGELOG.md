@@ -10,6 +10,39 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The judge-calibration gate passed on an empty probe file, and published a perfect
+  score for it.** `sprout calibrate --gate` is a merge-blocking CI step. A record built
+  from zero probes carried `agreement` of `1.0` (`n_agree / n if n else 1.0`) and
+  `cohens_kappa` of `1.0` (an `n == 0` early return), so `meets_threshold` was true, the
+  step exited 0, and `docs/audits/judge-calibration.md` published:
+
+  > - Probes: 0
+  > - Raw agreement with human labels: **1.000** (threshold 0.8)
+  > - Cohen's κ: **1.000** (threshold 0.6) — ✅ meets
+
+  Both defect classes at once: a gate that could not fail, and an absence rendered as a
+  measurement. `tests/test_eval_core.py` pinned it in place with
+  `assert cohens_kappa([], []) == 1.0`, asserting the behaviour as intended.
+
+  The two degenerate cases are not the same thing, and conflating them is what did it.
+  When every label agrees and expected agreement is therefore 1.0, perfect agreement was
+  *observed* and κ of 1.0 is the right reading. When there are no labels, nothing was
+  observed, and κ is undefined. `cohens_kappa` now raises on empty input, `calibrate`
+  refuses an empty probe set outright, `meets_threshold` requires `n_probes > 0` so a
+  record read back from JSON written before this fix still fails closed, and `to_markdown`
+  renders "**not measured** (no probes)" rather than republishing the stored `1.0`s.
+
+  The CLI exits `2`, not `1` — a probe file that scores nothing is a broken input, not a
+  judge that scored badly, and the two should not read the same to whoever is looking at a
+  red step. It writes no report either, so a stale one cannot survive as the current one.
+  A mapping with no `probes:` key is refused by name as well: the `raw.get("probes", raw)`
+  fallback exists so a bare list of probes works, and a mis-keyed *mapping* used to fall
+  through it, iterate the document's keys, and fail with a pydantic trace about a field
+  nobody wrote.
+
+  `sprout.confidence` already refuses this shape — it returns `risk=None` because
+  "reporting it as 0.0 would publish 'zero risk' where the truth is 'no observation'" —
+  and `eval/suite.py` gates on `n > 0 and meets`. Calibration was the outlier.
 - **The live-site integrity step could not reach its own exit-code handling.**
   `live-integrity.yml` ran the verifier on its own line and read `verify_rc="$?"` on the
   next one. GitHub runs `run:` blocks under `bash -e {0}`, and a `set -uo pipefail` line
