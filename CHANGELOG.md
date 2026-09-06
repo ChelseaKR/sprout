@@ -36,6 +36,36 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
     `src/sprout/smoke.py`'s two mentions and the two repeats in `web-static/README.md`, now
     state no number at all — a figure repeated without adding anything is only a place for
     drift to hide. Each remaining statement of the count is pinned.
+- **The debug trace and the human review queue reported the safety classifier, not the
+  routing that happened.** Routing to vet / poison-control fires when the input-keyword
+  classifier fires **or** the answer cites toxicity content (issue #107). `Answer` carries
+  that combined decision, but `Assistant.trace` filled `AnswerTrace.is_safety_query` from
+  the classifier alone, so re-running issue #107's own reproduction after the routing fix
+  still printed `safety=False` under `--debug` for an answer that had just rendered a
+  poison-control card — the trace said "unfixed" about a fixed answer. `ReviewQueue.capture`
+  copied the same field, filing those answers for a human reviewer as
+  `is_safety_query: false`.
+
+  `AnswerTrace.is_safety_query` is now the decision the answer took (always equal to
+  `Answer.is_safety_query`), and a new required `AnswerTrace.safety_query_by_keyword`
+  carries what the classifier alone said — the two differing is precisely the
+  content-routed case. `sprout ask --debug` prints
+  `safety=True (cited-content)` / `(keyword)` / `(not-routed)`, and the review record
+  stores the routed value. **Breaking (pre-1.0):** anything constructing an `AnswerTrace`
+  directly must now pass `safety_query_by_keyword`; there is no default, because a default
+  is how the wrong value got written in the first place.
+
+  The tuning-scope gate blocked that fix, and could only have been satisfied by a false
+  statement. `src/sprout/answer.py` is tunable surface, so *any* edit to it demands a
+  `Tunes-Against: <case-id>` trailer citing a committed eval failure the change responds to —
+  and this change responds to none: it edits `Assistant.trace`, the `--debug` dump, which
+  `sprout eval` never calls (the harness replays `Assistant.answer`, `src/sprout/eval/record.py`).
+  The gate now normalizes `answer.py` the way it already normalizes `config.py`: the
+  `Assistant` methods an eval run does not execute are dropped from both sides of the
+  fingerprint, and everything else — module-level imports and constants, `answer`, retrieval,
+  guards, confidence — is still compared exactly, so a mixed change still fails closed. A gate
+  that can only be passed by writing something untrue is not a stricter gate; it is a gate that
+  teaches people to write untrue trailers.
 - **The safety suite could not detect a safety certification in Spanish, and 4 of its 42
   cases could not detect one at all** (#136, #137). Both defects lived in
   `src/sprout/eval/suites/safety.py`, three lines apart, in the check ADR-0004 designates

@@ -22,6 +22,9 @@ Comment/format-only YAML and ordinary tunable Python changes, plus the exact nam
 lifecycle wrapper around an otherwise-identical provider constructor, are mechanically normalized.
 The initial lifecycle module is admitted once by an exact reviewed digest because it does not
 exist at the branch's merge base; every later lifecycle or unknown provider hunk fails closed.
+So are the ``Assistant`` methods an eval run never executes (``Assistant.trace``, the ``--debug``
+dump): a gate on *eval outcomes* has nothing to say about code the eval never runs, and demanding
+a ``Tunes-Against`` citation for it would only be satisfiable by writing a false one.
 """
 
 from __future__ import annotations
@@ -79,6 +82,19 @@ _EVAL_INVISIBLE_CONFIG_CLASSES = frozenset(
 # The same classes' top-level keys in ``config/sprout.yaml``; a YAML delta confined to
 # these subtrees is operational for the same reason (and with the same pinned invariant).
 _EVAL_INVISIBLE_YAML_KEYS = frozenset({"server", "observability", "review", "corpus_registry"})
+_ANSWER_MODULE_PATH = "src/sprout/answer.py"
+# ``Assistant`` methods that an eval run never executes. ``sprout eval`` replays the harness
+# through ``Assistant.answer`` (``src/sprout/eval/record.py``); ``Assistant.trace`` exists only
+# for the ``--debug`` CLI dump and the review-queue record built from it, and nothing under
+# ``src/sprout/eval/`` — nor retrieval/guards/confidence/providers — ever calls it. Code inside
+# these methods is therefore not merely "eval-invisible" in the sense the config exemption above
+# uses: it does not run at all during an eval, so it cannot move an eval outcome, which is the
+# only thing this gate exists to constrain. Without this, a fix to the debug trace could be
+# merged only by attaching a ``Tunes-Against`` citation that is not true — a gate satisfiable
+# only by a false statement is worse than no gate. The invariant that keeps the exemption sound
+# is pinned by
+# ``tests/test_tuning_scope.py::test_eval_visible_modules_never_call_debug_only_methods``.
+_EVAL_INVISIBLE_ASSISTANT_METHODS = frozenset({"trace"})
 _PROVIDER_FACTORY_PATH = "src/sprout/providers/__init__.py"
 _PROVIDER_LIFECYCLE_PATH = "src/sprout/provider_lifecycle.py"
 # One-time bootstrap: origin/main predates the operational lifecycle seam, so the exact
@@ -182,6 +198,34 @@ class _DropEvalInvisibleConfigClasses(ast.NodeTransformer):
         return self.generic_visit(node)
 
 
+class _DropEvalInvisibleAssistantMethods(ast.NodeTransformer):
+    """Erase only the ``Assistant`` methods named in ``_EVAL_INVISIBLE_ASSISTANT_METHODS``.
+
+    Everything else in ``answer.py`` — prompt assembly, routing, guard application, confidence,
+    and every module-level import and constant — stays in the tree, so a mixed change still
+    fails closed. Module-level imports are deliberately *not* dropped: an import added for a
+    debug-only method still changes the module the eval executes.
+    """
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> ast.AST:
+        if node.name == "Assistant":
+            node.body = [
+                stmt
+                for stmt in node.body
+                if not (
+                    isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef)
+                    and stmt.name in _EVAL_INVISIBLE_ASSISTANT_METHODS
+                )
+            ] or [ast.Pass()]
+        return self.generic_visit(node)
+
+
+def _answer_without_eval_invisible_methods(source: str) -> str:
+    tree = _DropEvalInvisibleAssistantMethods().visit(ast.parse(source))
+    ast.fix_missing_locations(tree)
+    return ast.dump(tree, include_attributes=False)
+
+
 def _config_without_eval_invisible_classes(source: str) -> str:
     tree = _DropEvalInvisibleConfigClasses().visit(ast.parse(source))
     ast.fix_missing_locations(tree)
@@ -248,8 +292,10 @@ def _operational_only_change(
 # Per-path source fingerprints for the equivalence check above. `config.py` exempts only a
 # delta confined to eval-invisible config class bodies — outside them the two trees must be
 # syntactically identical, so a change that also touches retrieval/generation/guard/prompt
-# config still fails closed.
+# config still fails closed. `answer.py` is the same shape for the debug-only `Assistant`
+# methods an eval run never executes.
 _FINGERPRINT_BY_PATH: dict[str, Callable[[str], str]] = {
+    _ANSWER_MODULE_PATH: _answer_without_eval_invisible_methods,
     _CONFIG_MODULE_PATH: _config_without_eval_invisible_classes,
     _PROVIDER_FACTORY_PATH: _provider_factory_fingerprint,
 }

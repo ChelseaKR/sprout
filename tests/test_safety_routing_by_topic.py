@@ -21,6 +21,7 @@ answer still does not -- so the fix cannot pass by routing everything.
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
@@ -28,6 +29,7 @@ from sprout.answer import Assistant
 from sprout.chunk import SAFETY_TOPIC_SLUGS, is_safety_topic
 from sprout.config import Config
 from sprout.models import Chunk
+from sprout.review import ReviewQueue
 
 
 def make_chunk(
@@ -102,6 +104,67 @@ def test_a_spanish_toxicity_chunk_routes_without_a_lexicon_keyword(
         "the question contained no keyword the classifier recognises"
     )
     assert answer.safety_notice, "routing was claimed but no notice was attached"
+
+
+def test_the_trace_and_the_review_record_report_the_routing_that_happened(
+    es_assistant: Assistant,
+    assistant_factory: Callable[..., Assistant],
+    tmp_path: Path,
+) -> None:
+    """The debug trace said ``safety=False`` about an answer carrying a poison-control card.
+
+    ``Assistant.trace`` filled ``is_safety_query`` from the input-keyword classifier while
+    the answer beside it had routed on the topic of the content it cited. Re-running issue
+    #107's own reproduction after the routing fix still printed ``safety=False`` under
+    ``--debug``, which reads as "unfixed" and is the opposite of what the answer did.
+    ``ReviewQueue.capture`` copied the same field, so a flagged item whose answer had
+    printed the vet / poison-control routing was filed for a human reviewer as
+    ``is_safety_query: false``.
+
+    The trace now reports the decision and, separately, whether the keyword classifier
+    was what caused it.
+    """
+    query = "Por que mi Monstera causa irritacion bucal y salivacion excesiva?"
+    trace = es_assistant.trace(query, language="es")
+
+    assert trace.answer.is_safety_query, "the routing fix itself must still hold"
+    assert trace.is_safety_query == trace.answer.is_safety_query, (
+        "the trace must report the routing the answer took, not the classifier's half"
+    )
+    assert not trace.safety_query_by_keyword, (
+        "this question deliberately contains no keyword the classifier recognises; if it "
+        "did, the test would no longer exercise the content-routed path"
+    )
+
+    # The review queue only captures flagged answers, so re-run the same question through
+    # an assistant whose low-confidence threshold flags everything. Nothing else changes:
+    # the routing and the classifier verdict are the ones asserted above.
+    flagging = assistant_factory(
+        Config.model_validate({"confidence": {"low_confidence_threshold": 0.99}}),
+        list(_CHUNKS),
+    )
+    flagged = flagging.trace(query, language="es")
+    assert flagged.answer.low_confidence and flagged.answer.is_safety_query
+    queue = ReviewQueue(tmp_path / "review.json")
+    item = queue.capture(flagged)
+    assert item is not None, "the reproduction must be flagged for review to be recorded"
+    assert item.is_safety_query is flagged.answer.is_safety_query, (
+        "a review item whose answer routed to poison control must not be filed as "
+        "is_safety_query: false"
+    )
+
+
+def test_a_keyword_classified_question_reports_the_keyword_as_the_cause(
+    es_assistant: Assistant,
+) -> None:
+    """The other half: when the classifier does fire, the trace says so.
+
+    Without this, setting ``safety_query_by_keyword`` to a constant ``False`` would pass
+    the test above and lose the diagnostic the field exists to carry.
+    """
+    trace = es_assistant.trace("Es toxica la Monstera para mi gato?", language="es")
+    assert trace.is_safety_query
+    assert trace.safety_query_by_keyword
 
 
 def test_an_ordinary_spanish_care_answer_still_does_not_route(

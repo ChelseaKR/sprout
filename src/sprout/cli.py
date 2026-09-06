@@ -231,8 +231,16 @@ def _print_answer(
         _maybe_capture_review(cfg, trace)
     if debug and trace is not None:
         typer.echo("\n--- trace ---")
+        # `safety` is the routing that happened; `via` says what caused it, because an
+        # answer routes on a keyword in the question *or* on the topic of the content it
+        # cites (issue #107) and those are different things to debug.
+        via = (
+            "keyword"
+            if trace.safety_query_by_keyword
+            else ("cited-content" if trace.is_safety_query else "not-routed")
+        )
         typer.echo(
-            f"language={trace.language} safety={trace.is_safety_query} "
+            f"language={trace.language} safety={trace.is_safety_query} ({via}) "
             f"injections={trace.injection_categories}"
         )
         for rc in trace.retrieved:
