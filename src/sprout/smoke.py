@@ -1,6 +1,6 @@
 """Phase 1 CI smoke suite: cheap, corpus-*derived* sanity checks over the whole corpus.
 
-Unlike the hand-authored Phase 2 eval suites (128 curated YAML cases under ``eval/suites/``),
+Unlike the hand-authored Phase 2 eval suites (curated YAML cases under ``eval/suites/``),
 nobody writes a single question for this suite. Every case is derived mechanically from
 whatever is actually ingested right now: one question per (species, topic) pair discovered
 in the populated store, built from the corpus's own species slug (the citation source
@@ -13,7 +13,7 @@ It runs the deterministic offline generator only (no LLM judge, no network), so 
 enough to run on every PR as a first-line canary: a species/topic combination with broken
 retrieval, a citation guard regression, or a species leak across the topic filter fails
 loudly in seconds — well before the heavier judged eval harness (Phase 2, ``sprout eval``)
-runs its own, differently-scoped 128 cases.
+runs its own, differently-scoped case set.
 
 This closes the gap docs/ROADMAP.md tracked under Phase 1: "a dedicated CI smoke suite of
 corpus-derived questions beyond what the eval harness (Phase 2) already exercises."

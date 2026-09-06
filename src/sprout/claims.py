@@ -23,6 +23,7 @@ import yaml
 
 from .config import Config, load_config
 from .eval.calibration import MIN_AGREEMENT, MIN_KAPPA
+from .eval.dataset import load_suite_dir
 from .eval.suites.language_parity import LanguageParitySuite
 from .eval.suites.multilingual import MultilingualSuite
 from .eval.suites.refusal import RefusalSuite
@@ -31,6 +32,7 @@ _DEFAULT_CLAIMS = "docs/claims.yaml"
 _DEFAULT_CONFIG = "config/sprout.yaml"
 _DEFAULT_EVAL_REPORT = "docs/audits/eval-report.json"
 _DEFAULT_PYPROJECT = "pyproject.toml"
+_DEFAULT_SUITE_DIR = "eval/suites"
 
 _CONTEXT_LINES = 1  # how many lines above/below the marker line the value may appear on
 
@@ -141,6 +143,19 @@ def _resolve_eval_report_suite_count(report_path: str | Path) -> str:
     return _fmt(len(report.get("suite_results", [])))
 
 
+def _resolve_dataset(dotted: str, suite_dir: str | Path) -> str:
+    """Values derived from the committed eval dataset itself (``eval/suites/*.yaml``).
+
+    ``case-count`` loads the suite directory through the ordinary fail-closed loader, so the
+    number a doc claims is the number the harness would actually run — and the loader's
+    sidecar hash check means a doc cannot claim a count for a dataset that has been edited
+    without regenerating its pin.
+    """
+    if dotted == "case-count":
+        return _fmt(len(load_suite_dir(suite_dir).items))
+    raise ClaimsError(f"unknown dataset claim source: {dotted!r}")
+
+
 def _resolve_pytest_cov_fail_under(pyproject_path: str | Path) -> str:
     p = Path(pyproject_path)
     if not p.exists():
@@ -158,6 +173,7 @@ def _resolve(
     config_path: str | Path,
     eval_report_path: str | Path,
     pyproject_path: str | Path = _DEFAULT_PYPROJECT,
+    suite_dir: str | Path = _DEFAULT_SUITE_DIR,
 ) -> str:
     if source.startswith("config:"):
         return _resolve_config(source.removeprefix("config:"), config_path)
@@ -169,6 +185,8 @@ def _resolve(
         return _resolve_eval_report_suite_count(eval_report_path)
     if source.startswith("eval-report:"):
         return _resolve_eval_report(source.removeprefix("eval-report:"), eval_report_path)
+    if source.startswith("dataset:"):
+        return _resolve_dataset(source.removeprefix("dataset:"), suite_dir)
     if source == "pytest:cov-fail-under":
         return _resolve_pytest_cov_fail_under(pyproject_path)
     raise ClaimsError(f"unknown claim source kind: {source!r}")
@@ -197,6 +215,7 @@ def check(
     config_path: str | Path = _DEFAULT_CONFIG,
     eval_report_path: str | Path = _DEFAULT_EVAL_REPORT,
     pyproject_path: str | Path = _DEFAULT_PYPROJECT,
+    suite_dir: str | Path = _DEFAULT_SUITE_DIR,
 ) -> list[str]:
     """Check every claim in ``claims_path`` against its source of truth.
 
@@ -213,7 +232,9 @@ def check(
     for claim in claims:
         if not claim.source.startswith("policy:"):
             try:
-                resolved = _resolve(claim.source, config_path, eval_report_path, pyproject_path)
+                resolved = _resolve(
+                    claim.source, config_path, eval_report_path, pyproject_path, suite_dir
+                )
             except Exception as exc:  # surfaced as a reported problem, not a crash
                 problems.append(f"{claim.id}: could not resolve source {claim.source!r}: {exc}")
                 continue

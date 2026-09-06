@@ -10,6 +10,33 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The repo's own metrics ledger described a five-suite, 142-case harness that has gated
+  nine suites over 158 cases for months** (#138). `docs/ROADMAP.md` is the document the
+  README sends readers to for per-repo values, and it still carried the pre-#97 numbers and
+  the pre-#97 five-row suite table — the identical drift #97 corrected everywhere else.
+
+  `claims-check` could not catch it. The registry pinned `eval-report:suites.count` and
+  `suites.names` to the README, `docs/index.md`, `docs/ADAPT.md`, `docs/ARCHITECTURE.md` and
+  both cards; `docs/ROADMAP.md` carried claim markers only for *thresholds*. So the comment
+  in `docs/claims.yaml` that said "every Markdown site that states the figure is pinned here
+  now" was falsified by the ledger itself, and `make verify` passed over it.
+
+  - The ledger now states **9 suites** and **158 cases**, both pinned, and its suite table
+    gained the three rows it never had: `completeness` (≥ 0.90), `conversation` (≥ 0.95) and
+    `toxicity-coverage` (≥ 0.99).
+  - New claim source **`dataset:case-count`**, which loads `eval/suites/*.yaml` through the
+    ordinary fail-closed loader — so the number a doc claims is the number the harness would
+    run, and the loader's sidecar hash check means a count cannot be claimed for a dataset
+    edited without regenerating its pin. It pins the ledger (twice), `web-static/README.md`,
+    and the two shipped HTML surfaces (`web-static/public/index.html`, `web/dist/index.html`),
+    whose "Committed cases" tile read 142.
+  - Nine further present-tense sites carried a stale count, and two disagreed with each other
+    about the same run: `Makefile` said "128 eval-suite cases" and `.github/workflows/ci.yml`
+    said "142" for the same `generate_conformance_fixtures.py` output. Those, plus
+    `src/sprout/smoke.py`'s two mentions and the two repeats in `web-static/README.md`, now
+    state no number at all — a figure repeated without adding anything is only a place for
+    drift to hide. Each remaining statement of the count is pinned.
+
 - **The EN/ES pass-rate parity target was in the ledger for months with nothing computing it
   — now it is a suite, a gate, and a number** (#128). The metrics ledger declared
   `|EN − ES| ≤ 5 pp` and the row itself admitted the gap: no `parity_gap`, `pass_rate_parity`

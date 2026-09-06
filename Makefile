@@ -141,7 +141,7 @@ web-static-bundle: ingest ## Export index.json + config.json for the TS port (EX
 web-static-fixtures: ingest ## Regenerate the Python-side cross-language conformance fixtures
 	$(PY) python scripts/generate_conformance_fixtures.py
 
-web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conformance test (128 eval-suite cases)
+web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conformance test over every committed eval-suite case
 	cd web-static && npm ci && npm test
 
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
