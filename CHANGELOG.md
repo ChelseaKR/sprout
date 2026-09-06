@@ -10,6 +10,27 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **`sprout eval-diff` — which cases flipped, and on which check.** A red eval step named
+  a suite; finding the case meant opening two JSON reports and reading them side by side.
+  `sprout eval-diff BEFORE.json AFTER.json [--json] [--fail-on-regression]` reads two
+  committed reports, re-runs nothing, and lists per suite: the cases that flipped in
+  either direction with the recorded check that changed, the score delta and whether the
+  two 95% intervals overlap, and every confidence-bin (segment) that moved — which for
+  `calibration` is the coverage-risk curve's delta. Markdown by default, JSON with
+  `--json`, deterministic ordering in both. The baseline-regression failure message now
+  points at it.
+
+  Two refusals are the substance of it. A report records **only its failing examples**, so
+  a case that is absent from the later report's failures normally passed — but that
+  inference holds only if both runs held the same cases. When `dataset_hash` differs, a
+  case that vanished may have been *removed* rather than fixed, and the two are the same
+  absence from here; every such disappearance is reported as **not comparable**, with the
+  reason, instead of a green tick. And when `dataset_hash`, `judge_config_hash`, `target`
+  or `harness_version` differ, the score and interval **deltas are refused** with the
+  differing fields named: both numbers are printed side by side and no difference is
+  computed, because they do not measure the same thing. Flips are still listed, since "it
+  failed there and not here" survives a judge change even when the arithmetic does not. A
+  new failure stays a regression in both cases — only the absence was ever ambiguous.
 - **The embedders normalised with `pow`, and the browser port with `Math.sqrt`.**
   `x ** 0.5` is libm's `pow`, which IEEE 754 does not require to be correctly rounded;
   `math.sqrt` is `sqrt`, which it does. The hashing, static-vector and Titan embedders
