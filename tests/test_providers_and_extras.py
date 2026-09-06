@@ -304,3 +304,32 @@ def test_the_wilson_margin_uses_the_correctly_rounded_square_root() -> None:
     for successes, n in separating:
         assert wilson_interval(successes, n) == _wilson_interval_sqrt(successes, n)
         assert wilson_interval(successes, n) != _wilson_interval_pow(successes, n)
+
+
+def test_no_published_statistic_is_computed_with_pow() -> None:
+    """No ``x ** 0.5`` anywhere in ``eval/stats.py`` — not just in ``wilson_interval``.
+
+    The two functions in this module both print into ``docs/audits/eval-report.*``, which
+    is byte-compared against a fresh regeneration (#122). Pinning only ``wilson_interval``
+    let the next one in: ``wilson_difference_interval`` arrived with two inline
+    ``** 0.5`` calls and merged cleanly beside the fix that removed the first one, because
+    git had no reason to see a contradiction between an addition and a deletion in
+    different hunks. This asserts the property over the whole module, so the next
+    statistic cannot reintroduce the platform-dependent root either.
+    """
+    import ast
+    from pathlib import Path
+
+    source = Path("src/sprout/eval/stats.py").read_text(encoding="utf-8")
+    offenders = [
+        node.lineno
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.BinOp)
+        and isinstance(node.op, ast.Pow)
+        and isinstance(node.right, ast.Constant)
+        and node.right.value == 0.5
+    ]
+    assert not offenders, (
+        f"src/sprout/eval/stats.py computes a square root with pow at line(s) {offenders}; "
+        "use math.sqrt so the published bounds are the same bytes on every platform"
+    )

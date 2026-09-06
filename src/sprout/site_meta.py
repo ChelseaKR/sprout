@@ -16,6 +16,9 @@ is*, because a wrong one is worse than a missing one:
 * a page that declares any OpenGraph or Twitter tag declares the whole set, and
   its ``og:title``/``og:description``/``og:url`` repeat what the page itself
   says rather than a second set written for a card;
+* a declared ``og:image``/``twitter:image`` is absolute on this origin, carries
+  alt text, and resolves to a file the build actually wrote -- an unfurler caches
+  whatever it got, so a card naming a missing file is a permanently blank one;
 * ``robots.txt`` exists and advertises the sitemap at the origin;
 * every ``<loc>`` in ``sitemap.xml`` resolves to a file the build actually
   wrote, and every built page appears in the sitemap.
@@ -118,7 +121,9 @@ def _check_canonical(name: str, canonicals: list[str], expected: str) -> list[st
     return problems
 
 
-def _check_social(name: str, values: dict[str, str], title: str, url: str) -> list[str]:
+def _check_social(
+    name: str, values: dict[str, str], title: str, url: str, root: Path, origin: str
+) -> list[str]:
     declared = [key for key in _SOCIAL if key in values]
     if not declared:
         return []
@@ -132,11 +137,49 @@ def _check_social(name: str, values: dict[str, str], title: str, url: str) -> li
     ):
         if key in values and values[key] != expected:
             problems.append(f"{name}: {key} does not match {what}")
-    if "og:image" in values or "twitter:image" in values:
+    problems.extend(_check_card(name, values, root, origin))
+    return problems
+
+
+#: Every card tag that must name a file this build actually wrote.
+_CARD_IMAGES = ("og:image", "twitter:image")
+
+
+def _check_card(name: str, values: dict[str, str], root: Path, origin: str) -> list[str]:
+    """A declared card image must be same-origin, absolute, and really published.
+
+    An unfurler fetches this URL once and caches whatever came back, so a card
+    pointing at a file the build did not write degrades to the blank grey box the
+    tag was added to prevent — and does it silently, because nothing on the page
+    is broken. The same-origin rule was already here; what was missing is the half
+    that costs nothing to check and is the half that actually goes wrong.
+
+    Alt text is required alongside, for the same reason the images on these pages
+    carry it: a screen reader announcing a shared link reads the card's alt text,
+    and this project's card is almost entirely words.
+    """
+    problems: list[str] = []
+    for key in _CARD_IMAGES:
+        if key not in values:
+            continue
+        value = values[key]
+        if not value.startswith(f"{origin}/"):
+            problems.append(
+                f"{name}: {key} is {value!r}, which is not an absolute URL on {origin}. "
+                "A relative card image resolves against the site doing the sharing."
+            )
+            continue
+        published = root / value[len(origin) + 1 :]
+        if not published.is_file():
+            problems.append(
+                f"{name}: {key} names {value!r}, which this build did not write. "
+                "The card would unfurl empty."
+            )
+    if any(key in values for key in _CARD_IMAGES):
         problems.extend(
-            f"{name}: {key} is declared but {values[key]!r} is not a same-origin file"
-            for key in ("og:image", "twitter:image")
-            if key in values and not values[key].startswith(url.split("/", 3)[0] + "//")
+            f"{name}: {key} is declared with no {key}:alt"
+            for key in _CARD_IMAGES
+            if key in values and not values.get(f"{key}:alt", "").strip()
         )
     return problems
 
@@ -229,7 +272,7 @@ def check_site(root: Path, origin: str) -> list[str]:
             descriptions[description].append(name)
 
         problems.extend(_check_canonical(name, canonicals, url))
-        problems.extend(_check_social(name, values, title, url))
+        problems.extend(_check_social(name, values, title, url, root, origin))
 
     for shared, names in sorted(titles.items()):
         if len(names) > 1:

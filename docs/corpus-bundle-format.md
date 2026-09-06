@@ -72,8 +72,9 @@ cannot alter `guards.forbidden_safe_phrases` or any other routing/deny-list stri
 are hardcoded/config-loaded in `config.py`, with no field on `BundleManifest` that could
 carry an override — see `corpus_bundle.py`).
 
-`sigstore-keyless` verification needs the `corpus` extra (`pip install sprout[corpus]`)
-and network access to Sigstore's public-good infrastructure. Every other Sprout command,
+`sigstore-keyless` verification needs the `corpus` extra (`uv sync --extra corpus` from a
+source checkout — there is no PyPI release, and the name `sprout` there is an unrelated
+package; see the README's Install section) and network access to Sigstore's public-good infrastructure. Every other Sprout command,
 including `dev-ed25519` bundle verification (development/CI test fixture only — not a
 substitute for Sigstore's transparency log; see `corpus_signing.py`), stays offline.
 

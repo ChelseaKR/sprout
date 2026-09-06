@@ -23,6 +23,7 @@ import yaml
 
 from .config import Config, load_config
 from .eval.calibration import MIN_AGREEMENT, MIN_KAPPA
+from .eval.suites.language_parity import LanguageParitySuite
 from .eval.suites.multilingual import MultilingualSuite
 from .eval.suites.refusal import RefusalSuite
 
@@ -99,6 +100,8 @@ def _resolve_suite(name: str) -> str:
         return _fmt(RefusalSuite().metric.threshold)
     if name == "multilingual.threshold":
         return _fmt(MultilingualSuite().metric.threshold)
+    if name == "language-parity.threshold":
+        return _fmt(LanguageParitySuite().metric.threshold)
     if name == "calibration.min_agreement":
         return _fmt(MIN_AGREEMENT)
     if name == "calibration.min_kappa":

@@ -8,7 +8,7 @@ English and Spanish with enforced parity.
 - **Architecture** — how the pipeline (guards → retrieve → extractive generate →
   citation guard → confidence) guarantees 100% groundedness by construction. See
   [Architecture](ARCHITECTURE.md) and the [Threat model](THREAT-MODEL.md).
-- **The eval harness is the headline** — 8 suites<!-- claim:index-eval-suite-count --> (calibration, completeness, conversation, groundedness, multilingual, refusal, safety, toxicity-coverage)<!-- claim:index-eval-suite-names -->, deterministic checks blended
+- **The eval harness is the headline** — 9 suites<!-- claim:index-eval-suite-count --> (calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage)<!-- claim:index-eval-suite-names -->, deterministic checks blended
   with an LLM judge whose model differs from the answer model. See the [Evaluation report](audits/eval-report.md).
 - **Responsible by construction** — see the [responsible-tech audits](RESPONSIBLE-TECH-AUDITS.md),
   the [model card](cards/model-card.md), the [data card](cards/data-card-corpus.md), and

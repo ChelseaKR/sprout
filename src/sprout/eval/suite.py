@@ -132,12 +132,24 @@ def aggregate(
     notes: str = "",
     segments: Sequence[SegmentScore] = (),
     score_override: float | None = None,
+    ci_override: tuple[float, float] | None = None,
+    underpowered_override: bool | None = None,
 ) -> SuiteResult:
-    """Turn per-item outcomes into a fail-closed SuiteResult with a Wilson CI."""
+    """Turn per-item outcomes into a fail-closed SuiteResult with a Wilson CI.
+
+    ``score_override`` reports a derived statistic (an ECE, a between-slice gap) instead of
+    the per-item pass rate. When it is used, the default Wilson interval and the default
+    under-powered flag both still describe the *pass rate* — a different quantity from the
+    score beside them — so a suite that overrides the score should override these too:
+
+    * ``ci_override`` supplies the interval that actually belongs to the reported score.
+    * ``underpowered_override`` supplies the n that actually limits it (e.g. the smallest
+      slice in a between-slice comparison, not the pooled item count).
+    """
     n = len(outcomes)
     n_pass = sum(1 for o in outcomes if o.passed)
     score = score_override if score_override is not None else (n_pass / n if n else 0.0)
-    low, high = wilson_interval(n_pass, n)
+    low, high = ci_override if ci_override is not None else wilson_interval(n_pass, n)
     meets = score >= metric.threshold if metric.higher_is_better else score <= metric.threshold
     verdict = Verdict.PASS if (n > 0 and meets and extra_pass) else Verdict.FAIL
     failing = tuple(o for o in outcomes if not o.passed)[:20]
@@ -149,7 +161,7 @@ def aggregate(
         n_items=n,
         ci_low=round(low, 4),
         ci_high=round(high, 4),
-        underpowered=is_underpowered(n),
+        underpowered=is_underpowered(n) if underpowered_override is None else underpowered_override,
         dataset_version=dataset_version,
         judge_method=judge.method,
         judge_config_hash=judge.config_hash,

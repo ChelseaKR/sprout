@@ -12,8 +12,13 @@
       This file is copied over mkdocs' own index.html at the site root, so it is the
       only published page mkdocs-material does not write a canonical for. The tags
       below repeat the page's own title and description rather than a second set
-      written for a card. There is deliberately no og:image: the project ships no
-      image asset, and an og:image naming a file that is not there is worse than none.
+      written for a card.
+
+      og:image was deliberately absent while the project shipped no image asset, on
+      the grounds that a tag naming a file that is not there is worse than none. The
+      card exists now, and `sprout site-check` enforces the reasoning instead of the
+      comment: an og:image that does not resolve to a file this build actually wrote
+      fails the gate.
     -->
     <link rel="canonical" href="https://sprout.chelseakr.com/" />
     <meta property="og:type" content="website" />
@@ -25,7 +30,19 @@
       property="og:description"
       content="Try Sprout's cited plant-care pipeline in your browser and inspect the evaluation evidence behind it."
     />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="https://sprout.chelseakr.com/og.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta
+      property="og:image:alt"
+      content="Sprout social card: the project name over an engraved seedling whose roots run down into a library of books and papers, with the line “Offline plant-care answers from a cited corpus, with safety guardrails and public evaluations.”"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://sprout.chelseakr.com/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Sprout social card: the project name over an engraved seedling whose roots run down into a library of books and papers, with the line “Offline plant-care answers from a cited corpus, with safety guardrails and public evaluations.”"
+    />
     <meta name="twitter:title" content="Sprout — inspect a grounded answer" />
     <meta
       name="twitter:description"
