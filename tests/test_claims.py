@@ -428,3 +428,54 @@ def test_the_packaging_metadata_names_every_shipped_suite() -> None:
         assert len(described) == 2, f"{relative} no longer describes the eval harness"
         for name in names:
             assert name in described[1], f"{relative} does not name the {name} suite"
+
+
+def test_check_dataset_case_count_sources() -> None:
+    """`dataset:case-count` resolves for every site that states how many cases ship.
+
+    The count was published in ten present-tense places and gated in none. Two of them
+    disagreed with each other about the same run: `Makefile` said 128 eval-suite cases and
+    `ci.yml` said 142, of the same 158 the fixture generator emits.
+    """
+    problems = check()
+    for claim_id in (
+        "roadmap-eval-case-count",
+        "roadmap-phase2-eval-case-count",
+        "web-static-readme-case-count",
+        "site-committed-case-count",
+        "web-dist-committed-case-count",
+    ):
+        assert not any(claim_id in p for p in problems), [p for p in problems if claim_id in p]
+
+
+def test_dataset_case_count_is_the_number_of_committed_cases() -> None:
+    """The resolved count is the dataset the harness would actually load, not a doc figure."""
+    from sprout.claims import _resolve_dataset
+
+    authored = sum(
+        (ROOT / "eval" / "suites" / f.name).read_text(encoding="utf-8").count("\n- id: ")
+        for f in sorted((ROOT / "eval" / "suites").glob("*.yaml"))
+    )
+    assert authored > 0
+    assert int(_resolve_dataset("case-count", ROOT / "eval" / "suites")) == authored
+
+
+def test_dataset_source_rejects_an_unknown_field() -> None:
+    from sprout.claims import _resolve_dataset
+
+    with pytest.raises(ClaimsError, match="unknown dataset claim source"):
+        _resolve_dataset("nope", ROOT / "eval" / "suites")
+
+
+def test_the_roadmap_no_longer_carries_the_pre_correction_eval_counts() -> None:
+    """The ledger is the document the README sends readers to for per-repo values.
+
+    It said "Five suites, 120+ committed YAML cases" and "142 YAML cases" while the harness
+    gated nine suites over 158 — the same drift #97 corrected in the README, left in place
+    here because `docs/claims.yaml` pinned only ROADMAP thresholds, never its counts. So
+    `claims-check` and `make verify` passed over it. This fails if the stale phrasing
+    returns; the live numbers themselves are pinned by the registry entries above.
+    """
+    roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
+    for stale in ("Five suites", "all five\n  suites registered", "**142 YAML cases**"):
+        assert stale not in roadmap, f"docs/ROADMAP.md still says {stale!r}"

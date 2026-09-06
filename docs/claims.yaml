@@ -228,10 +228,19 @@ claims:
   # The suite count and the suite names were published in nine places and gated in one.
   # The README said eight; docs/index.md, docs/ADAPT.md, docs/ARCHITECTURE.md, both cards,
   # CITATION.cff and pyproject.toml still named the original five by name, three suites
-  # after they stopped being the whole set. Every Markdown site that states the figure is
-  # pinned here now. CITATION.cff and pyproject.toml carry no marker because neither is
-  # Markdown and neither can hold an HTML comment; they are covered instead by
+  # after they stopped being the whole set. CITATION.cff and pyproject.toml carry no marker
+  # because neither can hold an HTML comment; they are covered instead by
   # tests/test_claims.py::test_the_packaging_metadata_names_every_shipped_suite.
+  #
+  # That sweep said "every Markdown site that states the figure is pinned here now", and the
+  # sentence was false when it was written: docs/ROADMAP.md — the repo's own metrics ledger,
+  # the document the README sends readers to for per-repo values — still said "Five suites,
+  # 120+ committed YAML cases" and "142 YAML cases", and carried claim markers only for
+  # thresholds, so `sprout claims-check` and `make verify` passed over it. Nine further
+  # present-tense sites carried a stale case count, two of them disagreeing with each other
+  # about the same run (the Makefile said 128, ci.yml said 142, of the same 158). The count
+  # is now pinned wherever it is still stated, and the sites that repeated it without adding
+  # anything simply stopped stating a number (issue #138).
 
   - id: index-eval-suite-count
     file: docs/index.md
@@ -280,3 +289,59 @@ claims:
     source: "eval-report:suites.count"
     expected: "9"
     marker: "<!-- claim:modelcard-eval-suite-count -->"
+
+  - id: roadmap-eval-suite-count
+    file: docs/ROADMAP.md
+    source: "eval-report:suites.count"
+    expected: "9"
+    marker: "<!-- claim:roadmap-eval-suite-count -->"
+
+  - id: roadmap-eval-suite-names
+    file: docs/ROADMAP.md
+    source: "eval-report:suites.names"
+    expected: "calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage"
+    marker: "<!-- claim:roadmap-eval-suite-names -->"
+
+  - id: roadmap-phase2-suite-count
+    file: docs/ROADMAP.md
+    source: "eval-report:suites.count"
+    expected: "9"
+    marker: "<!-- claim:roadmap-phase2-suite-count -->"
+
+  # --- Committed eval case count (dataset:case-count) ------------------------------------
+  # Every site that states how many cases the harness runs. The source loads
+  # eval/suites/*.yaml through the ordinary fail-closed loader, so the number a doc claims is
+  # the number the harness would run, and the loader's sidecar hash check means the count
+  # cannot be claimed for a dataset that was edited without regenerating its pin.
+  # The two HTML surfaces are pinned the same way as the Markdown ones: the checker greps for
+  # a marker line, and an HTML comment is invisible in both.
+
+  - id: roadmap-eval-case-count
+    file: docs/ROADMAP.md
+    source: "dataset:case-count"
+    expected: "158"
+    marker: "<!-- claim:roadmap-eval-case-count -->"
+
+  - id: roadmap-phase2-eval-case-count
+    file: docs/ROADMAP.md
+    source: "dataset:case-count"
+    expected: "158"
+    marker: "<!-- claim:roadmap-phase2-eval-case-count -->"
+
+  - id: web-static-readme-case-count
+    file: web-static/README.md
+    source: "dataset:case-count"
+    expected: "158"
+    marker: "<!-- claim:web-static-readme-case-count -->"
+
+  - id: site-committed-case-count
+    file: web-static/public/index.html
+    source: "dataset:case-count"
+    expected: "158"
+    marker: "<!-- claim:site-committed-case-count -->"
+
+  - id: web-dist-committed-case-count
+    file: web/dist/index.html
+    source: "dataset:case-count"
+    expected: "158"
+    marker: "<!-- claim:web-dist-committed-case-count -->"

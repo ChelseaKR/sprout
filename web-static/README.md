@@ -50,8 +50,9 @@ Per EXP-08's own risk assessment: *"dual-implementation drift is the big one —
 conformance test is the deliverable's spine."*
 
 `scripts/generate_conformance_fixtures.py` runs the real Python `Assistant` over every
-question in `eval/suites/*.yaml` — the same 142-case set (groundedness, safety,
-refusal, calibration, multilingual EN+ES) the Python eval harness scores against — and
+question in `eval/suites/*.yaml` — the same **158**-case set<!-- claim:web-static-readme-case-count -->
+(groundedness, safety, refusal, calibration, conversation, multilingual EN+ES) the Python
+eval harness scores against — and
 records the answer text, citations, confidence, refusal reason, and safety notice to
 `web-static/test/fixtures/conformance.json`. `web-static/test/conformance.test.ts`
 replays every one of those questions through the TypeScript port loaded from the same
@@ -69,7 +70,7 @@ make web-static-fixtures    # -> web-static/test/fixtures/conformance.json
 
 cd web-static
 npm ci
-npm test                    # compiles TS, runs the 142-case conformance test (node:test)
+npm test                    # compiles TS, runs the conformance test (node:test)
 npm run build:site          # compiles + copies dist/src/*.js into public/assets/
 python3 -m http.server 8080 --directory public   # or any static file server
 ```
@@ -82,7 +83,7 @@ EXP-08's full shape has four parts. This change delivers (a) and half of (b)/(c)
 rest is real follow-up work, not claimed here:
 
 - **(a) Algorithm port + conformance test — done.** All five deterministic modules
-  ported, 142/142 fixture cases passing, wired into CI.
+  ported, every fixture case passing, wired into CI.
 - **(b) Index + locales as static assets with subresource integrity — partial.** The
   data assets are exported and fetched statically; **SRI hashes are not yet wired into
   `index.html`** (there is no build-time hash-and-rewrite step here).

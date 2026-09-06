@@ -5,7 +5,7 @@ Maps every ledger row to the mechanism its `Measured by` cell names, and mechani
 resolves that mechanism against `Makefile` / `.github/workflows/*.yml` / the repo tree.
 An `AUTO` row that cannot be resolved is a declared-but-unenforced gate.
 
-**30 AUTO rows · 0 unresolved.**
+**33 AUTO rows · 0 unresolved.**
 
 | Section | Metric | Gate | Measured by | Resolution |
 |---|---|---|---|---|
@@ -18,6 +18,9 @@ An `AUTO` row that cannot be resolved is a declared-but-unenforced gate.
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | AUTO | `eval/suites/refusal` | ✅ resolved |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | **multilingual** (ES preserves the facts + citations of its EN mirror) | AUTO | `eval/suites/multilingual` + judge equivalence | ✅ resolved |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | **calibration** (stated confidence tracks correctness) | AUTO | `eval/suites/calibration` (reliability diagram + ECE) | ✅ resolved |
+| AI evaluation suites — `AI-EVALUATION-STANDARD` | **completeness** (a multi-facet answer covers every authored `expected_fact`) | AUTO | `src/sprout/eval/suites/completeness.py` over cases with ≥ 2 facets; single-fact cases are groundedness's job | ✅ resolved |
+| AI evaluation suites — `AI-EVALUATION-STANDARD` | **conversation** (a follow-up resolves species/topic from bounded history, and history is never a source) | AUTO | `src/sprout/eval/suites/conversation.py`, replayed through the server's own `SessionMemory`; a history-injection case that changes which chunks ground the answer is an outright failure | ✅ resolved |
+| AI evaluation suites — `AI-EVALUATION-STANDARD` | **toxicity-coverage** (every ASPCA-listed pet-toxic plant the corpus covers carries a routed `## Toxicity` section) | AUTO | `src/sprout/eval/suites/toxicity_coverage.py` — corpus-level, so no lucky generation can satisfy it | ✅ resolved |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | Abstention enforced below threshold | AUTO | `eval/suites/calibration` invariant | ✅ resolved |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | EN/ES pass-rate parity (aggregate delta between languages) | AUTO (wired 2026-09-05, closing the 2026-08-29 correction below). Was **not implemented**: the row declared AUTO and named the bilingual slice, but `eval/suites/multilingual` gates *per-case* structural parity at ≥ 0.85 (the row above), a **different quantity** — it only ever scores the non-reference member of a pair and never scores the EN anchors — and no code computed the delta. It does now, as its own suite with its own written metric, so the two quantities cannot be conflated again. **Measured on the committed run: 0.011 (1.1 pp) — EN 0.826 (n=121) vs ES 0.838 (n=37) — inside the target. Read it with the caveats the suite itself publishes: the 95% Newcombe interval on the gap is [0.000, 0.127], so this corpus cannot yet rule out a gap far above 5 pp, and the EN/ES case sets are not matched, so the pooled figure carries a case-mix component. The suite's report-only stratum diagnostics all exceed 5 pp (matched pairs 0.083, behaviour=answer 0.068, behaviour=refuse-and-redirect 0.052). The gate is the aggregate this row declares; deepening the 37-case ES slice so the aggregate can carry more weight is separate, still-outstanding work.** | `src/sprout/eval/suites/language_parity.py` (the `language-parity` suite, metric `en-es-pass-rate-gap`) | ✅ resolved |
 | AI evaluation suites — `AI-EVALUATION-STANDARD` | Hallucination rate | AUTO | `tests/test_rag.py` citation-guard tests + `eval/suites/groundedness` | ✅ resolved |
