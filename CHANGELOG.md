@@ -10,6 +10,38 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The 2026-07-05 citation correction was prose, and nothing enforced it.**
+  `CITATION.cff` had carried `date-released: 2026-06-22` for a release that was
+  never cut; it was corrected to `version: "0.1.0-dev"` with no release date and
+  a comment saying what would restore both fields. That correction held because
+  someone remembered it, which is the same footing the claim it replaced stood
+  on. `tests/test_release_versions.py` now makes it mechanical, and adds the
+  questions it did not answer.
+
+  Six checks, measured against the repository rather than against another copy
+  of the number. No tag is a legitimate state and passes, but `README.md` must
+  keep saying so — "no tag has ever been cut yet" and "There is no release to
+  install" are both pinned, so cutting a tag makes them false loudly. A tag that
+  appears must carry the declared version, must retire those sentences and the
+  `-dev` marker, must bring `date-released` back, and must have a `CHANGELOG.md`
+  section behind it. `sprout.__version__` must equal `pyproject.toml` and must
+  not be the `0.0.0+unknown` not-installed sentinel, which is a labelled unknown
+  and never a version. `CITATION.cff`'s base version must equal the manifest's.
+
+  The README's Status line now reads ``In build`` (0.1.0, untagged): the number
+  lived in `pyproject.toml`, in installed metadata and behind the `-dev` suffix
+  in `CITATION.cff`, and nowhere on the page a reader forms an impression from,
+  so a bump could move all three and leave the README describing something else.
+
+  Because a missing tag and an unfetched tag are indistinguishable from inside a
+  checkout, the tag checks skip with the reason on a shallow or tagless clone
+  instead of reading absence as evidence, and the `test` job now checks out with
+  `fetch-depth: 0` and `fetch-tags: true`. A sixth check asserts that it does —
+  without it the other five would be gates that always skip. Each was proved by
+  breaking it and confirming the mutation landed first, including a scratch
+  clone carrying a local `v0.1.0` tag that was never pushed, which is what
+  exercises the released half.
+
 - **The repo's own metrics ledger described a five-suite, 142-case harness that has gated
   nine suites over 158 cases for months** (#138). `docs/ROADMAP.md` is the document the
   README sends readers to for per-repo values, and it still carried the pre-#97 numbers and
