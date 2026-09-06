@@ -107,18 +107,38 @@ def validate_burn_rate_tiers(path: Path) -> None:
         )
 
 
+def covered_files(slo_dir: Path, alerts_dir: Path) -> tuple[list[Path], list[Path]]:
+    """The files :func:`check_all` would actually validate, in the order it reads them.
+
+    Exists so a caller can tell "every file passed" apart from "there were no files". A
+    schema gate over zero files reports the same empty problem list either way, and an
+    empty problem list printed as a pass is how a deleted `slos/` directory would read as
+    compliance. ``sprout slo-check`` uses this to refuse a vacuous run; the library keeps
+    its tolerant contract for a repo that has not opted into Tier A at all.
+    """
+    slo_files = sorted(slo_dir.glob("*.yaml")) if slo_dir.is_dir() else []
+    alert_files = sorted(alerts_dir.glob("*.yml")) if alerts_dir.is_dir() else []
+    return slo_files, alert_files
+
+
 def check_all(slo_dir: Path, alerts_dir: Path) -> list[str]:
     """Validate every ``slos/*.yaml`` and ``alerts/*.yml`` file. Returns problem strings
     (empty means everything passed); never raises for a missing/empty directory — a repo
     that hasn't opted into Tier A yet has no such directories, which is Tier A's absence,
-    not a schema error."""
+    not a schema error.
+
+    An empty list from this function therefore means "nothing failed", which is not the
+    same as "something passed". A caller running this as a gate must ask
+    :func:`covered_files` what was actually read before reporting success.
+    """
+    slo_files, alert_files = covered_files(slo_dir, alerts_dir)
     problems: list[str] = []
-    for slo_path in sorted(slo_dir.glob("*.yaml")) if slo_dir.is_dir() else []:
+    for slo_path in slo_files:
         try:
             validate_slo_file(slo_path)
         except SLOSchemaError as exc:
             problems.append(str(exc))
-    for alert_path in sorted(alerts_dir.glob("*.yml")) if alerts_dir.is_dir() else []:
+    for alert_path in alert_files:
         try:
             validate_alert_rules_file(alert_path)
             validate_burn_rate_tiers(alert_path)

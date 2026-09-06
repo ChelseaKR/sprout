@@ -52,7 +52,10 @@ class Claim:
     marker: str
 
 
-def _load_claims(path: str | Path) -> list[Claim]:
+def load_claims(path: str | Path) -> list[Claim]:
+    """Parse the claims registry. Public so a caller running :func:`check` as a gate can
+    ask how many claims it actually reconciled -- an empty registry and a fully reconciled
+    one both return an empty problem list, and only one of them is a pass."""
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"claims registry not found: {p}")
@@ -227,7 +230,7 @@ def check(
     ``file`` must contain ``expected`` on or adjacent to the line carrying ``marker`` — a
     mismatch here means the doc text drifted from a registry that is otherwise correct.
     """
-    claims = _load_claims(claims_path)
+    claims = load_claims(claims_path)
     problems: list[str] = []
     for claim in claims:
         if not claim.source.startswith("policy:"):
