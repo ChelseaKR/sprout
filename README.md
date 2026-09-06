@@ -6,7 +6,7 @@
 > The eval report is the headline artifact; the assistant exists so the harness has
 > something honest to measure.
 
-**Status:** `In build` · reference implementation · independent personal open-source
+**Status:** `In build` (0.1.0, untagged) · reference implementation · independent personal open-source
 project · Apache-2.0 · unaffiliated with any employer or client; contains no proprietary
 or client material. The bundled corpus and eval data are **synthetic and CC0-1.0**.
 

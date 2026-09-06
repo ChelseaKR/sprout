@@ -10,33 +10,105 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
-- **Every square root that feeds a committed artifact or the browser port is now
-  `math.sqrt`, not `x ** 0.5`.** `x ** 0.5` is libm's `pow`, which IEEE 754 does not
-  require to be correctly rounded; `math.sqrt` is `sqrt`, which it does. The two differ in
-  the last bit on some inputs, and *which* inputs depends on the platform's libm, so the
-  same computation gave different doubles on a laptop and on the CI runner. That already
-  turned one build red on a file nobody had edited (`static_vectors.json`), and since the
-  regenerate-and-compare gate lands this release, any remaining site was the same landmine.
+- **The embedders normalised with `pow`, and the browser port with `Math.sqrt`.**
+  `x ** 0.5` is libm's `pow`, which IEEE 754 does not require to be correctly rounded;
+  `math.sqrt` is `sqrt`, which it does. The hashing, static-vector and Titan embedders
+  each repeated `sum(v * v for v in vec) ** 0.5`, while `web-static/src/hashEmbedding.ts`
+  -- the port that runs sprout.chelseakr.com -- has always normalised with `Math.sqrt`.
+  The CLI and the browser were therefore using **different square roots** for a pipeline
+  this repo claims agrees bit-for-bit, and two runs of the CLI on different platforms did
+  not have to agree either. That already turned one build red on a file nobody had edited
+  (`static_vectors.json`).
 
-  - `providers/base.py` gains one `l2_normalize`, and the hashing, static-vector and Titan
-    embedders all normalise through it instead of each repeating the expression. The
-    browser port (`web-static/src/hashEmbedding.ts`) has always used `Math.sqrt`, so the
-    CLI and the live site were using different square roots for a pipeline this repo
-    claims agrees bit-for-bit.
-  - `eval/stats.py`'s Wilson margin. Measured on macOS (arm64, CPython 3.12.14): 99 of the
-    80600 `(successes, n)` pairs with n≤400 give a different margin, and the first whose
-    published *bounds* differ is 42 of 62 — an item count this harness reaches. None
-    changed the report's 3-decimal figure today; the gate compares bytes, not figures.
-  - `eval/stats.py`'s Newcombe interval on the EN/ES pass-rate gap, which arrived with two
-    inline `** 0.5` calls of its own and merged cleanly beside the fix that removed the
-    first one — git had no contradiction to flag between an addition and a deletion in
-    different hunks. The pin is now a property of the whole module (no `pow`-based root
-    anywhere in `eval/stats.py`) rather than a test aimed at one function, so the next
-    published statistic cannot reintroduce it either.
+  `providers/base.py` gains one `l2_normalize` and all three embedders normalise through
+  it, so there is a single square root to be right about. Measured on macOS (arm64,
+  CPython 3.12.14): `n ** 0.5 != math.sqrt(n)` for 274 of the integers 1..200000 -- the
+  shape of the hashing embedder's norms -- and for 32 of 5000 random static-vector sums.
 
-  No committed report, score or fixture changed: measured on the real corpus, 0 of 190
-  texts and 0 of the report's own `(successes, n)` pairs land on an input where the two
-  roots disagree today. This closes the hazard rather than a live failure.
+  **No committed report, score or fixture changed**: on the real corpus, 0 of 190 texts
+  land on an input where the two roots disagree today, and the full artifact-currency
+  suite is byte-identical. This closes a hazard, not a live failure.
+
+  The same fix to `eval/stats.py`'s published confidence bounds shipped separately in
+  the entry below, because it touches no tunable surface.
+
+- **The published confidence bounds were computed with `pow`, which is not required
+  to be correctly rounded.** `x ** 0.5` is libm's `pow`; `math.sqrt` is `sqrt`, which
+  IEEE 754 *does* require to be correctly rounded. The two differ in the last bit on
+  some inputs, and which inputs depends on the platform's libm -- so the same
+  `(successes, n)` pair did not have to give the same double on a laptop and on the CI
+  runner. `eval/stats.py`'s Wilson margin and its Newcombe interval on the EN/ES
+  pass-rate gap both print into `docs/audits/eval-report.*`, which is byte-compared
+  against a fresh regeneration, so a last-bit platform difference there is a red build
+  on a file nobody edited. Both now use `math.sqrt`.
+
+  Measured on macOS (arm64, CPython 3.12.14): 99 of the 80600 `(successes, n)` pairs
+  with n<=400 give a different margin, and the first whose published *bounds* differ is
+  42 of 62 -- an item count this harness reaches. **No committed report or figure
+  changed**: none of the report's own pairs lands on a disagreeing input today. This
+  closes a hazard, not a live failure. The new test asserts the property over the whole
+  module rather than one function, because `wilson_difference_interval` arrived with two
+  inline `** 0.5` calls of its own and would have merged cleanly beside a fix that
+  removed only the first.
+
+- **The 2026-07-05 citation correction was prose, and nothing enforced it.**
+  `CITATION.cff` had carried `date-released: 2026-06-22` for a release that was
+  never cut; it was corrected to `version: "0.1.0-dev"` with no release date and
+  a comment saying what would restore both fields. That correction held because
+  someone remembered it, which is the same footing the claim it replaced stood
+  on. `tests/test_release_versions.py` now makes it mechanical, and adds the
+  questions it did not answer.
+
+  Six checks, measured against the repository rather than against another copy
+  of the number. No tag is a legitimate state and passes, but `README.md` must
+  keep saying so — "no tag has ever been cut yet" and "There is no release to
+  install" are both pinned, so cutting a tag makes them false loudly. A tag that
+  appears must carry the declared version, must retire those sentences and the
+  `-dev` marker, must bring `date-released` back, and must have a `CHANGELOG.md`
+  section behind it. `sprout.__version__` must equal `pyproject.toml` and must
+  not be the `0.0.0+unknown` not-installed sentinel, which is a labelled unknown
+  and never a version. `CITATION.cff`'s base version must equal the manifest's.
+
+  The README's Status line now reads ``In build`` (0.1.0, untagged): the number
+  lived in `pyproject.toml`, in installed metadata and behind the `-dev` suffix
+  in `CITATION.cff`, and nowhere on the page a reader forms an impression from,
+  so a bump could move all three and leave the README describing something else.
+
+  Because a missing tag and an unfetched tag are indistinguishable from inside a
+  checkout, the tag checks skip with the reason on a shallow or tagless clone
+  instead of reading absence as evidence, and the `test` job now checks out with
+  `fetch-depth: 0` and `fetch-tags: true`. A sixth check asserts that it does —
+  without it the other five would be gates that always skip. Each was proved by
+  breaking it and confirming the mutation landed first, including a scratch
+  clone carrying a local `v0.1.0` tag that was never pushed, which is what
+  exercises the released half.
+
+- **The repo's own metrics ledger described a five-suite, 142-case harness that has gated
+  nine suites over 158 cases for months** (#138). `docs/ROADMAP.md` is the document the
+  README sends readers to for per-repo values, and it still carried the pre-#97 numbers and
+  the pre-#97 five-row suite table — the identical drift #97 corrected everywhere else.
+
+  `claims-check` could not catch it. The registry pinned `eval-report:suites.count` and
+  `suites.names` to the README, `docs/index.md`, `docs/ADAPT.md`, `docs/ARCHITECTURE.md` and
+  both cards; `docs/ROADMAP.md` carried claim markers only for *thresholds*. So the comment
+  in `docs/claims.yaml` that said "every Markdown site that states the figure is pinned here
+  now" was falsified by the ledger itself, and `make verify` passed over it.
+
+  - The ledger now states **9 suites** and **158 cases**, both pinned, and its suite table
+    gained the three rows it never had: `completeness` (≥ 0.90), `conversation` (≥ 0.95) and
+    `toxicity-coverage` (≥ 0.99).
+  - New claim source **`dataset:case-count`**, which loads `eval/suites/*.yaml` through the
+    ordinary fail-closed loader — so the number a doc claims is the number the harness would
+    run, and the loader's sidecar hash check means a count cannot be claimed for a dataset
+    edited without regenerating its pin. It pins the ledger (twice), `web-static/README.md`,
+    and the two shipped HTML surfaces (`web-static/public/index.html`, `web/dist/index.html`),
+    whose "Committed cases" tile read 142.
+  - Nine further present-tense sites carried a stale count, and two disagreed with each other
+    about the same run: `Makefile` said "128 eval-suite cases" and `.github/workflows/ci.yml`
+    said "142" for the same `generate_conformance_fixtures.py` output. Those, plus
+    `src/sprout/smoke.py`'s two mentions and the two repeats in `web-static/README.md`, now
+    state no number at all — a figure repeated without adding anything is only a place for
+    drift to hide. Each remaining statement of the count is pinned.
 - **The debug trace and the human review queue reported the safety classifier, not the
   routing that happened.** Routing to vet / poison-control fires when the input-keyword
   classifier fires **or** the answer cites toxicity content (issue #107). `Answer` carries

@@ -25,6 +25,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # tests/test_release_versions.py reads this repository's tags to check
+          # what README.md and CITATION.cff claim about releases. The default
+          # checkout is one commit deep and carries no tags, and reading an empty
+          # tag list out of that would make every release claim here
+          # unfalsifiable in the run that gates a merge. Fetch them.
+          fetch-depth: 0
+          fetch-tags: true
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
@@ -188,7 +195,7 @@ jobs:
         run: cd web-static && npm ci
       - name: Typecheck
         run: cd web-static && npm run typecheck
-      - name: Conformance test (142 eval-suite cases vs. the Python pipeline)
+      - name: Conformance test (every eval-suite case vs. the Python pipeline)
         run: cd web-static && npm test
       - name: Build the deployable static site
         run: cd web-static && npm run build:site

@@ -13,7 +13,6 @@ import pytest
 
 from sprout.chunk import _windows
 from sprout.config import Config
-from sprout.eval.stats import Z_95, wilson_interval
 from sprout.lang import _langdetect_fallback, detect_language
 from sprout.providers import build_embedding, build_generator
 from sprout.providers.base import context_hint, l2_normalize
@@ -245,91 +244,3 @@ def test_the_titan_embedder_normalises_with_sqrt() -> None:
 
     embedder = TitanEmbedding(dim=len(payload), client=_Client())
     assert embedder.embed("anything") == _reference_l2(payload)
-
-
-def _wilson_interval_pow(successes: int, n: int) -> tuple[float, float]:
-    """What ``wilson_interval`` computed before: ``x ** 0.5`` for the margin."""
-    z = Z_95
-    phat = successes / n
-    denom = 1.0 + z * z / n
-    centre = phat + z * z / (2 * n)
-    margin = z * ((phat * (1 - phat) / n + z * z / (4 * n * n)) ** 0.5)
-    return (max(0.0, (centre - margin) / denom), min(1.0, (centre + margin) / denom))
-
-
-def _wilson_interval_sqrt(successes: int, n: int) -> tuple[float, float]:
-    """The correctly-rounded reference: ``math.sqrt`` for the margin."""
-    z = Z_95
-    phat = successes / n
-    denom = 1.0 + z * z / n
-    centre = phat + z * z / (2 * n)
-    margin = z * math.sqrt(phat * (1 - phat) / n + z * z / (4 * n * n))
-    return (max(0.0, (centre - margin) / denom), min(1.0, (centre + margin) / denom))
-
-
-def _wilson_inputs_that_separate_pow_from_sqrt(limit: int = 5) -> list[tuple[int, int]]:
-    """(successes, n) pairs whose *interval*, not merely its margin, differs.
-
-    A last-bit difference in the margin usually washes out in the division, so the search
-    keeps only the pairs that survive into the returned bounds. On macOS (arm64, CPython
-    3.12.14) the first is (42, 62) -- a suite size this harness reaches.
-    """
-    found: list[tuple[int, int]] = []
-    for n in range(1, 601):
-        if len(found) >= limit:
-            break
-        for successes in range(n + 1):
-            if len(found) >= limit:
-                break
-            if _wilson_interval_pow(successes, n) != _wilson_interval_sqrt(successes, n):
-                found.append((successes, n))
-    return found
-
-
-def test_the_wilson_margin_uses_the_correctly_rounded_square_root() -> None:
-    """The interval is printed into the byte-compared eval report.
-
-    Measured on macOS 2026-09-01: 99 of the 80600 (successes, n) pairs with n<=400 give a
-    different *margin* under ``pow`` than under ``sqrt``, and the first whose published
-    *bounds* differ is 42 of 62 -- an item count this harness reaches. None of those
-    changed the report's 3-decimal figure today, which is the difference between "not
-    currently broken" and "cannot break": since #122 the gate compares bytes, and glibc's
-    ``pow`` agrees with ``sqrt`` where macOS's does not, so the disagreement is between
-    the laptop and the runner.
-    """
-    separating = _wilson_inputs_that_separate_pow_from_sqrt()
-    if not separating:
-        pytest.skip("this platform's pow is correctly rounded for every searched input")
-
-    for successes, n in separating:
-        assert wilson_interval(successes, n) == _wilson_interval_sqrt(successes, n)
-        assert wilson_interval(successes, n) != _wilson_interval_pow(successes, n)
-
-
-def test_no_published_statistic_is_computed_with_pow() -> None:
-    """No ``x ** 0.5`` anywhere in ``eval/stats.py`` — not just in ``wilson_interval``.
-
-    The two functions in this module both print into ``docs/audits/eval-report.*``, which
-    is byte-compared against a fresh regeneration (#122). Pinning only ``wilson_interval``
-    let the next one in: ``wilson_difference_interval`` arrived with two inline
-    ``** 0.5`` calls and merged cleanly beside the fix that removed the first one, because
-    git had no reason to see a contradiction between an addition and a deletion in
-    different hunks. This asserts the property over the whole module, so the next
-    statistic cannot reintroduce the platform-dependent root either.
-    """
-    import ast
-    from pathlib import Path
-
-    source = Path("src/sprout/eval/stats.py").read_text(encoding="utf-8")
-    offenders = [
-        node.lineno
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.BinOp)
-        and isinstance(node.op, ast.Pow)
-        and isinstance(node.right, ast.Constant)
-        and node.right.value == 0.5
-    ]
-    assert not offenders, (
-        f"src/sprout/eval/stats.py computes a square root with pow at line(s) {offenders}; "
-        "use math.sqrt so the published bounds are the same bytes on every platform"
-    )

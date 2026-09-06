@@ -49,8 +49,9 @@ command that reproduces the whole set locally is `make verify`
 
 ### AI evaluation suites — `AI-EVALUATION-STANDARD`
 
-Five suites, 120+ committed YAML cases, scored by deterministic checks blended with an
-LLM-as-judge (judge ≠ answer model). Runs are content-hashed and **byte-identical for
+**9 suites**<!-- claim:roadmap-eval-suite-count --> — calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage<!-- claim:roadmap-eval-suite-names -->
+— over **158** committed YAML cases<!-- claim:roadmap-eval-case-count --> (exceeding the 120+ target),
+scored by deterministic checks blended with an LLM-as-judge (judge ≠ answer model). Runs are content-hashed and **byte-identical for
 identical inputs**; the gate is *both* the absolute threshold below *and* no regression past
 tolerance from the committed baseline. Each PASS must also clear its Wilson lower bound when
 the statistical gate is on (see `runner.py::_apply_statistical_gate`).
@@ -62,6 +63,9 @@ the statistical gate is on (see `runner.py::_apply_statistical_gate`).
 | **refusal** (out-of-scope, "just tell me it's fine," embedded injection) | **0.90 offline / ≥ 0.95 portfolio**<!-- claim:roadmap-refusal-target --> — `sprout eval` now auto-selects the gate from `retrieval.embedding_provider` (`refusal.threshold_for`): the offline hashing embedder keeps its documented 0.90 floor (per the suite's own docstring — it cannot fully separate every unknown-species/jailbreak phrasing from in-scope), and the run auto-raises the gate to the ≥ 0.95 portfolio target the moment `embedding_provider: bedrock` (Titan) is configured. CI still exercises the offline default only, so 0.90 remains what's actually measured today — corrected 2026-07-08, was a hardcoded 0.90 with no enforcement path to 0.95 at all. EXP-03's opt-in offline `static` embedder measurably narrows the gap to 0.9412 without cloud/network — ADR-0017 — but does not close it, so 0.90 remains the wired offline default's floor | `eval/suites/refusal` | AUTO |
 | **multilingual** (ES preserves the facts + citations of its EN mirror) | **≥ 0.85**<!-- claim:roadmap-multilingual-parity-threshold --> — fraction of non-reference-language cases matching their EN anchor on the refuse/answer decision + cited-plant set | `eval/suites/multilingual` + judge equivalence | AUTO |
 | **calibration** (stated confidence tracks correctness) | **ECE ≤ 0.15** | `eval/suites/calibration` (reliability diagram + ECE) | AUTO |
+| **completeness** (a multi-facet answer covers every authored `expected_fact`) | **≥ 0.90** | `src/sprout/eval/suites/completeness.py` over cases with ≥ 2 facets; single-fact cases are groundedness's job | AUTO |
+| **conversation** (a follow-up resolves species/topic from bounded history, and history is never a source) | **≥ 0.95** | `src/sprout/eval/suites/conversation.py`, replayed through the server's own `SessionMemory`; a history-injection case that changes which chunks ground the answer is an outright failure | AUTO |
+| **toxicity-coverage** (every ASPCA-listed pet-toxic plant the corpus covers carries a routed `## Toxicity` section) | **≥ 0.99** | `src/sprout/eval/suites/toxicity_coverage.py` — corpus-level, so no lucky generation can satisfy it | AUTO |
 | Abstention enforced below threshold | answered cases below 0.25<!-- claim:roadmap-abstention-enforced --> confidence must have been refusals (ADR-0012, supersedes ADR-0005; corrected 2026-07-05 — see execution log) | `eval/suites/calibration` invariant | AUTO |
 | EN/ES pass-rate parity (aggregate delta between languages) | **\|EN − ES\| ≤ 5 pp (0.05)**<!-- claim:roadmap-language-parity-threshold --> — the gap between the language slices' pass rates over the recorded per-case correctness label, with the EN anchors scored as a slice of their own | `src/sprout/eval/suites/language_parity.py` (the `language-parity` suite, metric `en-es-pass-rate-gap`) | AUTO (wired 2026-09-05, closing the 2026-08-29 correction below). Was **not implemented**: the row declared AUTO and named the bilingual slice, but `eval/suites/multilingual` gates *per-case* structural parity at ≥ 0.85 (the row above), a **different quantity** — it only ever scores the non-reference member of a pair and never scores the EN anchors — and no code computed the delta. It does now, as its own suite with its own written metric, so the two quantities cannot be conflated again. **Measured on the committed run: 0.011 (1.1 pp) — EN 0.826 (n=121) vs ES 0.838 (n=37) — inside the target. Read it with the caveats the suite itself publishes: the 95% Newcombe interval on the gap is [0.000, 0.127], so this corpus cannot yet rule out a gap far above 5 pp, and the EN/ES case sets are not matched, so the pooled figure carries a case-mix component. The suite's report-only stratum diagnostics all exceed 5 pp (matched pairs 0.083, behaviour=answer 0.068, behaviour=refuse-and-redirect 0.052). The gate is the aggregate this row declares; deepening the 37-case ES slice so the aggregate can carry more weight is separate, still-outstanding work.** |
 | Hallucination rate | 0% by construction (extractive + citation guard) | `tests/test_rag.py` citation-guard tests + `eval/suites/groundedness` | AUTO |
@@ -261,7 +265,7 @@ up with actual repo state per DOC-15).
   (species, topic) pair actually present in the store), not hand-authored, so coverage tracks
   the corpus automatically as species/topics are added. Runs the offline deterministic
   generator only (no judge, no network) — a fast, judge-free canary distinct from the
-  hand-authored 142-case Phase 2 harness. 80 cases pass over the shipped corpus; report
+  hand-authored Phase 2 harness (whose case count is stated once, above). 80 cases pass over the shipped corpus; report
   committed at `docs/audits/smoke-report.md`.
 
 ### Phase 2 — eval first
@@ -269,11 +273,13 @@ up with actual repo state per DOC-15).
 the CI smoke suite. Commit a baseline scoreboard, mediocre numbers included.*
 
 **Status: substantially done** (corrected 2026-07-05 — see the same DOC-15 staleness note above).
-- Done: the eval engine — fail-closed dataset loader, run fingerprint (reproducible), all five
-  suites registered (`eval/suites/`), deterministic + Anthropic judges behind one Protocol
+- Done: the eval engine — fail-closed dataset loader, run fingerprint (reproducible), all
+  **9**<!-- claim:roadmap-phase2-suite-count --> suites registered (`src/sprout/eval/suites/`; six of
+  them authored as YAML under `eval/suites/`, three derived — `completeness`,
+  `toxicity-coverage`, `language-parity`), deterministic + Anthropic judges behind one Protocol
   (judge ≠ answer model), report generation (MD + HTML + JSON; JUnit + SARIF), Wilson statistical
-  gate, ECE/reliability calibration. **142 YAML cases** are committed under `eval/suites/`
-  (exceeds the 120+ target). `docs/audits/eval-baseline.json` is committed and, as of 2026-07-05,
+  gate, ECE/reliability calibration. **158 YAML cases**<!-- claim:roadmap-phase2-eval-case-count --> are
+  committed under `eval/suites/` (exceeds the 120+ target). `docs/audits/eval-baseline.json` is committed and, as of 2026-07-05,
   actually gates `sprout eval` (previously computed but never loaded by the CLI — AIEV-26,
   fixed). The eval job (`eval-a11y` in `ci.yml`) is inside the required `ci-gate` check. The
   judge-calibration probe set (`eval/judge_probes.yaml`, expanded 2026-07-08 from 12 to **66
