@@ -423,7 +423,11 @@ class Assistant:
         return AnswerTrace(
             query=query,
             language=lang,
-            is_safety_query=is_safety_query(query, lang, self._config.guards),
+            # The decision taken, not the classifier's half of it: `_render`/`_refuse`
+            # also route on the topic of the content cited (issue #107), so the two
+            # disagree exactly when an answer routed without a keyword.
+            is_safety_query=answer.is_safety_query,
+            safety_query_by_keyword=is_safety_query(query, lang, self._config.guards),
             injection_categories=tuple(detect_injection(query)),
             retrieved=tuple(retrieved),
             raw_candidates=tuple(candidates),
