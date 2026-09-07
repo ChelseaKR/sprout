@@ -38,7 +38,7 @@ from typer.testing import CliRunner
 from sprout.cli import app
 from sprout.config import Config, load_config
 from sprout.corpus_diff import corpus_fingerprint
-from sprout.ingest import ingest
+from sprout.ingest import build_index
 from sprout.web_bundle import (
     BUNDLE_FORMAT_VERSION,
     BundleProvenance,
@@ -47,6 +47,7 @@ from sprout.web_bundle import (
     check_bundle,
     corpus_root_for,
     export_bundle,
+    index_chunk_ids_digest,
     read_provenance,
     render_bundle,
     settings_digest,
@@ -153,33 +154,32 @@ def _write_corpus(root: Path, *, dates: dict[str, str] | None = None) -> Path:
 
 
 def _config_for(root: Path) -> Config:
-    return Config.model_validate(
-        {
-            "corpus": {"path": str(root / "processed"), "manifest": str(root / "manifest.yaml")},
-            "retrieval": {"species_aliases": dict(_ALIASES)},
-        }
-    )
+    return Config.model_validate(_config_dict(root))
+
+
+def _config_dict(root: Path) -> dict[str, Any]:
+    """A config pinned to ``root``, including ``store.path``.
+
+    ``store.path`` is set deliberately. ``ingest()`` persists to it, and leaving it at the
+    default made every run of this file overwrite the repository's own ``var/index.json``
+    with a ten-document fixture index — which is how these tests came to poison the real
+    conformance fixtures. Tests do not write outside ``tmp_path``.
+    """
+    return {
+        "corpus": {"path": str(root / "processed"), "manifest": str(root / "manifest.yaml")},
+        "store": {"path": str(root.parent / "var" / "index.json")},
+        "retrieval": {"species_aliases": dict(_ALIASES)},
+    }
 
 
 def _write_config_yaml(path: Path, root: Path) -> Path:
-    path.write_text(
-        yaml.safe_dump(
-            {
-                "corpus": {
-                    "path": str(root / "processed"),
-                    "manifest": str(root / "manifest.yaml"),
-                },
-                "retrieval": {"species_aliases": dict(_ALIASES)},
-            }
-        ),
-        encoding="utf-8",
-    )
+    path.write_text(yaml.safe_dump(_config_dict(root)), encoding="utf-8")
     return path
 
 
 def _build_index(cfg: Config, index_path: Path) -> Path:
     index_path.parent.mkdir(parents=True, exist_ok=True)
-    ingest(cfg).save(index_path)
+    build_index(cfg).save(index_path)
     return index_path
 
 
@@ -196,7 +196,8 @@ def bundle(tmp_path: Path) -> tuple[Path, Config, Path, Path]:
 
 
 def _read_bundle(out: Path) -> dict[str, Any]:
-    return json.loads((out / "config.json").read_text(encoding="utf-8"))
+    document: dict[str, Any] = json.loads((out / "config.json").read_text(encoding="utf-8"))
+    return document
 
 
 # --- what the bundle now records ------------------------------------------------
@@ -289,12 +290,37 @@ def test_re_exporting_without_re_ingesting_is_refused(
     index against itself and report a clean bundle; the browser would then retrieve text
     the corpus no longer contains, and a parity run would blame the port.
     """
-    root, cfg, index, out = bundle
+    root, cfg, index, _ = bundle
     document = root / "processed" / "monstera.md"
     document.write_text(document.read_text(encoding="utf-8") + "\nAn added sentence.\n", "utf-8")
     with pytest.raises(WebBundleError) as excinfo:
         build_provenance(cfg, index)
     assert "was not built from the corpus" in str(excinfo.value)
+
+
+def test_the_chunk_id_digest_does_not_depend_on_the_order_chunks_appear_in(
+    bundle: tuple[Path, Config, Path, Path],
+) -> None:
+    """The digest identifies a *set* of passages, not a serialisation of one.
+
+    Written after a measured negative control: dropping the ``sorted()`` from both sides
+    of the chunk-id comparison left the whole suite green, because the index writer emits
+    chunks in the order the chunker built them and both sides therefore agreed on an
+    order neither had chosen. Nothing in the suite reached the sorting, so nothing tested
+    it. Permuting the index makes the claim observable, and makes ``sorted()`` a line the
+    tests hold rather than a line that happens to be there.
+    """
+    _, _, index, _ = bundle
+    before_count, before_digest = index_chunk_ids_digest(index)
+
+    raw = json.loads(index.read_text(encoding="utf-8"))
+    assert len(raw["chunks"]) > 1, "a one-chunk index has no order to permute"
+    raw["chunks"] = list(reversed(raw["chunks"]))
+    raw["vectors"] = list(reversed(raw["vectors"]))
+    shuffled = index.parent / "reversed-index.json"
+    shuffled.write_text(json.dumps(raw, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+
+    assert index_chunk_ids_digest(shuffled) == (before_count, before_digest)
 
 
 # --- the check refuses to pass on what it cannot read ---------------------------
@@ -492,7 +518,7 @@ def test_the_bundle_is_byte_identical_across_processes(tmp_path: Path) -> None:
     renders = []
     for seed in ("0", "1", "12345"):
         env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONDONTWRITEBYTECODE": "1"}
-        result = subprocess.run(  # noqa: S603 - fixed argv, no shell
+        result = subprocess.run(  # fixed argv, no shell
             [sys.executable, "-c", script, str(config_yaml), str(index)],
             capture_output=True,
             text=True,
@@ -585,7 +611,7 @@ def test_bundle_check_exits_one_on_a_bundle_it_cannot_read(
 def test_bundle_check_show_prints_the_recorded_provenance(
     bundle: tuple[Path, Config, Path, Path], tmp_path: Path
 ) -> None:
-    _, _, index, out = bundle
+    _, _, _, out = bundle
     result = runner.invoke(app, ["bundle-check", str(out), "--show"])
     assert result.exit_code == 0, result.output
     assert read_provenance(out).corpus_fingerprint in result.output

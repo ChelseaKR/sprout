@@ -29,7 +29,7 @@ from pathlib import Path
 
 from sprout.chunk import SAFETY_TOPIC_SLUGS
 from sprout.config import load_config
-from sprout.ingest import ingest
+from sprout.ingest import build_index
 
 _ROOT = Path(__file__).resolve().parent.parent
 _EXPORT = _ROOT / "scripts" / "export_web_bundle.py"
@@ -114,7 +114,7 @@ def test_the_exported_bundle_carries_the_confidence_fit(tmp_path: Path) -> None:
     # `make ingest` having run, and ingesting the committed corpus takes well under a
     # second.
     built_index = tmp_path / "index.json"
-    ingest(load_config(_ROOT / "config" / "sprout.yaml")).save(built_index)
+    build_index(load_config(_ROOT / "config" / "sprout.yaml")).save(built_index)
     completed = subprocess.run(
         [
             sys.executable,
