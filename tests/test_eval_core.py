@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import inspect
 import math
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ from sprout.eval.calibration import (
     calibrate,
     cohens_kappa,
     is_stale,
+    probe_freshness,
     to_markdown,
 )
 from sprout.eval.dataset import (
@@ -382,3 +384,45 @@ def test_no_published_statistic_is_computed_with_pow() -> None:
         f"sprout/eval/stats.py computes a square root with pow at line(s) {offenders}; "
         "use math.sqrt so the published bounds are the same bytes on every platform"
     )
+
+
+@pytest.mark.parametrize(
+    ("raw", "status", "fragment"),
+    [
+        ({"probes": []}, "unmeasurable", "no labeled_date field"),
+        ({"labeled_date": ""}, "unmeasurable", "no labeled_date field"),
+        (["a bare list of probes"], "unmeasurable", "no labeled_date field"),
+        ({"labeled_date": "2026-13-40"}, "unmeasurable", "not an ISO-8601 date"),
+        ({"labeled_date": "not a date"}, "unmeasurable", "not an ISO-8601 date"),
+        ({"labeled_date": "2026-03-03"}, "unmeasurable", "in the future"),
+        ({"labeled_date": "2026-01-01"}, "stale", "60 days old"),
+        ({"labeled_date": "2026-02-20"}, "fresh", "10 days old"),
+        ({"labeled_date": "2026-01-30"}, "stale", "31 days old"),
+        ({"labeled_date": "2026-01-31"}, "fresh", "30 days old"),
+    ],
+    ids=[
+        "missing",
+        "empty-string",
+        "not-a-mapping",
+        "impossible-date",
+        "unparseable",
+        "future",
+        "long-stale",
+        "recent",
+        "one-day-past-the-target",
+        "exactly-at-the-target",
+    ],
+)
+def test_probe_freshness_separates_a_measurement_from_its_absence(
+    raw: object, status: str, fragment: str
+) -> None:
+    """Three states, because "no date" and "31 days old" are not the same fact.
+
+    The boundary rows are the reason this takes a fixed ``today`` rather than the clock:
+    exactly 30 days is fresh and 31 days is stale under a 30-day target, and a test whose
+    dates moved with the calendar could not say which side of the line it was asserting.
+    """
+    verdict = probe_freshness(raw, date(2026, 3, 2), "probes.yaml")
+    assert verdict.status == status
+    assert fragment in verdict.message
+    assert verdict.measurable is (status != "unmeasurable")
