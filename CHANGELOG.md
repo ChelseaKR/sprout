@@ -10,6 +10,27 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The published reference stopped working offline, and nothing could tell.** Hard rule 4
+  is offline by default, and on the browser surface it rests entirely on the `SHELL` array
+  in `web-static/public/service-worker.js` — a list of paths somebody typed. The build
+  emits one module per `web-static/src/*.ts`; `topics.ts` was added with the
+  secret-scanner work and `answer.ts` imports `./topics.js`, but the array, written in the
+  deploy commit and never touched since, still named fourteen modules out of fifteen. The
+  worker intercepts nothing outside `SHELL_URLS`, so with the network off the page
+  requested `./assets/topics.js`, the request failed, and the module graph never resolved.
+  Online — which is every way anyone tested it — the page was perfect.
+
+  `sprout offline-check` derives the required set from the built tree and compares it to
+  the list, **in both directions**, and `make web-static-build` runs it against the tree it
+  just wrote. The second direction is the one that hides: `cache.addAll()` rejects
+  atomically, so a single entry naming a file the build no longer writes stops the worker
+  installing and turns offline support off *entirely*, silently, for everyone.
+
+  The gate also refuses to pass over nothing — an absent worker, an unparseable or empty
+  `SHELL`, and an unbuilt asset tree are each reported rather than read as agreement — and
+  a test predicts the asset list from `web-static/src/*.ts` so `make test` catches the same
+  drift with no node toolchain present.
+
 - **The judge-calibration gate passed on an empty probe file, and published a perfect
   score for it.** `sprout calibrate --gate` is a merge-blocking CI step. A record built
   from zero probes carried `agreement` of `1.0` (`n_agree / n if n else 1.0`) and

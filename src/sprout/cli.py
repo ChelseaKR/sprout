@@ -15,6 +15,7 @@ per-row-cited toxicity table — coverage report and table-vs-prose consistency 
 ``propose template``/``propose check`` (the SME corpus-contribution path: provenance,
 corpus lint, safety, and representational-harm review of an incoming passage + eval case),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff),
+``offline-check`` (the browser reference's precache list vs. the assets the build wrote),
 ``corpus verify|install`` (signed third-party corpus bundles, EXP-15), and ``demo``
 (a scripted session). Everything runs offline by default, except ``corpus verify|install``
 against a ``sigstore-keyless`` bundle, which needs the ``corpus`` extra and network access
@@ -36,6 +37,7 @@ from .claims import check as check_claims
 from .claims import load_claims
 from .config import Config, load_config
 from .models import Answer
+from .offline_shell import OfflineShellError, check_offline_shell
 from .site_meta import check_site
 from .slo import check_all, covered_files
 
@@ -603,6 +605,38 @@ def site_check(
             typer.echo(f"  - {problem}", err=True)
         raise typer.Exit(1)
     typer.echo(f"{root}: every published page's address checks out")
+
+
+@app.command("offline-check")
+def offline_check(
+    directory: Annotated[str, typer.Argument()] = "web-static/public",
+) -> None:
+    """Check the browser reference's precache list against what the build wrote.
+
+    Offline by default is a hard rule, and on the published surface it rests on
+    a list in ``service-worker.js`` that nothing compared against the build. An
+    asset missing from it fails silently offline; an asset on it that the build
+    did not write is worse, because ``cache.addAll()`` rejects atomically and
+    the worker then never installs at all.
+    """
+    root = Path(directory)
+    if not root.is_dir():
+        typer.echo(f"not a directory: {root}", err=True)
+        raise typer.Exit(2)
+    try:
+        problems = check_offline_shell(root)
+    except OfflineShellError as exc:
+        # The check could not be performed. That is not a pass, and it exits
+        # non-zero for the same reason a missing input does everywhere else
+        # here: a gate that goes quiet when its subject disappears is a gate
+        # that has stopped gating.
+        typer.echo(f"  - {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if problems:
+        for problem in problems:
+            typer.echo(f"  - {problem}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{root}: the offline precache list matches every asset this build wrote")
 
 
 @app.command("freshness")

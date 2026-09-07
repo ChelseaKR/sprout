@@ -2,6 +2,14 @@
 // this explicit list—including MkDocs routes on the same domain—are not intercepted.
 // Listed assets are network-first so an online reload sees a new corpus immediately,
 // with the installed cache used only as the offline fallback.
+//
+// SHELL is hand-written on purpose: a reader should be able to see exactly what this
+// page stores. It is not hand-*maintained*. `sprout offline-check` runs against the
+// built tree in `make web-static-build` and fails when this list and the build
+// disagree in either direction. Both directions matter, and the second is the one
+// that hides: cache.addAll() rejects atomically, so a single entry naming a file the
+// build did not write stops the worker installing and turns offline support off
+// completely, while the page keeps working for everyone who is online.
 const CACHE_NAME = "sprout-reference-v2";
 const SHELL = [
   "./",
@@ -23,6 +31,7 @@ const SHELL = [
   "./assets/sha256.js",
   "./assets/store.js",
   "./assets/text.js",
+  "./assets/topics.js",
   "./data/index.json",
   "./data/config.json",
 ];
