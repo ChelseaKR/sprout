@@ -177,11 +177,16 @@ def test_the_typescript_port_computes_a_confidence_band() -> None:
     agreement.
     """
     source = _TS_CONFIDENCE.read_text(encoding="utf-8")
-    assert re.search(r"export function confidenceBand\(", source), (
+    body = re.search(r"export function confidenceBand\([^)]*\)[^{]*\{(.*?)\n\}", source, re.S)
+    assert body, (
         "web-static has no `confidenceBand`, so the browser can state a confidence but "
         "not the calibrated language EXP-06 renders alongside it"
     )
-    assert "well_supported_cutoff" in source, (
+    # The *body*, not the file. Measured while building this: replacing
+    # `cfg.well_supported_cutoff` with the literal `0.9` left `well_supported_cutoff`
+    # in the function's own doc comment, so a whole-file substring check passed while
+    # 114 conformance cases failed. A check that a comment can satisfy is not a check.
+    assert "well_supported_cutoff" in body.group(1), (
         "`confidenceBand` does not read the exported cut point, so it is banding "
         "against a number this repository did not give it"
     )
@@ -242,6 +247,13 @@ def test_the_exported_bundle_carries_the_band_cutoff_and_labels(tmp_path: Path) 
     # every supported language. A key with no entry falls back to the key itself, which
     # a screen reader announces as `partially_supported` — a missing translation
     # rendered as user-facing copy.
+    #
+    # This assertion is the *only* thing that catches a missing translation, and that
+    # was measured, not assumed: deleting the Spanish `partially_supported` label and
+    # re-running the whole cross-language conformance suite left all 238 cases passing,
+    # because both implementations fall back to English identically and agree perfectly
+    # on the wrong word. A Spanish speaker would hear "partially supported — verify" in
+    # an otherwise-Spanish answer and no output comparison could see it.
     for band in (BAND_WELL_SUPPORTED, BAND_PARTIALLY_SUPPORTED, BAND_INSUFFICIENT_EVIDENCE):
         labels = bundle["prompts"]["confidence_band_labels"].get(band, {})
         missing = [lang for lang in cfg.languages.supported if not labels.get(lang)]
