@@ -146,6 +146,11 @@ web-static-test: web-static-bundle web-static-fixtures ## Run the TS port's conf
 
 web-static-build: web-static-bundle ## Build the deployable static site (web-static/public/)
 	cd web-static && npm ci && npm run build:site
+# The offline precache list is checked here, against the tree the line above
+# just wrote, because that is the only moment both exist. `topics.ts` was added
+# to web-static/src months after service-worker.js's SHELL array was written,
+# and nothing noticed: the page loaded fine for everyone online.
+	$(PY) sprout offline-check web-static/public
 
 verify: lock-check lint type test security eval smoke a11y site-check claims calibrate gate-inventory slo corpus-report propose-check docs workflow-lint ci-parity-check web-static-test ## Full local mirror of the CI gate set
 	@echo "verify: all gates green"
