@@ -20,7 +20,9 @@ import yaml
 
 from sprout.answer import Assistant
 from sprout.config import load_config
+from sprout.ingest import load_corpus
 from sprout.store import VectorStore
+from sprout.web_bundle import expected_chunk_ids_digest, index_chunk_ids_digest
 
 ROOT = Path(__file__).resolve().parent.parent
 SUITE_DIR = ROOT / "eval" / "suites"
@@ -53,6 +55,22 @@ def _load_questions() -> list[dict[str, str]]:
 
 def main() -> None:
     cfg = load_config(ROOT / "config" / "sprout.yaml")
+    # Refuse an index that is not the one this corpus chunks to. Measured on 2026-09-07:
+    # a test in the suite persisted a ten-document fixture index over `var/index.json`,
+    # this script read it without complaint, and every one of the 158 fixtures it wrote
+    # described a corpus the TypeScript port was not running. The conformance suite then
+    # failed 150+ cases and read as a wholesale divergence in the port. The fixtures are
+    # the parity claim's evidence; generating them against an unverified index publishes
+    # a measurement of something nobody asked about.
+    expected_chunks, expected_ids = expected_chunk_ids_digest(cfg, load_corpus(cfg))
+    actual_chunks, actual_ids = index_chunk_ids_digest(cfg.store.path)
+    if (actual_chunks, actual_ids) != (expected_chunks, expected_ids):
+        raise SystemExit(
+            f"generate_conformance_fixtures: {cfg.store.path} holds {actual_chunks} chunks "
+            f"({actual_ids}) where this corpus chunks to {expected_chunks} ({expected_ids}). "
+            "Run `make ingest` first — fixtures generated from a different index would be "
+            "reported as a TypeScript port divergence."
+        )
     store = VectorStore.load(cfg.store.path)
     assistant = Assistant.from_store(cfg, store)
 

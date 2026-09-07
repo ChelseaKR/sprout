@@ -48,6 +48,12 @@ jobs:
         run: cp -R web-static/public/. site/
       - name: Check the published root structure
         run: uv run sprout a11y-check site/index.html
+      # Read the corpus bundle in the tree that is about to be uploaded, not the one the
+      # build wrote. The published surface is assembled by the `cp` above; a deploy that
+      # landed the pages but not `data/`, or landed a previous run's `data/`, would have
+      # published a site answering from an unrecorded corpus with every other check green.
+      - name: Check the published bundle is this commit's corpus and config
+        run: uv run sprout bundle-check site/data
       - name: Check the published site's addresses
         run: uv run sprout site-check site --origin https://sprout.chelseakr.com
       - name: Verify linked documentation routes
