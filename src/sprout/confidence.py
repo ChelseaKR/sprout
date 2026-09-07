@@ -196,6 +196,18 @@ _WELL_SUPPORTED_ACCURACY = 0.75
 # whenever the confidence function is re-fit (see the _MIDPOINT/_STEEPNESS note above,
 # and ADR-0012) -- a cutoff fit to a stale diagram is exactly the kind of drift the
 # calibration suite exists to catch.
+#
+# `web_bundle.settings_payload` exports this number into `data/config.json`: the browser
+# port has to place the same answer in the same band as the CLI, and the only way to
+# guarantee that is to ship it this value rather than let the TypeScript carry a
+# hand-copied twin that drifts after the next re-fit.
+#
+# It stays underscored, and `web_bundle` reads it under that name, on purpose. Renaming
+# it changes this module's AST, and `eval/tuning_scope.py` lists `confidence.py` as
+# tunable surface and compares an AST fingerprint — so the rename alone would demand a
+# `Tunes-Against:` trailer citing a committed eval failure this change does not have and
+# is not about. That module's own docstring says a gate satisfiable only by a false
+# statement is worse than no gate; not renaming costs one underscore.
 _DEFAULT_WELL_SUPPORTED_CUTOFF = 0.70
 
 

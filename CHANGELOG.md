@@ -10,6 +10,83 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The site announced a number where the server announced words.** EXP-06 renders a
+  verbalized confidence band *alongside* the raw float, because "0.82" is announced by a
+  screen reader as an undifferentiated figure with no sense of whether it is good.
+  `answer.py` puts `confidence_band` and `confidence_band_label` on every answer and
+  `server.py` sends both, so the served UI reads "Confidence: well-supported (0.82)". The
+  browser port had neither field: sprout.chelseakr.com read "82% confidence", the exact
+  bare number the band exists to gloss — so the zero-server surface was the less
+  accessible of the two implementations running "the same pipeline".
+
+  The conformance suite could not see it. It compared text, citations, confidence,
+  refusal reason and the rest over 158 cases and passed every one, because **a field it
+  does not compare is a field the two implementations are free to disagree on** — and the
+  port had no band to disagree with.
+
+  The band now reaches the browser as data, not as a mirrored constant: the exported
+  bundle carries `confidence.well_supported_cutoff` and `prompts.confidence_band_labels`
+  (`BUNDLE_FORMAT_VERSION` 2 → 3, and a version-2 bundle is refused rather than
+  defaulted — an absent cutoff compares as `confidence >= undefined`, which is false for
+  every score, so every answered question would be labelled "partially supported" and
+  read as a calibration result). `derive_band_cutoff` re-derives that cut point whenever
+  the confidence function is re-fit, which is precisely why a TypeScript copy of `0.70`
+  would have been correct until the first `sprout fit-confidence` and silently wrong
+  after it.
+
+  The fixtures now record both fields and the conformance suite asserts them, and the
+  fixture set grew from the hand-authored eval suites to those **plus the corpus-derived
+  Phase 1 smoke suite** — 158 cases to 238. The two sets fail differently: a curated list
+  covers what somebody thought to write down, while `derive_smoke_cases` builds one
+  question per (species, topic) pair actually ingested, so a port that diverges only on
+  the sixteenth species cannot hide from it. Across the 238 all three bands and both
+  languages' labels are populated, so the new comparison is not vacuous.
+
+- **The project had no distribution name it could actually be released under.** The release
+  workflow, the trusted-publishing job and the signed-tag path have all been wired for
+  months, and `pyproject.toml` declared `name = "sprout"` the whole time. That name on PyPI
+  is [Sprout 1.1.1](https://pypi.org/project/sprout/) (Martijn Faassen / Infrae), so the
+  first tag cut would have failed at the upload with a permissions error, or — worse, had
+  the name ever been transferred — published this project over a stranger's. The README
+  already said not to type it; nothing said what to type instead, so the release work had
+  no name to finish against.
+
+  The distribution is now `sprout-plantcare`, following the pattern five other repositories
+  here already use for the same reason (`cairn-assistant`, `gauntlet-evals`,
+  `nearmiss-safety`, `ledger-archive`, `plumbline-eval`): keep the word, add the qualifier
+  that says what it is. It was free on PyPI when chosen (checked 2026-09-07). **The import
+  name, the package directory and the CLI command are unchanged** — `import sprout`,
+  `src/sprout/`, `sprout ask`. Nothing is published and no name is claimed; this makes the
+  release path nameable, it does not exercise it.
+
+  One consequence is not cosmetic. `src/sprout/__init__.py` derives `__version__` from
+  `importlib.metadata.version(...)`, which takes the *distribution* name, and falls back to
+  `"0.0.0+unknown"` when it cannot find it. Left naming `sprout`, that fallback would have
+  become the reported version of every installed copy — a missing lookup rendered as a
+  value. `tests/test_release_versions.py` already asserts the sentinel is never what a
+  synced tree reports, so it is the gate on this.
+
+- **The published reference stopped working offline, and nothing could tell.** Hard rule 4
+  is offline by default, and on the browser surface it rests entirely on the `SHELL` array
+  in `web-static/public/service-worker.js` — a list of paths somebody typed. The build
+  emits one module per `web-static/src/*.ts`; `topics.ts` was added with the
+  secret-scanner work and `answer.ts` imports `./topics.js`, but the array, written in the
+  deploy commit and never touched since, still named fourteen modules out of fifteen. The
+  worker intercepts nothing outside `SHELL_URLS`, so with the network off the page
+  requested `./assets/topics.js`, the request failed, and the module graph never resolved.
+  Online — which is every way anyone tested it — the page was perfect.
+
+  `sprout offline-check` derives the required set from the built tree and compares it to
+  the list, **in both directions**, and `make web-static-build` runs it against the tree it
+  just wrote. The second direction is the one that hides: `cache.addAll()` rejects
+  atomically, so a single entry naming a file the build no longer writes stops the worker
+  installing and turns offline support off *entirely*, silently, for everyone.
+
+  The gate also refuses to pass over nothing — an absent worker, an unparseable or empty
+  `SHELL`, and an unbuilt asset tree are each reported rather than read as agreement — and
+  a test predicts the asset list from `web-static/src/*.ts` so `make test` catches the same
+  drift with no node toolchain present.
+
 - **The judge-calibration gate passed on an empty probe file, and published a perfect
   score for it.** `sprout calibrate --gate` is a merge-blocking CI step. A record built
   from zero probes carried `agreement` of `1.0` (`n_agree / n if n else 1.0`) and

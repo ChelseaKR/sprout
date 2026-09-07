@@ -92,8 +92,9 @@ here; per-repo target values live in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 Beyond per-PR criteria, a release is done when:
 
-- [ ] A fresh user can `pipx install sprout`, ask a plant question **offline**, and get a **cited
-      answer or an honest refusal** — no cloud account.
+- [ ] A fresh user can `pipx install sprout-plantcare` (the distribution name; `sprout` on PyPI
+      is an unrelated library), ask a plant question **offline**, and get a **cited answer or an
+      honest refusal** — no cloud account.
 - [ ] `make eval` regenerates the committed report end to end, offline, byte-identically.
 - [ ] The **model card** (`docs/cards/model-card.md`) states the limits plainly and is current.
 - [ ] The accessibility ACR (VPAT 2.5 Rev 508) and the dated audit artifacts are regenerated and

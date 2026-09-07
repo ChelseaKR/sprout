@@ -12,6 +12,12 @@ straight from the loaded, validated :class:`~sprout.config.Config` to JSON, and 
 the built index alongside it. Both files are plain static assets fetched by the PWA at
 runtime — no server, no build-time secret.
 
+The bundle also records *which* corpus and *which* configuration it was built from, so a
+deployed bundle can be asked whether it is still the one this checkout describes. That
+lives in :mod:`sprout.web_bundle`, which both writes it here and re-derives it in
+``sprout bundle-check``; this file is deliberately a thin entry point so the exported
+shape has exactly one definition.
+
 Usage: ``uv run python scripts/export_web_bundle.py [--config config/sprout.yaml]``
 (run after ``make ingest`` so ``var/index.json`` exists).
 """
@@ -19,93 +25,11 @@ Usage: ``uv run python scripts/export_web_bundle.py [--config config/sprout.yaml
 from __future__ import annotations
 
 import argparse
-import json
-import shutil
 from pathlib import Path
 
-from sprout.config import load_config
+from sprout.web_bundle import WebBundleError, export_bundle
 
 ROOT = Path(__file__).resolve().parent.parent
-
-
-def _export_config(config_path: Path, out_dir: Path) -> Path:
-    cfg = load_config(config_path)
-    if cfg.retrieval.embedding_provider != "deterministic":
-        raise SystemExit(
-            "export_web_bundle: retrieval.embedding_provider must be 'deterministic' — "
-            "the browser port only implements the offline hashing embedder."
-        )
-    bundle = {
-        "format_version": 1,
-        "retrieval": {
-            "top_k": cfg.retrieval.top_k,
-            "min_score": cfg.retrieval.min_score,
-            "embedding_dim": cfg.retrieval.embedding_dim,
-            "hybrid": cfg.retrieval.hybrid,
-            "bm25_k1": cfg.retrieval.bm25_k1,
-            "bm25_b": cfg.retrieval.bm25_b,
-            "rrf_k": cfg.retrieval.rrf_k,
-            "dedup_threshold": cfg.retrieval.dedup_threshold,
-            "topic_filter": cfg.retrieval.topic_filter,
-            "species_aliases": cfg.retrieval.species_aliases,
-        },
-        "generation": {
-            "max_sentences": cfg.generation.max_sentences,
-            "relevance_floor": cfg.generation.relevance_floor,
-            "support_overlap": cfg.generation.support_overlap,
-        },
-        "confidence": {
-            "abstain_threshold": cfg.confidence.abstain_threshold,
-            "low_confidence_threshold": cfg.confidence.low_confidence_threshold,
-            # The logistic's shape, when `sprout fit-confidence` (ADR-0016) has written
-            # one. Python reads it in `confidence.py::_constants`; without it here the
-            # browser would keep using the ADR-0012 defaults and compute a different
-            # confidence — and therefore different abstain/low-confidence decisions —
-            # than the CLI for the same question, silently, from the first committed
-            # fit onward (issue #108). `null` when no fit is committed, which is what
-            # tells the TypeScript side to use the same defaults Python would.
-            "fit": (
-                None
-                if cfg.confidence.fit is None
-                else {
-                    "midpoint": cfg.confidence.fit.midpoint,
-                    "steepness": cfg.confidence.fit.steepness,
-                    "margin_bonus": cfg.confidence.fit.margin_bonus,
-                }
-            ),
-        },
-        "guards": {
-            "forbidden_safe_phrases": cfg.guards.forbidden_safe_phrases,
-            "toxicity_keywords": cfg.guards.toxicity_keywords,
-            "route_terms": cfg.guards.route_terms,
-        },
-        "languages": {
-            "supported": cfg.languages.supported,
-            "default": cfg.corpus.default_language,
-        },
-        "prompts": {
-            "refusal_by_lang": cfg.prompts.refusal_by_lang,
-            "disclosure_by_lang": cfg.prompts.disclosure_by_lang,
-            "safety_route_by_lang": cfg.prompts.safety_route_by_lang,
-            "nontoxic_caveat_by_lang": cfg.prompts.nontoxic_caveat_by_lang,
-            "escalation_card_by_lang": cfg.prompts.escalation_card_by_lang,
-        },
-    }
-    out_dir.mkdir(parents=True, exist_ok=True)
-    dest = out_dir / "config.json"
-    dest.write_text(
-        json.dumps(bundle, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8"
-    )
-    return dest
-
-
-def _copy_index(index_path: Path, out_dir: Path) -> Path:
-    if not index_path.exists():
-        raise SystemExit(f"export_web_bundle: {index_path} not found — run `make ingest` first.")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    dest = out_dir / "index.json"
-    shutil.copyfile(index_path, dest)
-    return dest
 
 
 def main() -> None:
@@ -115,9 +39,10 @@ def main() -> None:
     parser.add_argument("--out", default=str(ROOT / "web-static" / "public" / "data"))
     args = parser.parse_args()
 
-    out_dir = Path(args.out)
-    config_dest = _export_config(Path(args.config), out_dir)
-    index_dest = _copy_index(Path(args.index), out_dir)
+    try:
+        config_dest, index_dest = export_bundle(args.config, args.index, args.out)
+    except WebBundleError as exc:
+        raise SystemExit(f"export_web_bundle: {exc}") from exc
     print(f"Wrote {config_dest}")
     print(f"Wrote {index_dest}")
 

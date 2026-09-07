@@ -15,7 +15,12 @@ per-row-cited toxicity table — coverage report and table-vs-prose consistency 
 ``propose template``/``propose check`` (the SME corpus-contribution path: provenance,
 corpus lint, safety, and representational-harm review of an incoming passage + eval case),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff),
-``corpus verify|install`` (signed third-party corpus bundles, EXP-15), and ``demo``
+``offline-check`` (the browser reference's precache list vs. the assets the build wrote),
+``bundle-check`` (is the exported browser bundle the corpus/config this checkout describes,
+or a stale one),
+``corpus verify|install`` (signed third-party corpus bundles, EXP-15),
+``corpus diff`` (what changed between two corpus states, and which eval cases, smoke
+questions and claims it moves), and ``demo``
 (a scripted session). Everything runs offline by default, except ``corpus verify|install``
 against a ``sigstore-keyless`` bundle, which needs the ``corpus`` extra and network access
 to Sigstore's infrastructure.
@@ -36,6 +41,7 @@ from .claims import check as check_claims
 from .claims import load_claims
 from .config import Config, load_config
 from .models import Answer
+from .offline_shell import OfflineShellError, check_offline_shell
 from .site_meta import check_site
 from .slo import check_all, covered_files
 
@@ -138,6 +144,86 @@ def corpus_install_cmd(
         f"{installed.publisher_id} -> {installed.install_path}"
     )
     typer.echo(f"Provenance recorded at {installed.provenance_path}")
+
+
+@corpus_app.command("diff")
+def corpus_diff_cmd(
+    before: Annotated[
+        str,
+        typer.Argument(
+            help="The earlier corpus root (a directory with manifest.yaml + processed/)."
+        ),
+    ],
+    after: Annotated[str, typer.Argument(help="The later corpus root.")],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    suites: Annotated[
+        str, typer.Option("--suites", help="Eval suite directory used for the impact map.")
+    ] = "eval/suites",
+    claims: Annotated[
+        str, typer.Option("--claims", help="Claims registry checked for corpus-derived entries.")
+    ] = "docs/claims.yaml",
+    as_json: Annotated[
+        bool, typer.Option("--json", help="Emit the diff as JSON instead of Markdown.")
+    ] = False,
+    out: Annotated[
+        str | None, typer.Option("--out", help="Write the rendered diff to this file as well.")
+    ] = None,
+    no_impact: Annotated[
+        bool,
+        typer.Option(
+            "--no-impact",
+            help="Only diff the corpus itself; skip re-running the eval and smoke cases.",
+        ),
+    ] = False,
+    fail_on_toxicity_change: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-toxicity-change",
+            help="Exit 1 when any toxicity row changed, for a review workflow.",
+        ),
+    ] = False,
+) -> None:
+    """Say what changed between two corpus states, and which cases it moves.
+
+    Each side is a corpus root: a directory holding ``manifest.yaml`` and ``processed/``,
+    which is the shape of this repo's ``corpus/`` and the shape ``corpus install`` writes,
+    so an installed bundle version is a valid side.
+
+    The impact map is measured rather than guessed: both corpus states are ingested and
+    every eval case and corpus-derived smoke question is answered through the ordinary
+    offline pipeline, and the two rendered answers are compared. A case whose citation
+    points at a document the later corpus does not have is reported as an error and exits
+    1 whatever flags were passed.
+    """
+    from .corpus_diff import (
+        CorpusDiffError,
+        diff_corpora,
+        exit_code_for,
+        render_json,
+        render_markdown,
+    )
+
+    cfg = _load(config)
+    try:
+        diff = diff_corpora(
+            cfg,
+            before,
+            after,
+            suites_dir=suites,
+            claims_path=claims,
+            with_impact=not no_impact,
+        )
+    except (CorpusDiffError, FileNotFoundError, ValueError) as exc:
+        typer.echo(f"cannot diff these corpus roots: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    rendered = render_json(diff) if as_json else render_markdown(diff)
+    if out:
+        out_path = Path(out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered, encoding="utf-8")
+    typer.echo(rendered)
+    raise typer.Exit(code=exit_code_for(diff, fail_on_toxicity_change=fail_on_toxicity_change))
 
 
 @app.command("corpus-report")
@@ -605,6 +691,103 @@ def site_check(
     typer.echo(f"{root}: every published page's address checks out")
 
 
+@app.command("offline-check")
+def offline_check(
+    directory: Annotated[str, typer.Argument()] = "web-static/public",
+) -> None:
+    """Check the browser reference's precache list against what the build wrote.
+
+    Offline by default is a hard rule, and on the published surface it rests on
+    a list in ``service-worker.js`` that nothing compared against the build. An
+    asset missing from it fails silently offline; an asset on it that the build
+    did not write is worse, because ``cache.addAll()`` rejects atomically and
+    the worker then never installs at all.
+    """
+    root = Path(directory)
+    if not root.is_dir():
+        typer.echo(f"not a directory: {root}", err=True)
+        raise typer.Exit(2)
+    try:
+        problems = check_offline_shell(root)
+    except OfflineShellError as exc:
+        # The check could not be performed. That is not a pass, and it exits
+        # non-zero for the same reason a missing input does everywhere else
+        # here: a gate that goes quiet when its subject disappears is a gate
+        # that has stopped gating.
+        typer.echo(f"  - {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if problems:
+        for problem in problems:
+            typer.echo(f"  - {problem}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{root}: the offline precache list matches every asset this build wrote")
+
+
+@app.command("bundle-check")
+def bundle_check(
+    directory: Annotated[
+        str, typer.Argument(help="The exported bundle directory (config.json + index.json).")
+    ] = "web-static/public/data",
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    index: Annotated[
+        str, typer.Option("--index", help="The index `make ingest` wrote, to compare against.")
+    ] = "var/index.json",
+    show: Annotated[
+        bool,
+        typer.Option("--show", help="Print the bundle's recorded provenance and exit 0."),
+    ] = False,
+) -> None:
+    """Is the exported browser bundle the corpus and config this checkout describes?
+
+    The published site answers from two static files. Nothing previously recorded which
+    corpus or which configuration produced them, so a bundle a month behind the corpus
+    answered confidently from the old passages and no check could see it — and any
+    comparison of the browser's answers against Python's would have blamed the port.
+
+    Reports every field that moved: the corpus fingerprint (the same value
+    ``sprout corpus diff`` prints, so the two can be read side by side), the settings
+    hash, and the index — both its bytes and the chunk ids inside it, because
+    re-exporting without re-ingesting leaves a fresh config beside a stale index and only
+    the second of those two catches it. A bundle that is missing, unparseable, or written
+    before provenance existed exits non-zero: an unanswerable question is not a pass.
+    """
+    from .web_bundle import WebBundleError, check_bundle, read_provenance
+
+    if show:
+        try:
+            provenance = read_provenance(directory)
+        except WebBundleError as exc:
+            typer.echo(f"  - {exc}", err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(f"corpus:   {provenance.corpus_fingerprint}")
+        typer.echo(
+            f"          {provenance.corpus_documents} documents, as of {provenance.as_of_display}"
+        )
+        if provenance.corpus_dates_unmeasurable:
+            typer.echo(
+                f"          {provenance.corpus_dates_unmeasurable} document(s) with an absent, "
+                "malformed or future fetch_date, excluded from that range"
+            )
+        typer.echo(f"config:   {provenance.config_sha256}")
+        typer.echo(f"index:    {provenance.index_sha256} ({provenance.index_chunks} chunks)")
+        typer.echo(f"          chunk ids {provenance.index_chunk_ids_sha256}")
+        return
+
+    cfg = _load(config)
+    try:
+        problems = check_bundle(directory, cfg, index)
+    except WebBundleError as exc:
+        typer.echo(f"  - {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if problems:
+        typer.echo(f"{directory}: this bundle is not what this checkout would export:", err=True)
+        for problem in problems:
+            typer.echo(f"  - {problem}", err=True)
+        typer.echo("  Re-run `make web-static-bundle` (after `make ingest`).", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{directory}: bundle matches this checkout's corpus, config and index")
+
+
 @app.command("freshness")
 def freshness_check(
     config: ConfigOpt = _DEFAULT_CONFIG,
@@ -757,32 +940,40 @@ def calibrate(
     Re-gate the calibrated LLM judge (``--judge llm --gate``, run with live credentials
     outside CI — the LLM judge is never hit in CI) before it backs a production run.
 
-    Also warns (does not yet fail — AIEV-20, tied to the P0-4 remediation) when the probe
-    set's ``labeled_date`` is more than 30 days old, per the ROADMAP "judge-calibration
-    freshness" row.
+    Probe-set freshness, per the ROADMAP "judge-calibration freshness" row, is read in
+    two parts that are deliberately treated differently.
+
+    A probe set past the 30-day target is **stale**, and that still only warns. Flipping
+    it to a failure is AIEV-20/#130, which waits on the P0-4 remediation, and this command
+    does not pre-empt that decision.
+
+    A probe set whose freshness **cannot be read at all** — no ``labeled_date``, a
+    ``labeled_date`` that is not an ISO date, or one dated in the future — is a different
+    fact, and under ``--gate`` it now exits 2. All three used to take the identical
+    warn-and-pass path a 31-day-old set takes, so deleting the field silenced the check
+    while the ROADMAP row went on claiming ``sprout calibrate`` performed it. A check that
+    could not run is not a check that passed. Report mode still warns and exits 0: it is
+    the explicitly non-gating mode.
     """
     from datetime import date
 
-    from .eval.calibration import CalibrationError, JudgeProbe, to_markdown
+    from .eval.calibration import CalibrationError, JudgeProbe, probe_freshness, to_markdown
     from .eval.calibration import calibrate as run_calibrate
     from .eval.judge import build_judge
 
     raw = yaml.safe_load(Path(probes).read_text(encoding="utf-8"))
-    labeled_date = raw.get("labeled_date") if isinstance(raw, dict) else None
-    if labeled_date:
-        age_days = (date.today() - date.fromisoformat(str(labeled_date))).days
-        if age_days > 30:
+    freshness = probe_freshness(raw, date.today(), probes)
+    if not freshness.measurable:
+        typer.echo(f"warning: {freshness.message}", err=True)
+        if gate:
             typer.echo(
-                f"warning: probe set labeled_date {labeled_date} is {age_days} days old "
-                "(> 30-day freshness target); re-label before trusting this record.",
+                "cannot gate on a freshness check that did not run: give the probe file a "
+                "labeled_date naming the day its human labels were last reviewed.",
                 err=True,
             )
-    else:
-        typer.echo(
-            f"warning: {probes} has no labeled_date field; cannot check calibration-probe "
-            "freshness.",
-            err=True,
-        )
+            raise typer.Exit(code=2)
+    elif freshness.status == "stale":
+        typer.echo(f"warning: {freshness.message}", err=True)
     if isinstance(raw, dict) and "probes" not in raw:
         # `raw.get("probes", raw)` exists so a file that is a bare list of probes works.
         # A *dict* without a `probes` key is a mis-keyed file, and falling through iterated

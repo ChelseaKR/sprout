@@ -49,6 +49,7 @@ function resetOutput() {
   safetyEl.textContent = "";
   sourcesWrap.hidden = true;
   metaEl.textContent = "";
+  delete metaEl.dataset.confidenceBand;
 }
 
 function renderCitation(citation) {
@@ -105,11 +106,20 @@ function render(question) {
   }
   sourcesWrap.hidden = citations.length === 0;
 
-  const confidence = `${Math.round(answer.confidence * 100)}% confidence${
-    answer.low_confidence ? " · low" : ""
-  }`;
+  // The verbalized band leads and the raw percentage follows in parentheses — the same
+  // order the server UI uses (`web/dist/app.js`), and for the same reason (EXP-06): a
+  // screen reader announces the calibrated language first, while the number stays
+  // available to anyone who wants it. Never the band alone, and never — as this page
+  // did until the band reached the port — the number alone, which is announced as an
+  // undifferentiated figure with no sense of whether it is good.
+  const band = answer.confidence_band_label;
+  const confidence = `Confidence: ${band ? `${band} ` : ""}(${Math.round(
+    answer.confidence * 100,
+  )}%)${answer.low_confidence ? " · low" : ""}`;
   const references = answer.as_of ? `References current through ${answer.as_of}` : "No supporting reference";
   metaEl.textContent = `${confidence} · ${references} · ${answer.disclosure}`;
+  // The stable band key as a styling/testing hook, per `Answer.confidence_band`.
+  metaEl.dataset.confidenceBand = answer.confidence_band;
   evidencePanel.setAttribute("aria-busy", "false");
 }
 

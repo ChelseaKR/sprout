@@ -297,7 +297,8 @@ Conventional commits; pinned, SLSA-friendly GitHub Actions; Dependabot.
 
 ## Definition of done
 
-A fresh user can `pipx install sprout`, ask a plant question offline, get a cited answer (or an honest
+A fresh user can `pipx install sprout-plantcare` (the distribution name; `sprout` on PyPI is an
+unrelated library), ask a plant question offline, get a cited answer (or an honest
 refusal), run `make eval` to regenerate the committed report with no cloud account, and read a model
 card that states the limits plainly — with every CI gate green.
 

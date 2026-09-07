@@ -8,7 +8,19 @@
  */
 
 export { Assistant } from "./answer.js";
-export type { WebConfig } from "./config.js";
+export type { BundleProvenance, WebConfig } from "./config.js";
+export {
+  BUNDLE_FORMAT_VERSION,
+  assertBundleIsCurrent,
+  bundleAsOfDisplay,
+  confidenceBandLabelFor,
+} from "./config.js";
+export {
+  BAND_INSUFFICIENT_EVIDENCE,
+  BAND_PARTIALLY_SUPPORTED,
+  BAND_WELL_SUPPORTED,
+  confidenceBand,
+} from "./confidence.js";
 export { VectorStore } from "./store.js";
 export type {
   Answer,
@@ -20,6 +32,7 @@ export type {
 export { answerCitations, answerDisplayText, answerText } from "./models.js";
 
 import { Assistant } from "./answer.js";
+import { assertBundleIsCurrent } from "./config.js";
 import type { WebConfig } from "./config.js";
 import { VectorStore } from "./store.js";
 
@@ -42,6 +55,7 @@ export async function loadAssistant(dataBaseUrl = "./data/"): Promise<Assistant>
     throw new Error(`failed to fetch ${base}index.json: ${indexRes.status}`);
   }
   const config = (await configRes.json()) as WebConfig;
+  assertBundleIsCurrent(config);
   const indexJson = await indexRes.json();
   const store = VectorStore.fromIndexJson(indexJson);
   return new Assistant(config, store);

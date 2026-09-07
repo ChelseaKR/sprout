@@ -781,6 +781,7 @@ def test_calibrate_warns_on_stale_probe_set(tmp_path: Path) -> None:
 
 
 def test_calibrate_warns_when_labeled_date_missing(tmp_path: Path) -> None:
+    """Report mode is the explicitly non-gating mode: it says so and exits 0."""
     no_date = {"probes": _PROBES["probes"]}
     probes_path = tmp_path / "no_date_probes.yaml"
     probes_path.write_text(yaml.safe_dump(no_date), encoding="utf-8")
@@ -789,6 +790,60 @@ def test_calibrate_warns_when_labeled_date_missing(tmp_path: Path) -> None:
     result = runner.invoke(app, ["calibrate", str(probes_path), "--out", str(out)])
     assert result.exit_code == 0
     assert "no labeled_date field" in result.output
+
+
+@pytest.mark.parametrize(
+    ("labeled_date", "fragment"),
+    [
+        (None, "no labeled_date field"),
+        ("last Tuesday", "not an ISO-8601 date"),
+        ("2099-01-01", "in the future"),
+    ],
+    ids=["absent", "malformed", "future"],
+)
+def test_calibrate_gate_refuses_a_freshness_check_that_could_not_run(
+    tmp_path: Path, labeled_date: str | None, fragment: str
+) -> None:
+    """AIEV-20's neighbour: three ways the freshness check silently stops existing.
+
+    `sprout calibrate --gate` is the merge-blocking mode, and the ROADMAP row says probe
+    freshness is "checked by `sprout calibrate`". All three of these used to take the
+    identical warn-and-pass path a 31-day-old probe set takes, so deleting the field, or
+    mistyping the year, left the row's claim standing over a check that no longer
+    happened. The future date is the worst of the three: a negative age satisfies the
+    30-day comparison forever.
+
+    The 30-day staleness rule itself is deliberately untouched here; flipping *that* to a
+    failure is #130 and waits on its own precondition.
+    """
+    payload: dict[str, object] = {"probes": _PROBES["probes"]}
+    if labeled_date is not None:
+        payload["labeled_date"] = labeled_date
+    probes_path = tmp_path / "probes.yaml"
+    probes_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+    out = tmp_path / "audits"
+
+    result = runner.invoke(app, ["calibrate", str(probes_path), "--out", str(out), "--gate"])
+
+    assert result.exit_code == 2, result.output
+    assert fragment in result.output
+    assert "did not run" in result.output
+    # Nothing is written, so a stale report cannot survive as if it were the current one.
+    assert not (out / "judge-calibration.json").exists()
+
+
+def test_calibrate_gate_still_only_warns_on_a_stale_probe_set(tmp_path: Path) -> None:
+    """The parked decision stays parked: stale warns, it does not fail, even under --gate."""
+    stale = dict(_PROBES, labeled_date="2026-01-01")
+    probes_path = tmp_path / "stale_probes.yaml"
+    probes_path.write_text(yaml.safe_dump(stale), encoding="utf-8")
+    out = tmp_path / "audits"
+
+    result = runner.invoke(app, ["calibrate", str(probes_path), "--out", str(out), "--gate"])
+
+    assert result.exit_code == 0, result.output
+    assert "days old" in result.output
+    assert (out / "judge-calibration.json").exists()
 
 
 @pytest.mark.parametrize(
