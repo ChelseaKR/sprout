@@ -16,7 +16,9 @@ per-row-cited toxicity table — coverage report and table-vs-prose consistency 
 corpus lint, safety, and representational-harm review of an incoming passage + eval case),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff),
 ``offline-check`` (the browser reference's precache list vs. the assets the build wrote),
-``corpus verify|install`` (signed third-party corpus bundles, EXP-15), and ``demo``
+``corpus verify|install`` (signed third-party corpus bundles, EXP-15),
+``corpus diff`` (what changed between two corpus states, and which eval cases, smoke
+questions and claims it moves), and ``demo``
 (a scripted session). Everything runs offline by default, except ``corpus verify|install``
 against a ``sigstore-keyless`` bundle, which needs the ``corpus`` extra and network access
 to Sigstore's infrastructure.
@@ -140,6 +142,86 @@ def corpus_install_cmd(
         f"{installed.publisher_id} -> {installed.install_path}"
     )
     typer.echo(f"Provenance recorded at {installed.provenance_path}")
+
+
+@corpus_app.command("diff")
+def corpus_diff_cmd(
+    before: Annotated[
+        str,
+        typer.Argument(
+            help="The earlier corpus root (a directory with manifest.yaml + processed/)."
+        ),
+    ],
+    after: Annotated[str, typer.Argument(help="The later corpus root.")],
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    suites: Annotated[
+        str, typer.Option("--suites", help="Eval suite directory used for the impact map.")
+    ] = "eval/suites",
+    claims: Annotated[
+        str, typer.Option("--claims", help="Claims registry checked for corpus-derived entries.")
+    ] = "docs/claims.yaml",
+    as_json: Annotated[
+        bool, typer.Option("--json", help="Emit the diff as JSON instead of Markdown.")
+    ] = False,
+    out: Annotated[
+        str | None, typer.Option("--out", help="Write the rendered diff to this file as well.")
+    ] = None,
+    no_impact: Annotated[
+        bool,
+        typer.Option(
+            "--no-impact",
+            help="Only diff the corpus itself; skip re-running the eval and smoke cases.",
+        ),
+    ] = False,
+    fail_on_toxicity_change: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-toxicity-change",
+            help="Exit 1 when any toxicity row changed, for a review workflow.",
+        ),
+    ] = False,
+) -> None:
+    """Say what changed between two corpus states, and which cases it moves.
+
+    Each side is a corpus root: a directory holding ``manifest.yaml`` and ``processed/``,
+    which is the shape of this repo's ``corpus/`` and the shape ``corpus install`` writes,
+    so an installed bundle version is a valid side.
+
+    The impact map is measured rather than guessed: both corpus states are ingested and
+    every eval case and corpus-derived smoke question is answered through the ordinary
+    offline pipeline, and the two rendered answers are compared. A case whose citation
+    points at a document the later corpus does not have is reported as an error and exits
+    1 whatever flags were passed.
+    """
+    from .corpus_diff import (
+        CorpusDiffError,
+        diff_corpora,
+        exit_code_for,
+        render_json,
+        render_markdown,
+    )
+
+    cfg = _load(config)
+    try:
+        diff = diff_corpora(
+            cfg,
+            before,
+            after,
+            suites_dir=suites,
+            claims_path=claims,
+            with_impact=not no_impact,
+        )
+    except (CorpusDiffError, FileNotFoundError, ValueError) as exc:
+        typer.echo(f"cannot diff these corpus roots: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    rendered = render_json(diff) if as_json else render_markdown(diff)
+    if out:
+        out_path = Path(out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered, encoding="utf-8")
+    typer.echo(rendered)
+    raise typer.Exit(code=exit_code_for(diff, fail_on_toxicity_change=fail_on_toxicity_change))
 
 
 @app.command("corpus-report")
