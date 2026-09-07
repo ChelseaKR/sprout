@@ -39,10 +39,10 @@ from pathlib import Path
 
 from sprout.chunk import SAFETY_TOPIC_SLUGS
 from sprout.confidence import (
+    _DEFAULT_WELL_SUPPORTED_CUTOFF,
     BAND_INSUFFICIENT_EVIDENCE,
     BAND_PARTIALLY_SUPPORTED,
     BAND_WELL_SUPPORTED,
-    DEFAULT_WELL_SUPPORTED_CUTOFF,
 )
 from sprout.config import load_config
 from sprout.ingest import build_index
@@ -235,7 +235,7 @@ def test_the_exported_bundle_carries_the_band_cutoff_and_labels(tmp_path: Path) 
     assert completed.returncode == 0, completed.stderr
     bundle = json.loads((out / "config.json").read_text(encoding="utf-8"))
 
-    assert bundle["confidence"]["well_supported_cutoff"] == DEFAULT_WELL_SUPPORTED_CUTOFF, (
+    assert bundle["confidence"]["well_supported_cutoff"] == _DEFAULT_WELL_SUPPORTED_CUTOFF, (
         "the browser is banding against a different cut point than `confidence_band` "
         "uses, so the two surfaces can place the same answer in different bands"
     )

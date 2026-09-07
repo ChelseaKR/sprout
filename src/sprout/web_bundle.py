@@ -79,7 +79,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from .confidence import DEFAULT_WELL_SUPPORTED_CUTOFF
+# Read under its private name deliberately — see the note beside it in
+# `confidence.py`: renaming it would change that module's AST and demand a
+# `Tunes-Against:` citation from a change that tunes nothing.
+from .confidence import _DEFAULT_WELL_SUPPORTED_CUTOFF
 from .config import Config, load_config
 from .determinism import sha256_of_bytes, sha256_of_file, sha256_of_obj
 from .ingest import build_chunks, load_corpus
@@ -196,7 +199,7 @@ def settings_payload(cfg: Config) -> dict[str, Any]:
             # nothing failing. Below `abstain_threshold` the band is
             # `insufficient_evidence`, so that threshold is the second cut point and is
             # already exported above.
-            "well_supported_cutoff": DEFAULT_WELL_SUPPORTED_CUTOFF,
+            "well_supported_cutoff": _DEFAULT_WELL_SUPPORTED_CUTOFF,
         },
         "guards": {
             "forbidden_safe_phrases": cfg.guards.forbidden_safe_phrases,
