@@ -75,8 +75,8 @@ key and makes no cloud call.
 
 ## Install
 
-**Nothing in this repository has ever been published to PyPI. There is no release to
-install today; install from this source checkout.**
+**Nothing in this repository has ever been published to PyPI.
+There is no release to install today; install from this source checkout.**
 
 **Do not `pip install sprout` or `pipx install sprout`** — that installs somebody else's
 package. The name `sprout` on PyPI is taken by an unrelated library
