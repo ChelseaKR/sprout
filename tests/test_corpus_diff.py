@@ -6,18 +6,22 @@ impact is exercised against a small suite directory written beside them, with it
 integrity sidecar, because the loader is fail-closed and a missing sidecar is a refusal
 rather than a skip.
 
-Four properties get their own tests, because each is a way this tool could quietly lie:
+Five properties get their own tests, because each is a way this tool could quietly lie:
 
 * identical roots produce an empty diff and exit 0;
 * an edit to one sentence names the chunk, the eval cases whose answers moved, and the
   smoke questions whose answers moved;
 * a removed document that a case still cites is an error and a non-zero exit;
-* an analysis that could not run is rendered as not analysed, never as zero affected.
+* an analysis that could not run is rendered as not analysed, never as zero affected;
+* the output is byte-identical across separate interpreters, not only within one.
 """
 
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -191,6 +195,56 @@ def test_output_is_byte_identical_across_runs(corpora: tuple[Path, Path, Path]) 
     second = render_markdown(_diff(before, after, suites))
     assert first == second
     assert render_json(_diff(before, after, suites)) == render_json(_diff(before, after, suites))
+
+
+def test_output_is_byte_identical_across_processes(tmp_path: Path) -> None:
+    """Several documents change at once, in *different* interpreters, under different seeds.
+
+    Both halves of this fixture are load-bearing, and each was measured.
+
+    The in-process check above cannot see the ordering bug it looks like it
+    covers: within one interpreter, iteration over a set of strings is stable,
+    so dropping a ``sorted()`` changes nothing a same-process comparison can
+    detect. A negative control that removed a ``sorted()`` from the document
+    diff left it green.
+
+    Separate interpreters were still not enough on their own. With one changed
+    document there is one row, and one row has no order, so the same control
+    stayed green through three hash seeds. The failure has to be reachable
+    before the check can find it: this fixture changes eight documents.
+    """
+    names = [f"plant{index}.md" for index in range(8)]
+    body = "# {name} care\n\n## Watering\n\nWater {name} when the top inch has dried out.\n"
+    before = _write_root(tmp_path / "before", {n: body.format(name=n[:-3]) for n in names})
+    after = _write_root(
+        tmp_path / "after",
+        {n: body.format(name=n[:-3]).replace("top inch", "top two inches") for n in names},
+    )
+    suites = _write_suites(tmp_path / "eval", _CASES)
+    args = [
+        "corpus",
+        "diff",
+        str(before),
+        str(after),
+        "--suites",
+        str(suites),
+        "--claims",
+        str(suites / "no-such-claims.yaml"),
+        "--no-impact",
+        "--json",
+    ]
+    outputs = []
+    for seed in ("0", "1", "12345"):
+        result = subprocess.run(
+            [sys.executable, "-c", "from sprout.cli import app; app()", *args],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        outputs.append(result.stdout)
+    assert len(set(outputs)) == 1, "the diff's bytes depend on the interpreter's hash seed"
 
 
 # --- one edited sentence -------------------------------------------------------
