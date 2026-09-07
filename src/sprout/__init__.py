@@ -19,7 +19,11 @@ try:
     # hand-copy so the two can never silently drift (REL-02, corrected 2026-07-05 — a
     # hand-copied literal here previously duplicated pyproject.toml by luck, not by
     # construction).
-    __version__ = metadata.version("sprout")
+    # The argument is the *distribution* name from pyproject.toml, which is not the
+    # import name: `sprout` on PyPI belongs to an unrelated library, so this project
+    # distributes as `sprout-plantcare`. Naming the import name here would raise
+    # PackageNotFoundError and publish the sentinel below as if it were a version.
+    __version__ = metadata.version("sprout-plantcare")
 except metadata.PackageNotFoundError:  # pragma: no cover - only when run uninstalled
     __version__ = "0.0.0+unknown"
 
