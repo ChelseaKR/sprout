@@ -189,6 +189,12 @@ jobs:
         run: uv run --locked sprout ingest
       - name: Export the static bundle (index.json + config.json)
         run: uv run --locked python scripts/export_web_bundle.py
+      # The bundle now records which corpus, which config and which index produced it.
+      # This re-derives all three from the checkout and fails if the exported bundle is
+      # not what this commit would produce — so a conformance mismatch below is a port
+      # bug, which is what that suite claims to measure, rather than a stale bundle.
+      - name: Check the exported bundle is this commit's corpus and config
+        run: uv run --locked sprout bundle-check
       - name: Generate cross-language conformance fixtures from the Python pipeline
         run: uv run --locked python scripts/generate_conformance_fixtures.py
       - name: Install web-static deps

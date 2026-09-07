@@ -211,6 +211,18 @@ def load_state(config: Config, root: str | Path) -> CorpusState:
     )
 
 
+def corpus_fingerprint(config: Config, root: str | Path) -> str:
+    """The fingerprint this module reports for a corpus root, for other callers.
+
+    Deliberately routed through :func:`load_state` rather than calling ``_fingerprint``
+    directly. Anything else that wants to record "which corpus is this" -- the exported
+    web bundle does (:mod:`sprout.web_bundle`) -- must get the *same* string, or a
+    fingerprint recorded beside an artifact could not be compared against a
+    ``corpus diff`` report, which is the only reason to record one.
+    """
+    return load_state(config, root).fingerprint
+
+
 # --------------------------------------------------------------------------- rows
 
 

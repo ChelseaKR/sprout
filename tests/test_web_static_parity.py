@@ -29,6 +29,7 @@ from pathlib import Path
 
 from sprout.chunk import SAFETY_TOPIC_SLUGS
 from sprout.config import load_config
+from sprout.ingest import ingest
 
 _ROOT = Path(__file__).resolve().parent.parent
 _EXPORT = _ROOT / "scripts" / "export_web_bundle.py"
@@ -104,11 +105,16 @@ def test_the_exported_bundle_carries_the_confidence_fit(tmp_path: Path) -> None:
     the three constants once one is.
     """
     out = tmp_path / "public" / "data"
-    # The exporter copies the built index verbatim; a stub is enough, and keeps this
-    # test from needing `make ingest` to have run. The CI `test` job does not ingest,
-    # and depending on `var/index.json` made this pass locally and fail there.
-    stub_index = tmp_path / "index.json"
-    stub_index.write_text('{"chunks": []}\n', encoding="utf-8")
+    # This used to pass a stub `{"chunks": []}` file, because the exporter only copied
+    # the index and never read it, and depending on `var/index.json` made the test pass
+    # locally and fail in the CI `test` job, which does not ingest. The bundle now
+    # records the index's chunk ids and refuses an index that is not the one this corpus
+    # chunks to, so an empty stub is exactly the "every comparison is vacuously true"
+    # input it must reject. Build a real index here instead — it still does not depend on
+    # `make ingest` having run, and ingesting the committed corpus takes well under a
+    # second.
+    built_index = tmp_path / "index.json"
+    ingest(load_config(_ROOT / "config" / "sprout.yaml")).save(built_index)
     completed = subprocess.run(
         [
             sys.executable,
@@ -116,7 +122,7 @@ def test_the_exported_bundle_carries_the_confidence_fit(tmp_path: Path) -> None:
             "--config",
             str(_ROOT / "config" / "sprout.yaml"),
             "--index",
-            str(stub_index),
+            str(built_index),
             "--out",
             str(out),
         ],

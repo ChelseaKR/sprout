@@ -101,6 +101,11 @@ a11y: ## Structural WCAG gate on the chat UI and the HTML eval report (merge gat
 site-check: docs web-static-build ## Metadata gate on the deployed tree: canonicals, robots.txt, sitemap
 	cp -R web-static/public/. site/
 	$(PY) sprout site-check site --origin https://sprout.chelseakr.com
+# The published tree is assembled by the `cp` above, not by any build tool, and until now
+# nothing read the corpus bundle inside it. A deploy that landed the pages but not the
+# data — or landed last build's data — would have published a site answering from an
+# unknown corpus, and no gate could see it.
+	$(PY) sprout bundle-check site/data --config $(CONFIG)
 
 claims: ## Claims-integrity gate: docs/claims.yaml vs code/config source of truth
 	$(PY) sprout claims-check
@@ -137,6 +142,12 @@ demo: ingest ## Reproduce a short scripted session
 
 web-static-bundle: ingest ## Export index.json + config.json for the TS port (EXP-08)
 	$(PY) python scripts/export_web_bundle.py --config $(CONFIG)
+# Re-derive the provenance the export just wrote. Here, after `ingest`, this is close to
+# tautological and is honestly labelled as such: its job at this point is to catch an
+# export that did not land (a partial write, a stale destination). It has real teeth in
+# `site-check` below and in pages.yml, where it reads the tree that is actually
+# published rather than the one make just built.
+	$(PY) sprout bundle-check web-static/public/data --config $(CONFIG)
 
 web-static-fixtures: ingest ## Regenerate the Python-side cross-language conformance fixtures
 	$(PY) python scripts/generate_conformance_fixtures.py

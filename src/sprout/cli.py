@@ -16,6 +16,8 @@ per-row-cited toxicity table — coverage report and table-vs-prose consistency 
 corpus lint, safety, and representational-harm review of an incoming passage + eval case),
 ``ci-parity-check`` (mechanical `make verify` vs. `ci-gate` invocation-diff),
 ``offline-check`` (the browser reference's precache list vs. the assets the build wrote),
+``bundle-check`` (is the exported browser bundle the corpus/config this checkout describes,
+or a stale one),
 ``corpus verify|install`` (signed third-party corpus bundles, EXP-15),
 ``corpus diff`` (what changed between two corpus states, and which eval cases, smoke
 questions and claims it moves), and ``demo``
@@ -719,6 +721,71 @@ def offline_check(
             typer.echo(f"  - {problem}", err=True)
         raise typer.Exit(1)
     typer.echo(f"{root}: the offline precache list matches every asset this build wrote")
+
+
+@app.command("bundle-check")
+def bundle_check(
+    directory: Annotated[
+        str, typer.Argument(help="The exported bundle directory (config.json + index.json).")
+    ] = "web-static/public/data",
+    config: ConfigOpt = _DEFAULT_CONFIG,
+    index: Annotated[
+        str, typer.Option("--index", help="The index `make ingest` wrote, to compare against.")
+    ] = "var/index.json",
+    show: Annotated[
+        bool,
+        typer.Option("--show", help="Print the bundle's recorded provenance and exit 0."),
+    ] = False,
+) -> None:
+    """Is the exported browser bundle the corpus and config this checkout describes?
+
+    The published site answers from two static files. Nothing previously recorded which
+    corpus or which configuration produced them, so a bundle a month behind the corpus
+    answered confidently from the old passages and no check could see it — and any
+    comparison of the browser's answers against Python's would have blamed the port.
+
+    Reports every field that moved: the corpus fingerprint (the same value
+    ``sprout corpus diff`` prints, so the two can be read side by side), the settings
+    hash, and the index — both its bytes and the chunk ids inside it, because
+    re-exporting without re-ingesting leaves a fresh config beside a stale index and only
+    the second of those two catches it. A bundle that is missing, unparseable, or written
+    before provenance existed exits non-zero: an unanswerable question is not a pass.
+    """
+    from .web_bundle import WebBundleError, check_bundle, read_provenance
+
+    if show:
+        try:
+            provenance = read_provenance(directory)
+        except WebBundleError as exc:
+            typer.echo(f"  - {exc}", err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(f"corpus:   {provenance.corpus_fingerprint}")
+        typer.echo(
+            f"          {provenance.corpus_documents} documents, as of {provenance.as_of_display}"
+        )
+        if provenance.corpus_dates_unmeasurable:
+            typer.echo(
+                f"          {provenance.corpus_dates_unmeasurable} document(s) with an absent, "
+                "malformed or future fetch_date, excluded from that range"
+            )
+        typer.echo(f"config:   {provenance.config_sha256}")
+        typer.echo(f"index:    {provenance.index_sha256} ({provenance.index_chunks} chunks)")
+        typer.echo(f"          chunk ids {provenance.index_chunk_ids_sha256}")
+        return
+
+    cfg = _load(config)
+    try:
+        problems = check_bundle(directory, cfg, index)
+    except WebBundleError as exc:
+        typer.echo(f"  - {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if problems:
+        typer.echo(f"{directory}: this bundle is not what this checkout would export:", err=True)
+        for problem in problems:
+            typer.echo(f"  - {problem}", err=True)
+        typer.echo("  Re-run `make web-static-bundle` (after `make ingest`).", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"{directory}: bundle matches this checkout's corpus, config and index")
 
 
 @app.command("freshness")
