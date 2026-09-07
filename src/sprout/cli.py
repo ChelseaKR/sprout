@@ -1023,15 +1023,41 @@ def ci_parity_check(
     `sprout.ci_parity` (packaging smoke-build, environment sync, and gitleaks — which CI
     runs as an Action, not a shell command).
     """
-    from .ci_parity import check_parity, format_reports
+    import yaml
+
+    from .ci_parity import EXEMPT_FROM_PARITY, check_parity, coverage_gaps, format_reports
 
     workflow_path, makefile_path = Path(workflow), Path(makefile)
     for p in (workflow_path, makefile_path):
         if not p.exists():
             typer.echo(f"file not found: {p}", err=True)
             raise typer.Exit(2)
+
+    # Step one, before any diff: is this checker complete over the set it claims to
+    # check? `check_parity` answers a job that is not in the workflow with an empty
+    # command set, and `diff_group` calls two empty sets a match, so a renamed or
+    # deleted required job reports OK. `all(r.ok for r in reports)` is also True over
+    # an empty report list. Neither can be seen from inside the per-job diff, which is
+    # why the registry is compared against `ci-gate`'s live `needs:` first.
+    ci_yaml = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+    gaps = coverage_gaps(ci_yaml if isinstance(ci_yaml, dict) else {})
+    if gaps:
+        typer.echo("CI-parity coverage FAILED:", err=True)
+        for gap in gaps:
+            typer.echo(f"  - {gap}", err=True)
+        raise typer.Exit(1)
+
     reports = check_parity(workflow_path, makefile_path)
+    if not reports:
+        typer.echo(
+            "NOTHING CHECKED: no job was diffed, so this gate compared nothing. "
+            "This is not a pass.",
+            err=True,
+        )
+        raise typer.Exit(2)
     typer.echo(format_reports(reports))
+    for job, reason in sorted(EXEMPT_FROM_PARITY.items()):
+        typer.echo(f"EXEMPT {job}: {reason}")
     if not all(r.ok for r in reports):
         raise typer.Exit(1)
 
