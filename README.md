@@ -17,6 +17,39 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 deterministic cited-answer pipeline runs entirely in the browser; questions are not
 sent, saved, or logged.
 
+## Sprout is Gauntlet's reference target
+
+Sprout is the reference target of [ChelseaKR/gauntlet](https://github.com/ChelseaKR/gauntlet),
+recorded there as [ADR 0003](https://github.com/ChelseaKR/gauntlet/blob/main/docs/adr/0003-sprout-is-the-reference-target.md).
+Gauntlet is merge-blocking evaluation gates for someone else's generative feature;
+this repository is a system built to be measured, and its own README has said so
+from the start ("the assistant exists so the harness has something honest to
+measure").
+
+**What that means.** Gauntlet installs Sprout from this repository into a virtual
+environment of its own, runs bilingual grounding, refusal, adversarial,
+false-positive and golden suites against the assistant, and commits the evidence
+pack under `real_targets/sprout/`. No source is copied in either direction; the
+corpus and default configuration it reads are the ones this distribution ships.
+Sprout was chosen because it is deterministic and offline, which makes it the one
+target in that repository whose results anybody can regenerate: two commit ids and
+one install, no credential, no budget, no live endpoint.
+
+**What does not change.** Sprout is still a working assistant and still its own
+project. Its harness, its suites, its thresholds and its release path are
+unaffected, and its eval report is still the headline artifact here. Being a
+reference target adds an auditor that did not co-evolve with this pipeline; it
+does not subordinate the one that did.
+
+**What the second auditor is for.** "Groundedness is 100% by construction" is
+currently verified by Sprout's own citation guard. Gauntlet checks it
+independently, looking for each rendered sentence verbatim in the corpus document
+that sentence cites. Its suites also run at a per-case threshold rather than an
+aggregate one, which is a different instrument: the first run surfaced
+[#168](https://github.com/ChelseaKR/sprout/issues/168), an English sentence
+rendered into a Spanish answer, which both parity suites here pass over because
+neither compares the language of a rendered sentence.
+
 ## Quickstart (offline, no cloud account)
 
 ```bash
