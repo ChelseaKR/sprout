@@ -74,7 +74,8 @@ carry an override — see `corpus_bundle.py`).
 
 `sigstore-keyless` verification needs the `corpus` extra (`uv sync --extra corpus` from a
 source checkout — there is no PyPI release, and the name `sprout` there is an unrelated
-package; see the README's Install section) and network access to Sigstore's public-good infrastructure. Every other Sprout command,
+package, so this project distributes as `sprout-plantcare`; see the README's Install
+section) and network access to Sigstore's public-good infrastructure. Every other Sprout command,
 including `dev-ed25519` bundle verification (development/CI test fixture only — not a
 substitute for Sigstore's transparency log; see `corpus_signing.py`), stays offline.
 

@@ -75,14 +75,21 @@ key and makes no cloud call.
 
 ## Install
 
-**Install from this source checkout. Do not `pip install sprout` or `pipx install sprout`** —
-that installs somebody else's package. The name `sprout` on PyPI is taken by an unrelated
-library ([Sprout 1.1.1](https://pypi.org/project/sprout/), Martijn Faassen / Infrae:
-*"common Python library which contains reusable components"*), and nothing in this repository
-has ever been published to PyPI. There is no release to install and no distribution name to
-type; a reader who followed the old instruction here got a stranger's code.
-[`docs/ROADMAP.md`](docs/ROADMAP.md) tracks the release work, which now includes choosing a
-distribution name that is actually available.
+**Nothing in this repository has ever been published to PyPI.
+There is no release to install today; install from this source checkout.**
+
+**Do not `pip install sprout` or `pipx install sprout`** — that installs somebody else's
+package. The name `sprout` on PyPI is taken by an unrelated library
+([Sprout 1.1.1](https://pypi.org/project/sprout/), Martijn Faassen / Infrae:
+*"common Python library which contains reusable components"*), and a reader who followed
+the old instruction here got a stranger's code.
+
+Because that name is not available, this project's **distribution** name is
+`sprout-plantcare`, which was free on PyPI when it was chosen (2026-09-07). The import
+name and the command are unchanged: `import sprout`, and `sprout ask ...`. When the first
+release is cut, `pipx install sprout-plantcare` becomes the supported path — that is a
+statement about the future, and it is not true yet. [`docs/ROADMAP.md`](docs/ROADMAP.md)
+tracks the release work.
 
 Everything below runs offline from the checkout:
 

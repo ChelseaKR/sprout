@@ -42,6 +42,30 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   the sixteenth species cannot hide from it. Across the 238 all three bands and both
   languages' labels are populated, so the new comparison is not vacuous.
 
+- **The project had no distribution name it could actually be released under.** The release
+  workflow, the trusted-publishing job and the signed-tag path have all been wired for
+  months, and `pyproject.toml` declared `name = "sprout"` the whole time. That name on PyPI
+  is [Sprout 1.1.1](https://pypi.org/project/sprout/) (Martijn Faassen / Infrae), so the
+  first tag cut would have failed at the upload with a permissions error, or — worse, had
+  the name ever been transferred — published this project over a stranger's. The README
+  already said not to type it; nothing said what to type instead, so the release work had
+  no name to finish against.
+
+  The distribution is now `sprout-plantcare`, following the pattern five other repositories
+  here already use for the same reason (`cairn-assistant`, `gauntlet-evals`,
+  `nearmiss-safety`, `ledger-archive`, `plumbline-eval`): keep the word, add the qualifier
+  that says what it is. It was free on PyPI when chosen (checked 2026-09-07). **The import
+  name, the package directory and the CLI command are unchanged** — `import sprout`,
+  `src/sprout/`, `sprout ask`. Nothing is published and no name is claimed; this makes the
+  release path nameable, it does not exercise it.
+
+  One consequence is not cosmetic. `src/sprout/__init__.py` derives `__version__` from
+  `importlib.metadata.version(...)`, which takes the *distribution* name, and falls back to
+  `"0.0.0+unknown"` when it cannot find it. Left naming `sprout`, that fallback would have
+  become the reported version of every installed copy — a missing lookup rendered as a
+  value. `tests/test_release_versions.py` already asserts the sentinel is never what a
+  synced tree reports, so it is the gate on this.
+
 - **The published reference stopped working offline, and nothing could tell.** Hard rule 4
   is offline by default, and on the browser surface it rests entirely on the `SHELL` array
   in `web-static/public/service-worker.js` — a list of paths somebody typed. The build
