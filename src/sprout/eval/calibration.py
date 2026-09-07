@@ -10,6 +10,8 @@ old calibration. This is the "10% human-agreement sample, agreement + Cohen's ka
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,6 +19,10 @@ from .judge import Judge
 
 MIN_AGREEMENT = 0.8
 MIN_KAPPA = 0.6
+
+#: The ROADMAP's judge-calibration-freshness target: the probe set must have been
+#: re-labeled within this many days.
+FRESHNESS_MAX_AGE_DAYS = 30
 
 
 class JudgeProbe(BaseModel):
@@ -40,6 +46,86 @@ class OpAgreement(BaseModel):
 
 class CalibrationError(ValueError):
     """Raised when calibration is asked to score something it cannot score."""
+
+
+class ProbeFreshness(BaseModel):
+    """Whether the probe set's labels are recent enough, or whether that is knowable.
+
+    Three states, not two. ``fresh`` and ``stale`` are both *measurements*;
+    ``unmeasurable`` is the absence of one, and the whole point of separating it
+    is that the two absences used to look the same from outside. A probe file
+    with no ``labeled_date`` at all took exactly the warn-and-pass path a
+    31-day-old one takes, so the ROADMAP row saying freshness is "checked by
+    ``sprout calibrate``" would have gone on saying so after the field was
+    deleted, and nothing would have said otherwise.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    status: Literal["fresh", "stale", "unmeasurable"]
+    message: str
+    age_days: int | None = None
+
+    @property
+    def measurable(self) -> bool:
+        return self.status != "unmeasurable"
+
+
+def probe_freshness(raw: object, today: date, source: str) -> ProbeFreshness:
+    """Read a probe file's ``labeled_date`` and say what it establishes.
+
+    A future date is treated as unmeasurable rather than as very fresh. It cannot
+    be true (labels are not authored tomorrow) and its effect is the worst
+    available one: a negative age passes the age comparison forever, so a single
+    mistyped year turns the freshness check off for good without changing a line
+    of code. A check that cannot fail is not a check.
+    """
+    if not isinstance(raw, dict) or not raw.get("labeled_date"):
+        return ProbeFreshness(
+            status="unmeasurable",
+            message=(
+                f"{source} has no labeled_date field, so probe-set freshness could not be "
+                f"checked. That is not the same as a fresh probe set."
+            ),
+        )
+    written = str(raw["labeled_date"])
+    try:
+        labeled = date.fromisoformat(written)
+    except ValueError:
+        return ProbeFreshness(
+            status="unmeasurable",
+            message=(
+                f"{source} has labeled_date {written!r}, which is not an ISO-8601 date "
+                f"(YYYY-MM-DD), so probe-set freshness could not be checked."
+            ),
+        )
+    age_days = (today - labeled).days
+    if age_days < 0:
+        return ProbeFreshness(
+            status="unmeasurable",
+            age_days=age_days,
+            message=(
+                f"{source} has labeled_date {written}, which is in the future. Labels are "
+                f"not authored after today, and a future date would satisfy the "
+                f"{FRESHNESS_MAX_AGE_DAYS}-day check indefinitely, so freshness is "
+                f"reported as unchecked rather than as met."
+            ),
+        )
+    if age_days > FRESHNESS_MAX_AGE_DAYS:
+        return ProbeFreshness(
+            status="stale",
+            age_days=age_days,
+            message=(
+                f"probe set labeled_date {written} is {age_days} days old "
+                f"(> {FRESHNESS_MAX_AGE_DAYS}-day freshness target); re-label before "
+                f"trusting this record."
+            ),
+        )
+    return ProbeFreshness(
+        status="fresh",
+        age_days=age_days,
+        message=f"probe set labeled_date {written} is {age_days} days old.",
+    )
 
 
 class CalibrationRecord(BaseModel):

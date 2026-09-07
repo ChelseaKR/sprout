@@ -2,6 +2,10 @@
 # warns (does not yet fail — see P0-4/AIEV-20) when this is more than 30 days old, per the
 # ROADMAP's "judge-calibration freshness" row. Update this only when the human labels
 # themselves are actually re-reviewed, not on unrelated edits.
+#
+# The field itself is not optional under `--gate`. Deleting it, mistyping it, or dating it
+# in the future makes the freshness check unrunnable rather than satisfied, and
+# `sprout calibrate --gate` exits 2 rather than reporting a check it did not perform.
 labeled_date: "2026-07-08"
 probes:
 - id: g1-pothos-toxic
