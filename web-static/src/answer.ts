@@ -4,9 +4,9 @@
  * which is the only path a zero-server static site can run (EXP-08).
  */
 
-import { isLowConfidence, scoreConfidence, shouldAbstain } from "./confidence.js";
+import { confidenceBand, isLowConfidence, scoreConfidence, shouldAbstain } from "./confidence.js";
 import type { WebConfig } from "./config.js";
-import { disclosureFor, refusalFor, safetyDirectiveFor } from "./config.js";
+import { confidenceBandLabelFor, disclosureFor, refusalFor, safetyDirectiveFor } from "./config.js";
 import { ExtractiveGenerator } from "./generator.js";
 import { citationGuard, isSafetyQuery, safetyFilter } from "./guards.js";
 import { HashingEmbedding } from "./hashEmbedding.js";
@@ -96,6 +96,11 @@ export class Assistant {
     const topicById = new Map(retrieved.map((rc) => [rc.chunk.chunk_id, rc.chunk.topic]));
     const toxicityCited = sentences.some((s) => isSafetyTopic(topicById.get(s.chunk_id)));
     const route = safety || toxicityCited;
+    // Banded on the unrounded score, exactly as `answer.py` does — it computes `band`
+    // from `confidence` and only then stores `round(confidence, 4)`. Banding the
+    // rounded copy instead would disagree with Python precisely at a cut point, which
+    // is the one place the band changes.
+    const band = confidenceBand(confidence, this.config.confidence);
     return {
       question: query,
       language: lang,
@@ -111,6 +116,8 @@ export class Assistant {
       abstained: false,
       disclosure: disclosureFor(this.config, lang),
       as_of: asOf,
+      confidence_band: band,
+      confidence_band_label: confidenceBandLabelFor(this.config, band, lang),
     };
   }
 
@@ -125,6 +132,12 @@ export class Assistant {
   ): Answer {
     const toxicityCited = retrieved.some((rc) => isSafetyTopic(rc.chunk.topic));
     const route = safety || toxicityCited;
+    // Computed, not hardcoded to `insufficient_evidence`, because `_refuse` in
+    // `answer.py` computes it too. Every refusal does land there today — the other
+    // paths pass 0.0, and the abstention path passes a score that is by definition
+    // below `abstain_threshold` — but writing the constant here would make this branch
+    // stop tracking Python the moment either side's banding changes.
+    const band = confidenceBand(confidence, this.config.confidence);
     return {
       question: query,
       language: lang,
@@ -140,6 +153,8 @@ export class Assistant {
       abstained,
       disclosure: disclosureFor(this.config, lang),
       as_of: null,
+      confidence_band: band,
+      confidence_band_label: confidenceBandLabelFor(this.config, band, lang),
     };
   }
 }

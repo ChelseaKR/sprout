@@ -9,7 +9,18 @@
 
 export { Assistant } from "./answer.js";
 export type { BundleProvenance, WebConfig } from "./config.js";
-export { BUNDLE_FORMAT_VERSION, assertBundleIsCurrent, bundleAsOfDisplay } from "./config.js";
+export {
+  BUNDLE_FORMAT_VERSION,
+  assertBundleIsCurrent,
+  bundleAsOfDisplay,
+  confidenceBandLabelFor,
+} from "./config.js";
+export {
+  BAND_INSUFFICIENT_EVIDENCE,
+  BAND_PARTIALLY_SUPPORTED,
+  BAND_WELL_SUPPORTED,
+  confidenceBand,
+} from "./confidence.js";
 export { VectorStore } from "./store.js";
 export type {
   Answer,

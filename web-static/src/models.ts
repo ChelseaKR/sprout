@@ -61,6 +61,18 @@ export interface Answer {
   abstained: boolean;
   disclosure: string;
   as_of: string | null;
+  /**
+   * Verbalized, screen-reader-first confidence band (EXP-06) — mirrors `Answer`'s
+   * `confidence_band` / `confidence_band_label` in `models.py`. Rendered *alongside*
+   * `confidence`, never instead of it: the float stays the ground truth the calibration
+   * suite gates on, and the band is an accessible gloss on it.
+   *
+   * `confidence_band` is the stable machine key (aria/CSS hooks, conformance
+   * assertions); `confidence_band_label` is the localized string a screen reader
+   * announces.
+   */
+  confidence_band: string;
+  confidence_band_label: string;
 }
 
 /** The concatenated answer prose (citation-verified sentences only). Mirrors `Answer.text`. */

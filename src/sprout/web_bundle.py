@@ -79,15 +79,28 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+# Read under its private name deliberately — see the note beside it in
+# `confidence.py`: renaming it would change that module's AST and demand a
+# `Tunes-Against:` citation from a change that tunes nothing.
+from .confidence import _DEFAULT_WELL_SUPPORTED_CUTOFF
 from .config import Config, load_config
 from .determinism import sha256_of_bytes, sha256_of_file, sha256_of_obj
 from .ingest import build_chunks, load_corpus
 from .models import Document
 
-#: Version of ``data/config.json``'s own schema. Bumped from 1 when the provenance block
-#: was added: a version-1 bundle carries no fingerprints at all, so it cannot be checked
-#: and must not be read as agreeing.
-BUNDLE_FORMAT_VERSION = 2
+#: Version of ``data/config.json``'s own schema.
+#:
+#: 1 -> 2 when the provenance block was added: a version-1 bundle carries no
+#: fingerprints at all, so it cannot be checked and must not be read as agreeing.
+#:
+#: 2 -> 3 when the confidence band's cut point and its localized labels were added. A
+#: version-2 bundle carries neither, and the browser cannot invent them: a missing
+#: cutoff compares as ``confidence >= undefined``, which is false for every score, so
+#: every answered question would be labelled "partially supported — verify" and a
+#: well-supported answer would be understated with nothing failing. That is a missing
+#: value rendered as a measurement, so a version-2 bundle is rejected rather than
+#: defaulted.
+BUNDLE_FORMAT_VERSION = 3
 
 #: The two files a bundle consists of, relative to the bundle directory.
 CONFIG_FILE = "config.json"
@@ -178,6 +191,15 @@ def settings_payload(cfg: Config) -> dict[str, Any]:
                     "margin_bonus": cfg.confidence.fit.margin_bonus,
                 }
             ),
+            # The well-supported/partially-supported cut point (EXP-06), derived in
+            # `confidence.py` from the committed reliability diagram. Exported rather
+            # than mirrored in TypeScript for the same reason `fit` is: a hand-copied
+            # twin is correct until the next `sprout fit-confidence`, after which the
+            # browser and the CLI would put the same confidence in different bands with
+            # nothing failing. Below `abstain_threshold` the band is
+            # `insufficient_evidence`, so that threshold is the second cut point and is
+            # already exported above.
+            "well_supported_cutoff": _DEFAULT_WELL_SUPPORTED_CUTOFF,
         },
         "guards": {
             "forbidden_safe_phrases": cfg.guards.forbidden_safe_phrases,
@@ -194,6 +216,11 @@ def settings_payload(cfg: Config) -> dict[str, Any]:
             "safety_route_by_lang": cfg.prompts.safety_route_by_lang,
             "nontoxic_caveat_by_lang": cfg.prompts.nontoxic_caveat_by_lang,
             "escalation_card_by_lang": cfg.prompts.escalation_card_by_lang,
+            # The localized copy a screen reader announces for each confidence band
+            # (EXP-06). Shipped as data so the browser says the same words the server
+            # UI says; the band *keys* are stable identifiers and live in code on both
+            # sides, exactly like the refusal/disclosure strings above.
+            "confidence_band_labels": cfg.prompts.confidence_band_labels,
         },
     }
 
