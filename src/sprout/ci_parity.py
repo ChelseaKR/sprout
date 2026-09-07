@@ -37,6 +37,7 @@ import yaml
 # compared separately (see `ZIZMOR_JOB` / `ZIZMOR_TARGET` below) — its only step is a `uses:`
 # action-adjacent CLI invocation with no per-job Makefile split.
 JOB_TO_MAKE_TARGETS: dict[str, tuple[str, ...]] = {
+    "ci-parity": ("ci-parity-check",),
     "test": ("lint", "type", "test"),
     "security": ("security",),
     "eval-a11y": (
@@ -227,6 +228,98 @@ def diff_group(group: str, ci_commands: set[str], make_commands: set[str]) -> Pa
     return ParityReport(
         group=group, ci_only=tuple(sorted(ci_only)), make_only=tuple(sorted(make_only))
     )
+
+
+#: The job whose ``needs:`` list *is* the required check set. Read from the workflow
+#: rather than restated here, so this module cannot disagree with the file it checks.
+CI_GATE_JOB = "ci-gate"
+
+#: Required ``ci-gate`` jobs deliberately not diffed, each with the reason. A dict and
+#: not a set: an exemption without a written reason is how a gap becomes permanent.
+#: :func:`coverage_gaps` holds this, plus :data:`JOB_TO_MAKE_TARGETS` and
+#: :data:`ZIZMOR_JOB`, equal to what ``ci-gate`` actually requires, so a job added to
+#: the workflow cannot slip past this checker unnoticed the way five already had.
+EXEMPT_FROM_PARITY: dict[str, str] = {
+    "pa11y": (
+        "browser-based (npx pa11y-ci against a served page); no `make verify` target "
+        "runs it. The local structural equivalent is `make a11y`."
+    ),
+    "lighthouse": (
+        "browser-based (npx lighthouse against a served page); no `make verify` target "
+        "runs it. The local structural equivalent is `make a11y`."
+    ),
+    "tuning-scope": (
+        "diffs the branch against `origin/${BASE_REF}`, which has no meaning on a local "
+        "`make verify` run of a single tree. Measured 2026-09-06: its one step, "
+        "`sprout check-tuning-scope`, is run by no Makefile target."
+    ),
+    "web-static": (
+        "NOT a clean exemption: a measured parity gap, recorded so it is visible on "
+        "every run rather than invisible. Measured 2026-09-06, `make verify`'s "
+        "`web-static-test` runs `cd web-static && npm ci && npm test`, while the CI job "
+        "additionally runs `npm run build:site`, `npm run typecheck`, "
+        "`scripts/export_web_bundle.py`, `scripts/generate_conformance_fixtures.py`, "
+        "`sprout ingest` and `sprout a11y-check web-static/public/index.html`. Mapping "
+        "it would turn this gate red on a real finding; that is a decision about what "
+        "`make verify` should cover, not something to settle inside the checker."
+    ),
+}
+
+
+def ci_gate_needs(ci_yaml: dict[str, object]) -> tuple[str, ...]:
+    """The jobs ``ci-gate`` actually requires, read live from the workflow.
+
+    The point of reading it rather than restating it: the required set is the thing
+    this module is supposed to be complete over, and a hand-kept copy of it is a
+    second source of truth that drifts in silence. It drifted: measured 2026-09-06,
+    ``ci-gate`` required eleven jobs and this module knew six.
+    """
+    jobs = ci_yaml.get("jobs", {})
+    if not isinstance(jobs, dict):
+        return ()
+    gate = jobs.get(CI_GATE_JOB, {})
+    if not isinstance(gate, dict):
+        return ()
+    needs = gate.get("needs", [])
+    if isinstance(needs, str):
+        return (needs,)
+    if not isinstance(needs, list):
+        return ()
+    return tuple(str(n) for n in needs)
+
+
+def coverage_gaps(ci_yaml: dict[str, object]) -> list[str]:
+    """Every way this module's job registry disagrees with what ``ci-gate`` requires.
+
+    Step one of two, and the one the per-job diff cannot do for itself. ``check_parity``
+    reports ``OK`` for a registry entry whose CI job has been renamed away, because
+    :func:`ci_job_commands` answers an absent job with an empty command set and an empty
+    set matches an empty set. Comparing the registry against the live ``needs:`` list
+    catches that, and catches the opposite: a newly required job nobody added here.
+
+    A set difference in both directions, never a count. A count of required jobs would
+    still match if one were swapped for another.
+    """
+    required = set(ci_gate_needs(ci_yaml))
+    if not required:
+        return [
+            f"{CI_GATE_JOB} declares no `needs:`, so there is no required-check set to "
+            "be complete over and this check would pass vacuously."
+        ]
+    known = set(JOB_TO_MAKE_TARGETS) | {ZIZMOR_JOB} | set(EXEMPT_FROM_PARITY)
+    problems = []
+    for job in sorted(required - known):
+        problems.append(
+            f"{job}: required by {CI_GATE_JOB} and absent from this checker. Map it in "
+            "JOB_TO_MAKE_TARGETS or record it in EXEMPT_FROM_PARITY with the reason."
+        )
+    for job in sorted(known - required):
+        problems.append(
+            f"{job}: known to this checker and no longer required by {CI_GATE_JOB}. A "
+            "job that is gone diffs an empty command set against an empty one and "
+            "reports OK, so it has to be removed here rather than left to pass."
+        )
+    return problems
 
 
 def check_parity(workflow_path: Path, makefile_path: Path) -> list[ParityReport]:

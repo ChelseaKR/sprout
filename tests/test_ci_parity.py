@@ -251,3 +251,109 @@ def test_an_empty_assignment_does_not_swallow_the_following_line() -> None:
     makefile = "RELEASE_TAG ?=\n\n.PHONY: build\n\nbuild:\n\techo one $(RELEASE_TAG) two\n"
     assert _resolve_make_vars(makefile)["RELEASE_TAG"] == ""
     assert _normalize("echo one $(RELEASE_TAG) two", _resolve_make_vars(makefile)) == "echo one two"
+
+
+# --- coverage: is this checker complete over the set it claims to check? -------------
+#
+# The per-job diff cannot answer that for itself. `ci_job_commands` answers a job that is
+# not in the workflow with an empty command set, `diff_group` calls two empty sets a
+# match, and `all(r.ok for r in [])` is True. So a renamed or deleted required job, and a
+# newly required one nobody mapped, both read as OK. These tests hold the registry
+# against `ci-gate`'s live `needs:` instead.
+
+
+def _real_ci_yaml() -> dict[str, object]:
+    import yaml
+
+    loaded = yaml.safe_load(
+        (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    )
+    assert isinstance(loaded, dict)
+    return loaded
+
+
+def test_the_registry_covers_exactly_what_ci_gate_requires() -> None:
+    """A set equality against the live workflow, never a count.
+
+    Measured 2026-09-06 before this check existed: `ci-gate` required eleven jobs and
+    this module knew six. `tuning-scope`, `web-static`, `pa11y`, `lighthouse` and
+    `ci-parity` were required, merge-blocking, and invisible here.
+
+    A count would not have caught it and would not catch a swap: eleven required jobs
+    against eleven known ones still matches when one has been exchanged for another.
+    """
+    from sprout.ci_parity import (
+        EXEMPT_FROM_PARITY,
+        JOB_TO_MAKE_TARGETS,
+        ZIZMOR_JOB,
+        ci_gate_needs,
+        coverage_gaps,
+    )
+
+    required = set(ci_gate_needs(_real_ci_yaml()))
+    assert required, "ci-gate declares no needs; this test would prove nothing"
+    known = set(JOB_TO_MAKE_TARGETS) | {ZIZMOR_JOB} | set(EXEMPT_FROM_PARITY)
+    assert known == required
+    assert coverage_gaps(_real_ci_yaml()) == []
+
+
+def test_a_newly_required_job_is_reported_not_ignored() -> None:
+    from sprout.ci_parity import coverage_gaps
+
+    ci = _real_ci_yaml()
+    ci["jobs"]["ci-gate"]["needs"] = [*ci["jobs"]["ci-gate"]["needs"], "brand-new-gate"]  # type: ignore[index]
+    gaps = coverage_gaps(ci)
+    assert any("brand-new-gate" in g and "absent from this checker" in g for g in gaps), gaps
+
+
+def test_a_job_that_is_no_longer_required_is_reported_not_passed() -> None:
+    """The half of this the per-job diff actively gets wrong.
+
+    A registry entry whose CI job is gone diffs an empty command set against an empty
+    one and prints `OK`.
+    """
+    from sprout.ci_parity import check_parity, coverage_gaps
+
+    ci = _real_ci_yaml()
+    needs = [n for n in ci["jobs"]["ci-gate"]["needs"] if n != "smoke"]  # type: ignore[index]
+    ci["jobs"]["ci-gate"]["needs"] = needs  # type: ignore[index]
+    del ci["jobs"]["smoke"]  # type: ignore[attr-defined]
+
+    gaps = coverage_gaps(ci)
+    assert any("smoke" in g and "no longer required" in g for g in gaps), gaps
+
+    # And the demonstration that step two could not have found it. With the job gone
+    # from the workflow the Makefile target still exists, so the diff does report
+    # make-side drift -- that half is fine. The hole is when both sides go, which is
+    # what a rename or a retirement looks like: an empty command set on each side, and
+    # `diff_group` calls two empty sets a match.
+    import tempfile
+
+    import yaml
+
+    tmp = Path(tempfile.mkdtemp())
+    (tmp / "ci.yml").write_text(yaml.safe_dump(ci), encoding="utf-8")
+    (tmp / "Makefile").write_text("nothing:\n\t@true\n", encoding="utf-8")
+    reports = check_parity(tmp / "ci.yml", tmp / "Makefile")
+    smoke = next(r for r in reports if r.group == "smoke")
+    assert smoke.ok, "two empty sets match, which is the defect the coverage check exists for"
+    assert smoke.ci_only == () and smoke.make_only == (), "nothing was compared"
+
+
+def test_a_ci_gate_with_no_needs_is_refused_rather_than_passed() -> None:
+    from sprout.ci_parity import coverage_gaps
+
+    ci = _real_ci_yaml()
+    ci["jobs"]["ci-gate"]["needs"] = []  # type: ignore[index]
+    gaps = coverage_gaps(ci)
+    assert any("vacuously" in g for g in gaps), gaps
+
+
+def test_every_exemption_carries_a_reason() -> None:
+    """An exemption without a written reason is how a gap becomes permanent."""
+    from sprout.ci_parity import EXEMPT_FROM_PARITY
+
+    assert EXEMPT_FROM_PARITY
+    for job, reason in EXEMPT_FROM_PARITY.items():
+        assert reason.strip(), job
+        assert len(reason.split()) >= 8, f"{job}: a reason has to say something"
