@@ -10,6 +10,38 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The site announced a number where the server announced words.** EXP-06 renders a
+  verbalized confidence band *alongside* the raw float, because "0.82" is announced by a
+  screen reader as an undifferentiated figure with no sense of whether it is good.
+  `answer.py` puts `confidence_band` and `confidence_band_label` on every answer and
+  `server.py` sends both, so the served UI reads "Confidence: well-supported (0.82)". The
+  browser port had neither field: sprout.chelseakr.com read "82% confidence", the exact
+  bare number the band exists to gloss — so the zero-server surface was the less
+  accessible of the two implementations running "the same pipeline".
+
+  The conformance suite could not see it. It compared text, citations, confidence,
+  refusal reason and the rest over 158 cases and passed every one, because **a field it
+  does not compare is a field the two implementations are free to disagree on** — and the
+  port had no band to disagree with.
+
+  The band now reaches the browser as data, not as a mirrored constant: the exported
+  bundle carries `confidence.well_supported_cutoff` and `prompts.confidence_band_labels`
+  (`BUNDLE_FORMAT_VERSION` 2 → 3, and a version-2 bundle is refused rather than
+  defaulted — an absent cutoff compares as `confidence >= undefined`, which is false for
+  every score, so every answered question would be labelled "partially supported" and
+  read as a calibration result). `derive_band_cutoff` re-derives that cut point whenever
+  the confidence function is re-fit, which is precisely why a TypeScript copy of `0.70`
+  would have been correct until the first `sprout fit-confidence` and silently wrong
+  after it.
+
+  The fixtures now record both fields and the conformance suite asserts them, and the
+  fixture set grew from the hand-authored eval suites to those **plus the corpus-derived
+  Phase 1 smoke suite** — 158 cases to 238. The two sets fail differently: a curated list
+  covers what somebody thought to write down, while `derive_smoke_cases` builds one
+  question per (species, topic) pair actually ingested, so a port that diverges only on
+  the sixteenth species cannot hide from it. Across the 238 all three bands and both
+  languages' labels are populated, so the new comparison is not vacuous.
+
 - **The published reference stopped working offline, and nothing could tell.** Hard rule 4
   is offline by default, and on the browser surface it rests entirely on the `SHELL` array
   in `web-static/public/service-worker.js` — a list of paths somebody typed. The build

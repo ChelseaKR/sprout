@@ -42,6 +42,18 @@ export interface ConfidenceConfig {
   low_confidence_threshold: number;
   /** `null` or missing means "use the ADR-0012 defaults", exactly as Python does. */
   fit?: ConfidenceFit | null;
+  /**
+   * The well-supported / partially-supported cut point (EXP-06), derived in
+   * `confidence.py` from the committed reliability diagram and exported here rather
+   * than mirrored as a TypeScript constant. A mirrored copy is correct only until the
+   * next `sprout fit-confidence` re-derives it, after which the browser and the CLI
+   * would place the same confidence in different bands and nothing would fail.
+   *
+   * Not optional, and `assertBundleIsCurrent` refuses a bundle missing it: an absent
+   * cutoff compares as `confidence >= undefined`, which is false for every score, so
+   * every answered question would be announced as "partially supported — verify".
+   */
+  well_supported_cutoff: number;
 }
 
 export interface GuardsConfig {
@@ -61,6 +73,11 @@ export interface PromptsConfig {
   safety_route_by_lang: Record<string, string>;
   nontoxic_caveat_by_lang: Record<string, string>;
   escalation_card_by_lang: Record<string, string>;
+  /**
+   * Band key -> language -> the localized words a screen reader announces for that
+   * confidence band. Mirrors `PromptConfig.confidence_band_labels`.
+   */
+  confidence_band_labels: Record<string, Record<string, string>>;
 }
 
 /**
@@ -101,7 +118,7 @@ export interface WebConfig {
  * Schema version of `data/config.json`. Must equal `BUNDLE_FORMAT_VERSION` in
  * `src/sprout/web_bundle.py`; `tests/test_web_bundle.py` asserts the two agree.
  */
-export const BUNDLE_FORMAT_VERSION = 2;
+export const BUNDLE_FORMAT_VERSION = 3;
 
 /**
  * Reject a bundle this build cannot vouch for, before it answers anything.
@@ -124,6 +141,18 @@ export function assertBundleIsCurrent(cfg: WebConfig): void {
     throw new Error(
       "bundle carries no corpus fingerprint, so which corpus it answers from is " +
         "unrecorded — re-export with `make web-static-bundle`",
+    );
+  }
+  // A hand-edited bundle can declare the current version and still be missing the band
+  // cut point. Absent, it compares as `confidence >= undefined` — false for every
+  // score — so every answered question would be announced as "partially supported",
+  // which is a missing threshold rendered as a calibration result. Refuse it here
+  // rather than let it read as a measurement.
+  const cutoff = cfg.confidence?.well_supported_cutoff;
+  if (typeof cutoff !== "number" || !Number.isFinite(cutoff)) {
+    throw new Error(
+      "bundle carries no confidence.well_supported_cutoff, so no answer could be " +
+        "placed in a confidence band — re-export with `make web-static-bundle`",
     );
   }
 }
@@ -154,6 +183,18 @@ export function refusalFor(cfg: WebConfig, language: string): string {
 
 export function disclosureFor(cfg: WebConfig, language: string): string {
   return byLang(cfg.prompts.disclosure_by_lang, language);
+}
+
+/**
+ * The localized words for a confidence band — mirrors
+ * `PromptConfig.confidence_band_label_for`, including its three-level fallback: the
+ * requested language, then English, then the band key itself. The last rung matters: a
+ * band with no label at all must announce `well_supported`, which reads as a missing
+ * translation, rather than the empty string, which reads as no band at all.
+ */
+export function confidenceBandLabelFor(cfg: WebConfig, band: string, language: string): string {
+  const labels = cfg.prompts.confidence_band_labels[band] ?? {};
+  return labels[language] ?? labels["en"] ?? band;
 }
 
 /**

@@ -196,7 +196,12 @@ _WELL_SUPPORTED_ACCURACY = 0.75
 # whenever the confidence function is re-fit (see the _MIDPOINT/_STEEPNESS note above,
 # and ADR-0012) -- a cutoff fit to a stale diagram is exactly the kind of drift the
 # calibration suite exists to catch.
-_DEFAULT_WELL_SUPPORTED_CUTOFF = 0.70
+#
+# Public, not underscored, because `web_bundle.settings_payload` exports it into
+# `data/config.json`: the browser port has to place the same answer in the same band as
+# the CLI, and the only way to guarantee that is to ship it this number rather than let
+# the TypeScript carry a hand-copied twin that can drift after the next re-fit.
+DEFAULT_WELL_SUPPORTED_CUTOFF = 0.70
 
 
 def derive_band_cutoff(
@@ -227,7 +232,7 @@ def derive_band_cutoff(
 def confidence_band(
     confidence: float,
     cfg: ConfidenceConfig,
-    cutoff: float = _DEFAULT_WELL_SUPPORTED_CUTOFF,
+    cutoff: float = DEFAULT_WELL_SUPPORTED_CUTOFF,
 ) -> str:
     """Map a confidence score to a verbalized band key.
 
