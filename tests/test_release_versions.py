@@ -45,6 +45,7 @@ would skip in the run that gates a merge.
 
 from __future__ import annotations
 
+import ast
 import re
 import shutil
 import subprocess
@@ -234,10 +235,11 @@ def test_the_citation_marks_itself_pre_release_exactly_while_it_is_one() -> None
     """The 2026-07-05 correction, made mechanical.
 
     `CITATION.cff` carried `date-released: 2026-06-22` for a release that was
-    never cut. It now carries a `-dev` version and no date. Both halves are
-    checked here, in both directions: the marker and the missing date are
-    required while no tag exists, and forbidden once one does — otherwise the
-    first real release ships a citation that still calls itself a draft.
+    never cut. The rule that replaces that correction is the `-dev` marker and
+    the absent date, both checked here in both directions: required for exactly
+    as long as no tag carries the declared version, and forbidden once one does
+    — otherwise the first real release ships a citation that still calls itself
+    a draft.
     """
     tags = _require_readable_tags()
     cited = _cited_version()
@@ -263,7 +265,23 @@ def test_the_citation_marks_itself_pre_release_exactly_while_it_is_one() -> None
 
 #: Sentences in this tree that assert, in the present tense, that nothing here
 #: has been tagged or released. Every one is verbatim from a tracked file, and
-#: every one is true today.
+#: every one is true today —
+#: `test_every_claim_in_the_vocabulary_is_a_sentence_this_repository_wrote`
+#: holds the first half of that to a measurement rather than to this comment,
+#: because two entries here were not. They were phrasings from a sibling
+#: repository (`release.yml has never fired`, `nothing has been published to
+#: pypi`), and while they sat in the tuple looking like coverage, the two
+#: sentences this project *does* write in `CITATION.cff` — `no git tag has ever
+#: been cut`, one word away from the entry below it, and `no release workflow
+#: has run` — were matched by nothing at all.
+#:
+#: An entry also has to be a *sentence* rather than a fragment. `no tag exists`
+#: was here and is not any more: this repository writes it four times and every
+#: one is a subordinate clause stating the rule (`required while no tag exists,
+#: refused once one does`). A denylist cannot tell an assertion from a
+#: conditional, so a fragment that short reddens the gate on prose that is
+#: correct — on the day a tag is cut, which is the one day this must not cry
+#: wolf.
 #:
 #: This is a DENYLIST, and a denylist's one guarantee is the whole of what it
 #: claims: it finds a phrasing somebody has already written here, and it cannot
@@ -278,11 +296,11 @@ CLAIMS_OF_NO_RELEASE: tuple[str, ...] = (
     README_SAYS_NO_TAG,
     README_SAYS_NOTHING_TO_INSTALL,
     "no tag has ever been cut",
-    "no tag exists",
+    "no git tag has ever been cut",
+    "no release workflow has run",
+    "has ever been published to pypi",
     "never been tagged or released",
     "never yet exercised",
-    "release.yml has never fired",
-    "nothing has been published to pypi",
 )
 
 #: Suffixes worth reading. A lockfile, a captured fixture or a binary does not
@@ -294,10 +312,17 @@ PROSE_SUFFIXES = frozenset({".md", ".cff", ".py", ".toml", ".yml", ".yaml", ".tx
 #: section so a past sentence reads true now would destroy the record this
 #: check exists to protect. This module is exempt as a *file*, because the
 #: tuple above puts every claim in it verbatim and scanning it would only match
-#: itself; its prose is read from `__doc__` instead, which is where a stale
-#: paragraph would actually sit — and `test_the_claim_vocabulary_is_real_and_
-#: not_self_matching` holds that docstring to the same rule, which makes the
-#: `__doc__` read a measurement rather than an exemption.
+#: itself; its **docstrings** are read instead, which is where a stale paragraph
+#: would actually sit — and `test_the_claim_vocabulary_is_real_and_not_self_
+#: matching` holds them to the same rule, which makes that read a measurement
+#: rather than an exemption.
+#:
+#: Docstrings, plural, and that is the correction. This was `__doc__` alone, so
+#: the rule reached one paragraph of eighteen and the other seventeen were prose
+#: no reader and no check ever opened — the module docstring's own point about
+#: where a stale sentence hides, one level further in. Widening it to every
+#: docstring found `_stale_claims` asserting in the present tense that nothing
+#: here is tagged.
 CLAIM_SCAN_EXEMPT = frozenset({"CHANGELOG.md"})
 
 THIS_FILE = Path(__file__).resolve()
@@ -334,34 +359,85 @@ def _tracked_prose_files() -> list[Path]:
     return paths
 
 
+#: Every docstring in this module has to say something true, so every one is
+#: read. Below this the walk is not reading the file: an empty string is what a
+#: parse that found nothing returns, and it passes every check downstream.
+MIN_DOCSTRINGS_IN_THIS_MODULE = 15
+
+
+def _own_docstrings() -> list[str]:
+    """Every docstring in this module: the prose of the one file the scan skips.
+
+    `__doc__` is one of eighteen. The rest are function docstrings, which is
+    prose in exactly the sense this whole check is about — nothing reads it, so
+    nothing corrects it. Parsing the source rather than walking the module
+    object keeps this measuring the file on disk, which is what the scan around
+    it measures.
+    """
+    tree = ast.parse(THIS_FILE.read_text(encoding="utf-8"))
+    found: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            text = ast.get_docstring(node, clean=False)
+            if text is not None:
+                found.append(text)
+    return found
+
+
 def _stale_claims(tags: list[str]) -> list[str]:
     """Tracked prose still saying nothing was released, given the tags that exist.
 
     Taking the tag list as an argument rather than reading it is what makes the
-    scan measurable here. Nothing in this repository is tagged, so the live call
-    can only ever return an empty list — and an empty list is what a scan that
-    stopped finding the tree returns too. Passing a tag in exercises the same
-    code over the same files, without creating one.
+    scan measurable here. While nothing is tagged the live call returns an empty
+    list — which is also what a scan that has stopped finding the tree returns.
+    Passing a tag in exercises the same code over the same files, without
+    creating one.
     """
     if not tags:
         return []
     stale: list[str] = []
     for path in _tracked_prose_files():
-        text = (__doc__ or "") if path.resolve() == THIS_FILE else path.read_text(encoding="utf-8")
-        stale.extend(f"{path.relative_to(ROOT)}: {claim!r}" for claim in _claims_in(text))
+        if path.resolve() == THIS_FILE:
+            texts = _own_docstrings()
+        else:
+            texts = [path.read_text(encoding="utf-8")]
+        for text in texts:
+            stale.extend(f"{path.relative_to(ROOT)}: {claim!r}" for claim in _claims_in(text))
     return stale
 
 
+def _claims_this_repository_has_written() -> dict[str, list[str]]:
+    """Where each vocabulary entry is actually written, over the tracked tree.
+
+    This module is read through its docstrings for the same reason the scan
+    reads it that way: the tuple puts every entry in the file verbatim, so
+    reading the file would make every entry vouch for itself — including one
+    copied from another repository, which is the case this exists to catch.
+    """
+    where: dict[str, list[str]] = {claim: [] for claim in CLAIMS_OF_NO_RELEASE}
+    for path in [*_tracked_prose_files(), *(ROOT / name for name in sorted(CLAIM_SCAN_EXEMPT))]:
+        if not path.is_file():  # pragma: no cover - an exempt name that is not in the tree
+            continue
+        if path.resolve() == THIS_FILE:
+            texts = _own_docstrings()
+        else:
+            texts = [path.read_text(encoding="utf-8")]
+        for text in texts:
+            for claim in _claims_in(text):
+                where[claim].append(str(path.relative_to(ROOT)))
+    return where
+
+
 def test_the_claim_vocabulary_is_real_and_not_self_matching() -> None:
-    """The floor under the scan below, and the reason it may read `__doc__`.
+    """The floor under the scan below, and the reason it may read its own docstrings.
 
     Three ways the next two checks could pass while examining nothing: an empty
     claim list, a claim list nothing here has ever said, and a scan that has
     stopped finding the tree. The README's own two pinned sentences are in the
     vocabulary by construction, so at least two entries are sentences this
-    project really wrote; and none of them is in this module's docstring, which
-    is what makes reading `__doc__` for this one file a measurement rather than
-    a way of exempting it from its own rule.
+    project really wrote; and none of them is in any docstring in this module,
+    which is what makes reading those for this one file a measurement rather
+    than a way of exempting it from its own rule.
     """
     assert CLAIMS_OF_NO_RELEASE, "an empty claim list scans every file and finds nothing"
     for pinned in (README_SAYS_NO_TAG, README_SAYS_NOTHING_TO_INSTALL):
@@ -369,15 +445,63 @@ def test_the_claim_vocabulary_is_real_and_not_self_matching() -> None:
             f"the vocabulary does not cover {pinned!r}, one of the two sentences this "
             "repository already pins in both directions, so it generalises nothing"
         )
-    assert not _claims_in(__doc__ or ""), (
-        "this module's docstring states, in the present tense, that nothing here has been "
-        "tagged or released. It is exempt as a file, so nothing else would ever read it, "
-        "and it is the one paragraph in this repository that no reader opens. Describe the "
-        "rule, not the day."
+    own = _own_docstrings()
+    assert len(own) >= MIN_DOCSTRINGS_IN_THIS_MODULE, (
+        f"only {len(own)} docstring(s) parsed out of this module: the walk has stopped "
+        "reading the file, and no docstring is what it returns either way"
     )
+    for text in own:
+        assert not _claims_in(text), (
+            f"a docstring in this module states, in the present tense, that nothing here has "
+            f"been tagged or released: {_claims_in(text)}. This file is exempt as a file, so "
+            "nothing else will ever read it, and a docstring is the one piece of prose in a "
+            "Python project that nobody opens. Describe the rule, not the day.\n"
+            f"{' '.join(text.split())[:400]}"
+        )
     assert _claims_in("> no tag has ever\n> been cut yet"), (
         "a claim wrapped across two quoted lines is not found, so the normalisation this "
         "scan depends on has stopped working and every wrapped sentence is invisible to it"
+    )
+    assert _claims_in("# 1.2.0): no git tag has ever been cut for this project"), (
+        "a claim behind a YAML comment marker is not found. `CITATION.cff` states two of "
+        "these that way, and they are the two the vocabulary used to miss entirely"
+    )
+
+
+def test_every_claim_in_the_vocabulary_is_a_sentence_this_repository_wrote() -> None:
+    """A denylist entry that matches nothing is coverage that is not there.
+
+    Two entries here were phrasings from a sibling repository rather than from
+    this tree. They cost nothing to read and they made the tuple eight entries
+    long while covering six — and the two sentences they were *meant* to stand
+    in for, both in `CITATION.cff`'s header comment, were matched by nothing.
+    One of them differs from the entry that was sitting directly above it by a
+    single word.
+
+    So every entry has to be observed somewhere in the tracked tree. That is the
+    self-limiting refusal the portfolio's exemption lists want and rarely have:
+    an entry stops earning its place the moment nothing says it, and the check
+    fails until somebody deletes it or fixes the wording.
+
+    `CHANGELOG.md` counts as an observation even though the staleness scan skips
+    it, because a phrasing recorded in the changelog is a phrasing this project
+    wrote. This module counts only through its docstrings — reading the file
+    would let the tuple vouch for itself, which is exactly how the two borrowed
+    entries survived.
+
+    (This paragraph does not quote any of the entries, and that is not fussiness:
+    the first draft of it did, and the docstring check above went red on the
+    correction. A gate that forbids a wording fires on the sentence explaining
+    why the wording is forbidden.)
+    """
+    _require_readable_tags()
+    where = _claims_this_repository_has_written()
+    unobserved = sorted(claim for claim, files in where.items() if not files)
+    assert not unobserved, (
+        f"these claim-vocabulary entries appear nowhere in this repository: {unobserved}. "
+        "A denylist entry that matches nothing is not coverage; it reads as coverage. Either "
+        "the sentence has been corrected — delete the entry — or the wording here is not the "
+        "wording the tree uses, in which case the real sentence is going unwatched."
     )
 
 
@@ -421,9 +545,16 @@ def test_the_scan_names_every_file_a_first_tag_would_make_stale() -> None:
     The assertions are a floor, not a pinned inventory. Naming an exact set here
     would be a hand-maintained list gated on equality, which jams every branch
     that adds a document. What has to hold is that the scan reaches the tree,
-    finds the sentence the README already pins, and finds it in **more than one
-    file** — because "the fact is stated in more places than the rule is applied
-    to" is the entire finding.
+    finds the sentence the README already pins, and finds it in **several
+    files** — because "the fact is stated in more places than the rule is
+    applied to" is the entire finding.
+
+    The floor moved from two files to three when `CITATION.cff` joined the set.
+    It had been stating this in a header comment the whole time and no entry in
+    the vocabulary matched it, which is the sibling repository's exact defect —
+    a comment explaining that `date-released` is absent, sitting above the field
+    — reached here by a different road: not a wrong sentence, a right sentence
+    nothing was watching.
     """
     _require_readable_tags()
     stale = _stale_claims(["v0.0.0-not-a-tag-in-this-repository"])
@@ -432,10 +563,10 @@ def test_the_scan_names_every_file_a_first_tag_would_make_stale() -> None:
         "the scan does not reach README.md, whose sentence this repository already pins in "
         "both directions — so it is reading something other than the working tree"
     )
-    assert len(files) > 1, (
-        "the scan finds this claim in one file only. Either the four documents that restate "
-        "it have been corrected — in which case narrow this check and say so — or the scan "
-        f"is no longer reading them. Files found: {sorted(files)}"
+    assert len(files) > 2, (
+        "the scan finds this claim in fewer files than the tree states it in. Either the "
+        "documents that restate it have been corrected — in which case narrow this check and "
+        f"say so — or the scan is no longer reading them. Files found: {sorted(files)}"
     )
 
 
