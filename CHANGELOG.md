@@ -10,6 +10,38 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The claim vocabulary missed the file the finding was named for, and two of its eight
+  entries were sentences this repository has never written.** A review of the check above,
+  and three measurements on the unmodified tree rather than three arguments.
+
+  `CITATION.cff` carries a header comment explaining why `date-released` is absent, and it
+  states the fact twice. **Neither statement matched any entry** — one of them differs from
+  the entry directly above it in the tuple by a single word. That comment is the sibling
+  repository's exact defect (a paragraph explaining that the field is deliberately absent,
+  sitting above the field) reached from the other side: not a wrong sentence, a right
+  sentence nothing was watching. The scan now reaches five files and eleven statements
+  where it reached four and nine.
+
+  Two entries were phrasings borrowed from a sibling repository and appear **nowhere** in
+  this tree, so they read as coverage while covering nothing;
+  `test_every_claim_in_the_vocabulary_is_a_sentence_this_repository_wrote` requires every
+  entry to be observed somewhere tracked and fails until a dead one is deleted or its
+  wording corrected. Run against `origin/main` it names both, which is the whole of its
+  evidence — a self-limiting list that finds a stale entry on its first run.
+
+  A third entry was a fragment short enough to appear inside a subordinate clause stating
+  the rule, which this repository writes four times. A denylist cannot tell an assertion
+  from a conditional, so that entry would have reddened the gate on correct prose on the
+  day a tag is cut. It is gone.
+
+  And the module's own exemption reached one paragraph of eighteen: `__doc__` alone, while
+  the other seventeen docstrings were prose no reader and no check ever opened — the
+  finding one level further inside itself. Every docstring is now read and held to the same
+  rule, with a floor on the count so a parse that stopped finding the file cannot pass as a
+  clean one. Widening it found a present-tense sentence about the tag list in
+  `_stale_claims`, which no vocabulary entry covered; that one was found by reading, and it
+  is fixed here.
+
 - **The rule that says "nothing has been released" is pinned in one file; the fact is
   stated in five.** `tests/test_release_versions.py` holds the README's two sentences in
   both directions — required while no tag exists, refused once one does — which is the
