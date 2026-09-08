@@ -10,6 +10,40 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The rule that says "nothing has been released" is pinned in one file; the fact is
+  stated in five.** `tests/test_release_versions.py` holds the README's two sentences in
+  both directions — required while no tag exists, refused once one does — which is the
+  right check. It reads one file. Measured over the 351 tracked prose files here, the same
+  present-tense claim is also written into `docs/ROADMAP.md`, `docs/PUBLICATION-READINESS.md`,
+  `docs/audits/gate-inventory.md` and, until this change, **this test module's own
+  docstring** — the one paragraph in a Python project that nothing ever reads. Every one of
+  them was written against the code and never against the repository, so the first tag would
+  have made four documents false in the same instant with nothing to say so. This is the
+  same shape found on 2026-09-08 in `constituent-reconciler`, `exitdrill` and `gauntlet` the
+  day after each was released; here it is closed **before** the tag rather than after it.
+
+  `test_no_document_says_this_repository_is_untagged_once_it_is` applies the README rule to
+  every tracked prose file from `git ls-files`. `CHANGELOG.md` is exempt because its sections
+  are the record of what was true when each was written; this module is exempt as a *file*
+  because the claim vocabulary puts every phrase in it verbatim, and its `__doc__` is read
+  instead — which `test_the_claim_vocabulary_is_real_and_not_self_matching` holds to the same
+  rule, so the exemption is a measurement rather than a hole. The module docstring no longer
+  describes the tag list, the workflow's run history or the package registry in the present
+  tense; it describes the rule.
+
+  It is a **denylist** and says so: it finds a phrasing somebody has already written here and
+  cannot find one nobody has thought of. The structural half — `CITATION.cff`'s
+  `date-released` and `-dev` marker compared against `git tag --list` — needs no vocabulary
+  and is unchanged. Claims are matched after stripping Markdown line markers and collapsing
+  whitespace, because a wrapped sentence is invisible to a substring match: `CHANGELOG.md`
+  carries one such claim split across two `>`-quoted lines, and only normalising finds it.
+
+  Nothing here is tagged, so the live scan can only return an empty result — and an empty
+  result is also what a scan that stopped finding the tree returns.
+  `test_the_scan_names_every_file_a_first_tag_would_make_stale` runs the same scan over the
+  same files with a tag supplied, and asserts it reaches `README.md` and finds the claim in
+  more than one file. No tag is created to do it.
+
 - **The site announced a number where the server announced words.** EXP-06 renders a
   verbalized confidence band *alongside* the raw float, because "0.82" is announced by a
   screen reader as an undifferentiated figure with no sense of whether it is good.
