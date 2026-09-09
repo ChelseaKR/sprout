@@ -10,6 +10,55 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The code still told people to install the stranger's package — including in two
+  exception messages a user reads at the moment they are stuck.** The README fixed this in
+  prose and the distribution was renamed in #167, and the sentence recording that work says
+  the only two *runnable* commands carrying the old name were corrected. Measured on `main`
+  today, **ten** more were still there across seven files, and the two sharpest were not prose
+  at all:
+  `corpus_signing.py` raises `verifying a dev-ed25519 bundle needs the 'corpus' extra: pip
+  install 'sprout[corpus]'` and, three functions later, the same command again. A user who
+  runs it gets Martijn Faassen's unrelated library, successfully, and no plant-care
+  assistant — which is the exact failure the README warns about in bold.
+
+  The rest were module docstrings and comments in `otel.py`, `resources.py`,
+  `scripts/_materialize_content.py`, `tests/test_resources.py`, `web-static/src/lang.ts` and
+  `providers/__init__.py`. Documentation gets re-read when somebody edits the document; a
+  module docstring gets re-read never, which is why the correction reached the README and
+  stopped there.
+
+  **Nine of the ten are corrected. The tenth is named rather than skipped**, and why it is
+  not corrected is the more interesting half. `src/sprout/providers/` is `TUNABLE_SURFACE`,
+  and `tuning_scope._python_fingerprint` compares `ast.dump` output, where a docstring is a
+  statement — so a one-word correction to prose that nothing in the package reads (`__doc__`
+  appears nowhere in `src/`) is indistinguishable to that gate from a change to retrieval
+  ranking, and it demands a `Tunes-Against:` trailer citing a committed eval failure. There
+  is no honest trailer for a comment, and a false one is worse than the sentence it fixes.
+  The exemption is a single entry with `test_the_known_gap_is_still_a_gap` under it, which
+  fails the day the file is corrected or the gate learns to ignore docstrings.
+
+  `tests/test_install_instructions.py` reads the distribution name out of `pyproject.toml`
+  and refuses any install command in the code that names something else beginning with the
+  import name. **Its scope is code, not the tree**, and the boundary is the finding rather
+  than a convenience: in `src/`, `tests/`, `scripts/`, `examples/` and `web-static/src/` an
+  install command is always an instruction, while in Markdown the same string is routinely
+  the opposite of one — the README's line is a prohibition, the changelog quotes the retired
+  wording on purpose, and two dated ADRs illustrate packaging with the old name and were
+  deliberately left as written. A scan over prose would fire on all four, which is a gate
+  reddening on the paragraph that explains why it exists. Prose is where a human re-reads
+  it; code is where nobody does.
+
+  A second check holds `metadata.version("...")` in `src/sprout/__init__.py` to the same
+  field, read from the source text so it works in a tree nobody has installed — which is the
+  tree a rename happens in. Getting that one wrong does not raise: it returns the
+  not-installed sentinel and publishes it as a version.
+
+  And the comment in `pyproject.toml` that named the places to update was itself the
+  hand-maintained list this repository keeps finding. It said two; the string is in ten
+  tracked files. It now names the mechanism instead of the inventory. `sprout-plantcare`
+  remains a placeholder pending confirmation — re-checked 2026-09-09, `pypi.org/simple/`
+  returns 404 for it and 200 for the bare name.
+
 - **The claim vocabulary missed the file the finding was named for, and two of its eight
   entries were sentences this repository has never written.** A review of the check above,
   and three measurements on the unmodified tree rather than three arguments.

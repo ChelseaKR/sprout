@@ -7,7 +7,7 @@ entry for the bundle's claimed publisher id (never by the bundle itself):
   produced by ``sigstore sign --bundle`` / ``cosign sign-blob --bundle``) against the
   public-good Sigstore instance: certificate chain to Fulcio's root, Rekor transparency
   log inclusion, and the signing identity (OIDC issuer + Subject Alternative Name).
-  Requires the ``corpus`` extra (``pip install sprout[corpus]``) and network access to
+  Requires the ``corpus`` extra (``pip install sprout-plantcare[corpus]``) and network access to
   Sigstore's infrastructure — the same trust model as the release pipeline's
   cosign/SLSA posture, extended across the publisher trust boundary.
 - ``dev-ed25519`` — a local keypair scheme for development and CI testing *only*. It has
@@ -82,7 +82,8 @@ def _verify_dev_ed25519(
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
     except ImportError as exc:  # pragma: no cover - exercised via MissingExtraError test
         raise MissingExtraError(
-            "verifying a dev-ed25519 bundle needs the 'corpus' extra: pip install 'sprout[corpus]'"
+            "verifying a dev-ed25519 bundle needs the 'corpus' extra: "
+            "pip install 'sprout-plantcare[corpus]'"
         ) from exc
     try:
         public_key = Ed25519PublicKey.from_public_bytes(bytes.fromhex(trusted.identity))
@@ -126,7 +127,7 @@ def _verify_sigstore_keyless(
     except ImportError as exc:
         raise MissingExtraError(
             "verifying a sigstore-keyless bundle needs the 'corpus' extra: "
-            "pip install 'sprout[corpus]'"
+            "pip install 'sprout-plantcare[corpus]'"
         ) from exc
 
     try:

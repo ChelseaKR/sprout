@@ -3,7 +3,7 @@
  * mirror of `lang.py`. The optional `langdetect` tie-breaker Python falls back to only
  * when that (non-default) package is installed has no TypeScript equivalent; the
  * deterministic offline pipeline this port targets does not depend on it either (a bare
- * `pip install sprout` / `uv sync` does not pull `langdetect` in), so both
+ * `pip install sprout-plantcare` / `uv sync` does not pull `langdetect` in), so both
  * implementations agree without it.
  */
 

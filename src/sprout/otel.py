@@ -2,7 +2,8 @@
 
 Wires OTel traces + metrics — RED (rate/errors/duration) per endpoint — behind
 ``observability.tier: A``, per ``STANDARDS/OBSERVABILITY-STANDARD.md`` §§1-2. The
-``opentelemetry-*`` packages are an optional extra (``pip install sprout[observability]``):
+``opentelemetry-*`` packages are an optional extra
+(``pip install sprout-plantcare[observability]``):
 every import in this module is lazy and guarded, so a Tier-C (offline CLI) install never
 needs them, and a Tier-A deploy that forgot the extra degrades to no-op instrumentation
 rather than crashing the server — the same never-crash-on-a-missing-optional-provider
