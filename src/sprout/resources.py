@@ -1,6 +1,6 @@
 """Locate data bundled inside the installed package.
 
-So ``pipx install sprout && sprout ingest && sprout ask "..."`` works with no checkout:
+So ``pipx install sprout-plantcare && sprout ingest && sprout ask "..."`` works with no checkout:
 the corpus and a default config ship under ``sprout/data/``. A local file in the working
 directory always wins (for development and adopters), and only when it is absent do we fall
 back to the packaged copy.

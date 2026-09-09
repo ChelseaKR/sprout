@@ -1,4 +1,4 @@
-"""The packaged-data fallback that makes `pipx install sprout` work offline."""
+"""The packaged-data fallback that makes `pipx install sprout-plantcare` work offline."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def test_packaged_corpus_matches_top_level_corpus() -> None:
 
     Guards the duplication called out in docs/ideation/02-large-scale-fixes.md (FIX-06):
     without this, a regeneration that only touches the top-level corpus silently ships a
-    stale packaged copy to `pipx install sprout` users.
+    stale packaged copy to `pipx install sprout-plantcare` users.
     """
     top_level = _tree_contents(_ROOT / "corpus")
     packaged = _tree_contents(resources.data_dir() / "corpus")

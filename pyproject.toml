@@ -11,10 +11,19 @@ build-backend = "hatchling.build"
 # 2026-09-07, HTTP 404) and is a placeholder pending confirmation, not a claim
 # already made — nothing has been uploaded under either name. The package directory
 # stays `src/sprout/`, `import sprout` and the `sprout` command are unaffected.
-# Two other places carry this same string and must move with it if a different name
-# is chosen: `metadata.version(...)` in `src/sprout/__init__.py` (which returns the
-# not-installed sentinel, silently, if it names a distribution that is not there)
-# and the `[[package]]` entry in `uv.lock` (regenerate with `uv lock`).
+# This string is carried in ten tracked files, not the three an earlier version of
+# this comment named, and a list written here is a list that goes stale the moment
+# somebody adds an eleventh — which is what happened. So the places that *must* move
+# with a rename are checked rather than enumerated:
+#   - `metadata.version(...)` in `src/sprout/__init__.py`, which returns the
+#     not-installed sentinel silently if it names a distribution that is not there;
+#   - every install command in the code, which otherwise instructs a reader to install
+#     an unrelated library that really exists on PyPI under the bare import name.
+# Both are held to this field by `tests/test_install_instructions.py`. The lockfile's
+# `[[package]]` entry moves with `uv lock`, which `make lock-check` already gates.
+# Prose that *describes* the name — the README's warning, the changelog's record of the
+# retired wording, two dated ADRs — is deliberately not machine-checked; that module's
+# docstring says why.
 name = "sprout-plantcare"
 version = "0.1.0"
 description = "A grounded, evaluated, multilingual plant-care assistant: retrieval-mandatory extractive generation with enforced citations, a never-certify-safe toxicity guard, calibrated abstention, a WCAG 2.2 chat UI, and a public evaluation harness (calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage) wired into CI from day one."

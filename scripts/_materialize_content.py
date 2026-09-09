@@ -1,7 +1,7 @@
 """One-shot: turn the content-workflow JSON output into committed corpus + eval files.
 
 Also re-mirrors ``corpus/`` and ``config/sprout.yaml`` into ``src/sprout/data/`` (the
-packaged fallback ``pipx install sprout`` ships with) so the two copies can never
+packaged fallback ``pipx install sprout-plantcare`` ships with) so the two copies can never
 silently drift apart — see FIX-06 in docs/ideation/02-large-scale-fixes.md.
 ``tests/test_resources.py`` asserts the two trees stay byte-identical; this script is
 the other half of that guarantee: regenerating content now updates both copies.
