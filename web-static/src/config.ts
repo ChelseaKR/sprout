@@ -8,6 +8,8 @@
  * phrase" is.
  */
 
+import { sha256Hex } from "./sha256.js";
+
 export interface RetrievalConfig {
   top_k: number;
   min_score: number;
@@ -153,6 +155,66 @@ export function assertBundleIsCurrent(cfg: WebConfig): void {
     throw new Error(
       "bundle carries no confidence.well_supported_cutoff, so no answer could be " +
         "placed in a confidence band — re-export with `make web-static-bundle`",
+    );
+  }
+}
+
+/**
+ * `(count, digest)` over a sorted chunk-id list — the browser's mirror of
+ * `web_bundle.index_chunk_ids_digest`.
+ *
+ * Python hashes the canonical JSON encoding of the sorted id list: sorted keys, compact
+ * separators, no ASCII escaping. For a list of hex strings that is exactly what
+ * `JSON.stringify` produces, so the two languages agree without a canonicaliser here.
+ * `test/bundle-pairing.test.ts` holds that to the digest Python actually wrote into the
+ * committed bundle rather than to this paragraph.
+ */
+export function indexChunkIdsDigest(ids: readonly string[]): { count: number; digest: string } {
+  return { count: ids.length, digest: `sha256:${sha256Hex(JSON.stringify(ids))}` };
+}
+
+/**
+ * Refuse a bundle whose provenance does not describe the index the page will answer from.
+ *
+ * `assertBundleIsCurrent` above checks the config against itself. Nothing checked it
+ * against the file beside it — and the two are separate fetches of separate static
+ * files, so they can come from different exports in three ordinary ways: a deploy
+ * landing between the page's two requests; the service worker's fetch handler, which
+ * refreshes cached entries **one request at a time**, so an offline load can pair a new
+ * config with an old index; and a hand-copied `public/data/`.
+ *
+ * The consequence is the one this project refuses everywhere else. The page renders a
+ * corpus fingerprint, a document count and an "as of" range out of `config.json` while
+ * retrieving from whatever `index.json` it loaded, so a provenance banner can describe
+ * a corpus the answers did not come from. `sprout bundle-check` makes exactly this
+ * comparison and says so in terms — "config.json and the index beside it were not
+ * written by the same export" — but it runs at build time, over the repository's copy,
+ * and cannot see what a browser has cached.
+ *
+ * Two fields, not one. `index_chunks` catches the coarse case and reads well in the
+ * message; `index_chunk_ids_sha256` is what actually closes it, because an index with
+ * the same number of different passages is the interesting failure. Refusing rather
+ * than warning is deliberate: an answer drawn from passages the banner does not
+ * describe is worse than no answer, and there is no partial state a caller could
+ * usefully render.
+ */
+export function assertBundleDescribesIndex(cfg: WebConfig, ids: readonly string[]): void {
+  const { count, digest } = indexChunkIdsDigest(ids);
+  const recorded = cfg.provenance;
+  if (recorded.index_chunks !== count) {
+    throw new Error(
+      `bundle mismatch: config.json records an index of ${String(recorded.index_chunks)} ` +
+        `chunk(s) and index.json holds ${String(count)} — config.json and the index beside ` +
+        "it were not written by the same export, so the provenance shown on the page would " +
+        "not describe the passages answering. Re-export with `make web-static-bundle`.",
+    );
+  }
+  if (recorded.index_chunk_ids_sha256 !== digest) {
+    throw new Error(
+      "bundle mismatch: config.json records index chunk ids " +
+        `${recorded.index_chunk_ids_sha256} and index.json holds ${digest} — the same ` +
+        "number of different passages. The corpus fingerprint on the page would describe " +
+        "a corpus these answers did not come from. Re-export with `make web-static-bundle`.",
     );
   }
 }

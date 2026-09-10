@@ -107,3 +107,18 @@ const utf8Encoder = new TextEncoder();
 export function sha256(text: string): Uint8Array {
   return sha256Bytes(utf8Encoder.encode(text));
 }
+
+/**
+ * Lowercase hex of {@link sha256} — mirrors Python's
+ * `hashlib.sha256(s.encode("utf-8")).hexdigest()`.
+ *
+ * Kept beside the digest rather than at the call site so the two languages have one
+ * spelling of "the same hash of the same string" to disagree about, not two.
+ */
+export function sha256Hex(text: string): string {
+  let out = "";
+  for (const byte of sha256(text)) {
+    out += byte.toString(16).padStart(2, "0");
+  }
+  return out;
+}

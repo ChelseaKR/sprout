@@ -20,6 +20,44 @@ interface IndexJson {
 
 const FORMAT_VERSION = 2;
 
+/**
+ * The chunk ids an index actually contains, sorted — the identity the bundle's
+ * provenance block records so a config can be held to the index beside it.
+ *
+ * Mirrors `web_bundle.index_chunk_ids_digest`'s read, refusals included. An index with
+ * no chunks, or a chunk with no id, is refused rather than digested: both would make
+ * every comparison against this list vacuously true, which is the failure this whole
+ * pairing check exists to avoid.
+ *
+ * Sorting is by code unit here and by code point in Python. A chunk id is sha256 hex,
+ * so the two orders are identical over every input this can receive; the ids are
+ * asserted to look like that below rather than assumed to.
+ */
+export function indexChunkIds(raw: unknown): string[] {
+  const data = raw as { chunks?: unknown };
+  const chunks = data.chunks;
+  if (!Array.isArray(chunks) || chunks.length === 0) {
+    throw new Error(
+      "index.json carries no chunks, so every comparison against it would be vacuously " +
+        "true — regenerate the bundle with `make web-static-bundle`",
+    );
+  }
+  const ids: string[] = [];
+  for (const chunk of chunks) {
+    const id = (chunk as { chunk_id?: unknown }).chunk_id;
+    if (typeof id !== "string" || !/^[0-9a-f]+$/.test(id)) {
+      throw new Error(
+        "index.json has a chunk whose chunk_id is missing or is not lowercase hex, so " +
+          "the index cannot be identified — regenerate the bundle with " +
+          "`make web-static-bundle`",
+      );
+    }
+    ids.push(id);
+  }
+  ids.sort();
+  return ids;
+}
+
 export class VectorStore {
   private readonly chunks: Chunk[];
   private readonly vectors: number[][];
