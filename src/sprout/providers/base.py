@@ -10,9 +10,34 @@ misbehaving provider degrades to a refusal rather than an ungrounded answer.
 
 from __future__ import annotations
 
+import math
 from typing import Protocol, runtime_checkable
 
 from ..models import RetrievedChunk
+
+
+def l2_normalize(vec: list[float]) -> list[float]:
+    """Scale ``vec`` to unit length, returning it unchanged when its norm is zero.
+
+    Uses ``math.sqrt`` and never ``x ** 0.5``. ``x ** 0.5`` is libm's ``pow``, which IEEE
+    754 does not require to be correctly rounded, while ``sqrt`` it does — so the two can
+    differ in the last bit, per platform. Measured 2026-09-01 on macOS (arm64, CPython
+    3.12.14): ``n ** 0.5 != math.sqrt(n)`` for 274 of the integers 1..200000 (the shape of
+    the hashing embedder's norms) and for 32 of 5000 random static-vector sums, and glibc
+    agrees with ``sqrt`` on those — so the same text embedded on a laptop and on the CI
+    runner did not have to give the same vector.
+
+    That matters twice over. ``web-static/src/hashEmbedding.ts``, the port that runs the
+    live site, normalises with ``Math.sqrt``: the browser and the CLI were using different
+    square roots for the same claimed-identical pipeline. And the committed eval artifacts
+    are now byte-compared against a fresh regeneration (#122), which turns any last-bit
+    platform difference into a red build on a file nobody edited — as it already did once,
+    for ``static_vectors.json``.
+
+    Every embedder normalises through here so there is one square root to be right about.
+    """
+    norm = math.sqrt(sum(v * v for v in vec))
+    return [v / norm for v in vec] if norm else vec
 
 
 @runtime_checkable
