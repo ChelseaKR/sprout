@@ -10,6 +10,35 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The only required status check could not name the gate that failed, and could pass
+  having checked nothing.** `ci-gate` is the single required check for branch
+  protection, so it is the one place a reader looks when a merge is blocked. It joined
+  `needs.*.result` into a space-separated list of bare enums and printed
+  `::error::a required gate did not pass: failure` — the *value*, not the identity.
+  Recovering which of eleven jobs was red meant opening the workflow and counting
+  positions in `needs:`, over an ordering `needs.*.result` is not documented to
+  preserve, so counting could mislabel. Live on PR #124's run:
+  `GATE_RESULTS: success success success success failure success success success success
+  success success`.
+
+  It now reads `toJSON(needs)`, which is keyed by job name, prints the whole table
+  (`tuning-scope: failure` beside `test: success`), and names every non-success result
+  rather than exiting at the first.
+
+  **And the loop had no floor.** `for r in $GATE_RESULTS` over an empty list iterates
+  zero times and exits 0 — the single required check reporting success having examined
+  nothing, which is this repository's own "a gate that cannot fail" shape sitting on the
+  branch-protection boundary. It now refuses an empty `needs` and prints
+  `N of M required gate(s) passed or were skipped`, so a green run says what it checked.
+  `test_a_ci_gate_with_no_needs_is_refused_rather_than_passed` already held the workflow
+  *file* to a non-empty list; nothing held the *run* to it.
+
+  The tests **execute the shipped script**, extracted from the workflow rather than
+  retyped, because both defects were runtime behaviour and neither is visible in a file
+  check — and a test that compiles its own copy of the thing under test is a second,
+  weaker gate. `skipped` is asserted to remain a pass in the same suite: a check that
+  names the failing gate is otherwise satisfied by one that refuses everything.
+
 - **The provenance banner on the published page was never held to the index answering
   underneath it.** `data/config.json` carries `index_chunks` and
   `index_chunk_ids_sha256` for exactly one purpose — so a config can be shown to

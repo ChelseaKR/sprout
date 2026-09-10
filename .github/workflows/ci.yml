@@ -343,18 +343,43 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Require all gates to pass (skipped path-filtered jobs are OK)
-        # Interpolating join(needs.*.result) straight into the script body reads as a
-        # template-injection-adjacent pattern to workflow-SAST tools (zizmor flags it);
-        # the values are GitHub-controlled enums (success/failure/skipped/cancelled) so it
-        # was never exploitable, but routing through env: satisfies the rule directly
-        # instead of waiving it.
+        # `toJSON(needs)` rather than `join(needs.*.result)`, because the joined form is a
+        # list of bare enum values with no names attached. This job is the ONLY required
+        # status check, so it is the one place a reader looks when a merge is blocked, and
+        # it used to print `a required gate did not pass: failure` — the value, not the
+        # identity. Recovering which of eleven jobs was red meant opening the workflow and
+        # counting positions in `needs:`, and `needs.*.result` is not documented to preserve
+        # that order anyway, so counting could mislabel. Keyed by job name it cannot.
+        #
+        # Still routed through `env:` rather than interpolated into the script body: the
+        # values are GitHub-controlled enums, so the old form was never exploitable, but the
+        # indirection is what satisfies the workflow-SAST rule directly instead of waiving it.
         env:
-          GATE_RESULTS: ${{ join(needs.*.result, ' ') }}
+          GATE_RESULTS_JSON: ${{ toJSON(needs) }}
         run: |
-          echo "gate results: $GATE_RESULTS"
-          for r in $GATE_RESULTS; do
-            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
-              echo "::error::a required gate did not pass: $r"
-              exit 1
-            fi
-          done
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["GATE_RESULTS_JSON"])
+
+          # A floor, because the loop this replaces had none: with an empty `needs:` the
+          # old `for` ran zero times and the only required check reported success having
+          # examined nothing. `test_a_ci_gate_with_no_needs_is_refused_rather_than_passed`
+          # holds the workflow file to a non-empty list; this holds the run to it.
+          if not needs:
+              print("::error::ci-gate evaluated no gates at all — a required check that "
+                    "examined nothing is not a check that passed")
+              sys.exit(1)
+
+          for name in sorted(needs):
+              print(f"{name}: {needs[name]['result']}")
+
+          # `skipped` is a pass on purpose: several jobs are path-filtered.
+          failed = sorted(n for n in needs if needs[n]["result"] not in ("success", "skipped"))
+          for name in failed:
+              print(f"::error::required gate did not pass: {name} ({needs[name]['result']})")
+          print(f"{len(needs) - len(failed)} of {len(needs)} required gate(s) passed or were skipped")
+          sys.exit(1 if failed else 0)
+          PY

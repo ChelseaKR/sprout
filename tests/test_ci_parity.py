@@ -357,3 +357,134 @@ def test_every_exemption_carries_a_reason() -> None:
     for job, reason in EXEMPT_FROM_PARITY.items():
         assert reason.strip(), job
         assert len(reason.split()) >= 8, f"{job}: a reason has to say something"
+
+
+# --- the aggregator itself: the ONLY required check, and what it can say ---------------
+#
+# Everything above holds the workflow *file* to the registry. These run the aggregator's
+# own shipped script, because its two defects were runtime behaviour and neither was
+# visible in the file: it named the failing gate's *value* rather than its identity, and
+# its loop had no floor, so an empty `needs:` produced a required check that reported
+# success having examined nothing.
+
+
+def _ci_gate_script() -> str:
+    """The `run:` body the aggregator step actually ships.
+
+    Extracted from the workflow rather than retyped here, so this cannot become the
+    "test compiles its own copy of the thing under test" shape — a second, weaker copy
+    of a gate is worse than none.
+    """
+    ci = _real_ci_yaml()
+    jobs = ci["jobs"]
+    assert isinstance(jobs, dict)
+    steps = jobs["ci-gate"]["steps"]
+    assert len(steps) == 1, f"ci-gate has {len(steps)} steps; this test knows about one"
+    step = steps[0]
+    assert "GATE_RESULTS_JSON" in step["env"], (
+        "the aggregator no longer reads a keyed results object, so it cannot name the "
+        "gate that failed — which is the defect these tests exist for"
+    )
+    assert "toJSON(needs)" in step["env"]["GATE_RESULTS_JSON"]
+    run = step["run"]
+    assert isinstance(run, str) and run.strip()
+    return run
+
+
+def _run_ci_gate(results: dict[str, str]) -> tuple[int, str]:
+    """Execute the shipped script over a synthetic `needs` object."""
+    import json
+    import subprocess
+    import sys
+
+    payload = json.dumps({name: {"result": r} for name, r in results.items()})
+    done = subprocess.run(  # a fixed argv; the script is read from the workflow, not built
+        ["/bin/bash", "-c", _ci_gate_script()],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={
+            "GATE_RESULTS_JSON": payload,
+            "PATH": str(Path(sys.executable).parent) + ":/usr/bin:/bin",
+        },
+    )
+    return done.returncode, done.stdout + done.stderr
+
+
+def test_the_only_required_check_names_the_gate_that_failed() -> None:
+    """It used to print the value, not the identity.
+
+    `join(needs.*.result, ' ')` is eleven bare enums, so the error read `a required gate
+    did not pass: failure` and a reader had to open the workflow and count positions in
+    `needs:` to find out which one — over an ordering the expression is not documented to
+    preserve. Measured on PR #124's run: `GATE_RESULTS: success success success success
+    failure success success success success success success`.
+    """
+    code, out = _run_ci_gate({"test": "success", "tuning-scope": "failure"})
+    assert code == 1, out
+    # Asserted on the annotation line, not on the output as a whole, and that is the
+    # difference between a control that fires and one that does not. The first version
+    # of this test read `"tuning-scope" in out`, which the *results table* below already
+    # satisfies -- so restoring the old value-only message left it green. A GitHub
+    # annotation is what surfaces on the checks page; the table is scrollback.
+    annotations = [line for line in out.splitlines() if line.startswith("::error::")]
+    assert annotations, out
+    assert any("tuning-scope" in line for line in annotations), annotations
+    assert not any(line.rstrip().endswith(": failure") for line in annotations), (
+        f"the annotation ends in the bare result rather than naming the gate: {annotations}"
+    )
+    # The whole table is printed too, not only the failure, so a reader sees what was
+    # checked as well as what failed.
+    assert "test: success" in out, out
+
+
+def test_a_skipped_path_filtered_job_is_still_a_pass() -> None:
+    """The permissive half, and it has to be asserted or the check above is satisfied by
+    a gate that refuses everything — the stricter-looking wrong implementation."""
+    code, out = _run_ci_gate({"test": "success", "lighthouse": "skipped"})
+    assert code == 0, out
+    assert "::error::" not in out, out
+
+
+def test_a_cancelled_gate_is_not_a_pass_and_is_named() -> None:
+    """`cancelled` is no verdict rather than a good one, and this repository has already
+    lost verdicts to concurrency eviction. Both non-success results are named, not just
+    the first."""
+    # `cancelled` alone, with everything else green, so this cannot be satisfied by the
+    # other job's failure. The first version paired it with a `failure` and stayed green
+    # when `cancelled` was added to the accepted set -- the run failed for the other job
+    # and the gate name appeared in the results table, which is not the annotation.
+    code, out = _run_ci_gate({"smoke": "cancelled", "docs": "success"})
+    assert code == 1, out
+    annotations = [line for line in out.splitlines() if line.startswith("::error::")]
+    assert any("smoke" in line for line in annotations), annotations
+
+    # Both non-success results are named, not just the first: a reader who fixes one and
+    # re-runs should not discover the second on the next round trip.
+    code, out = _run_ci_gate({"smoke": "cancelled", "docs": "failure"})
+    assert code == 1, out
+    annotations = [line for line in out.splitlines() if line.startswith("::error::")]
+    assert any("smoke" in line for line in annotations), annotations
+    assert any("docs" in line for line in annotations), annotations
+
+
+def test_the_aggregator_refuses_when_it_evaluated_nothing() -> None:
+    """The floor the old loop did not have.
+
+    With an empty `needs:` the previous `for r in $GATE_RESULTS` iterated zero times and
+    exited 0 — the single required status check reporting success over nothing examined.
+    `test_a_ci_gate_with_no_needs_is_refused_rather_than_passed` holds the workflow file
+    to a non-empty list; this holds the *run* to it, which is the half a file check
+    cannot reach.
+    """
+    code, out = _run_ci_gate({})
+    assert code == 1, out
+    assert "examined nothing" in out, out
+
+
+def test_the_denominator_is_printed_so_a_green_run_says_what_it_checked() -> None:
+    """ "4 of 4" is what makes a pass mean something; a bare exit 0 does not."""
+    code, out = _run_ci_gate(dict.fromkeys(("a", "b", "c", "d"), "success"))
+    assert code == 0, out
+    assert "4 of 4" in out, out
