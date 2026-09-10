@@ -32,9 +32,9 @@ export type {
 export { answerCitations, answerDisplayText, answerText } from "./models.js";
 
 import { Assistant } from "./answer.js";
-import { assertBundleIsCurrent } from "./config.js";
+import { assertBundleDescribesIndex, assertBundleIsCurrent } from "./config.js";
 import type { WebConfig } from "./config.js";
-import { VectorStore } from "./store.js";
+import { indexChunkIds, VectorStore } from "./store.js";
 
 /**
  * Fetch `config.json` and `index.json` from `dataBaseUrl` (default: same-origin
@@ -57,6 +57,11 @@ export async function loadAssistant(dataBaseUrl = "./data/"): Promise<Assistant>
   const config = (await configRes.json()) as WebConfig;
   assertBundleIsCurrent(config);
   const indexJson = await indexRes.json();
+  // The two files are separate fetches of separate static assets, and nothing until
+  // now compared them. `config.json` carries the index's chunk count and chunk-id
+  // digest precisely so it can be held to the index beside it; a page that skips the
+  // comparison can render one bundle's provenance over another bundle's passages.
+  assertBundleDescribesIndex(config, indexChunkIds(indexJson));
   const store = VectorStore.fromIndexJson(indexJson);
   return new Assistant(config, store);
 }

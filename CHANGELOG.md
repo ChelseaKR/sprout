@@ -10,6 +10,53 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The provenance banner on the published page was never held to the index answering
+  underneath it.** `data/config.json` carries `index_chunks` and
+  `index_chunk_ids_sha256` for exactly one purpose — so a config can be shown to
+  describe the `index.json` beside it — and `sprout bundle-check` makes that comparison,
+  with a failure message that says in terms *"config.json and the index beside it were
+  not written by the same export"*. **The browser made neither comparison.**
+  `assertBundleIsCurrent` checked the config's `format_version`, that a corpus
+  fingerprint string was non-empty, and the confidence cutoff; `VectorStore.fromIndexJson`
+  checked the index's own `format_version`. Nothing joined them.
+
+  They are two separate fetches of two separate static assets, and three ordinary things
+  separate them: a deploy landing between the page's two requests; the service worker's
+  fetch handler, which refreshes cached entries **one request at a time**, so an offline
+  load can pair a new config with an old index; and a hand-copied `public/data/`. The
+  build-time gate cannot see any of them — it reads the repository's copy, not what a
+  browser holds. So the page could render a corpus fingerprint, a document count and an
+  "as of" range describing a corpus the answers did not come from, which is this
+  portfolio's dominant defect wearing the flagship surface's clothes.
+
+  `assertBundleDescribesIndex` refuses on either field before the assistant is
+  constructed. Two fields rather than one, deliberately: the count catches the coarse
+  case and gives a reader something to act on, and the chunk-id digest is what actually
+  closes it, because **an index with the same number of different passages** is the
+  interesting failure. Refusing rather than warning is the same call this project makes
+  everywhere else — an answer drawn from passages the banner does not describe is worse
+  than no answer.
+
+  The cross-language half is pinned rather than argued. `indexChunkIdsDigest` mirrors
+  `web_bundle.index_chunk_ids_digest`, and the test asserts it equals **the string
+  Python wrote into the committed bundle**, not another TypeScript digest — the only
+  comparison that can catch a canonicalisation disagreement. A digest the port computes
+  differently would fire on every correct bundle, which is worse than no check because
+  somebody deletes it. `indexChunkIds` refuses an index with no chunks or a chunk with
+  no id *before* hashing, because an empty list hashes to a perfectly good digest.
+
+  A check that exists and is not consulted is the defect being fixed, so one test stubs
+  `fetch` and drives `loadAssistant` itself, asserting both directions — a mismatched
+  pair rejects, and the real bundle still loads, because a loader that refuses
+  everything satisfies the first half and is the stricter-looking wrong implementation.
+
+  Measured on `origin/main`'s own load path over a config from a different export:
+  `assertBundleIsCurrent` **passed**, `VectorStore.fromIndexJson` **passed**, the
+  assistant answered normally, and the page published `sha256:0000deadbeef`, "29
+  documents" and an as-of range of *"2026-05-01 to 2026-02-14"* while answering from 188
+  chunks of `sha256:49844a48dad4`. (That range is printed earliest-to-latest with no
+  ordering check, which is a smaller separate observation and is left alone here.)
+
 - **The code still told people to install the stranger's package — including in two
   exception messages a user reads at the moment they are stuck.** The README fixed this in
   prose and the distribution was renamed in #167, and the sentence recording that work says
