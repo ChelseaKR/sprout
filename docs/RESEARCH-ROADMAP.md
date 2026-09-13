@@ -67,7 +67,7 @@ Priority: **P0** now · **P1** next · **P2** soon. Effort: **S** ≈ an afterno
 | E7 | **Citation freshness / link-liveness check**: flag when a cited source's `fetch_date` is stale or the URL no longer supports the claim — especially toxicity refs that get revised | C1,B1,E1 | P2 | M | EV6 · **[NET-NEW]** · **[shipped: `sprout freshness`]** |
 | E8 | **Photo-ID "show your work"**: top-N candidate species with scores + an explicit corpus-coverage gate; never auto-act on the match | A3,A1 | P2 | M | EV9 · **[corroborates ADR-0010]** (extend) |
 | E10 | **Family Greenhouse personalization (A→B→C)**: toxicity cross-check against the user's *actual* pets/plants ("a plant in your Greenhouse is listed toxic to cats, and your profile notes a cat") — deferred, opt-in, household-data ASVS L2 | A1,A2,E1 | Later | L | EV2 · **[corroborates ROADMAP deferred]** |
-| E11 | **`corpus.yaml` generalization + "adapt this to your domain" guide** so any cited care corpus can be swapped in | E1,C2 | Later | M | — · **[corroborates ROADMAP Phase 4]** · **[shipped: [`docs/ADAPT.md`](ADAPT.md) + the `corpus.*` config seam; proved end to end by [`examples/herb-garden-plugin/`](../examples/herb-garden-plugin/README.md), a different care corpus run through the unmodified engine]** |
+| E11 | **`corpus.yaml` generalization + "adapt this to your domain" guide** so any cited care corpus can be swapped in | E1,C2 | Later | M | — · **[corroborates ROADMAP Phase 4]** · **[shipped: [`docs/ADAPT.md`](ADAPT.md) + the `corpus.*` config seam; proved end to end by [`examples/herb-garden-plugin/`](https://github.com/ChelseaKR/sprout/blob/main/examples/herb-garden-plugin/README.md), a different care corpus run through the unmodified engine]** |
 
 ---
 
@@ -213,7 +213,7 @@ Shipped: **E5** SME corpus-contribution workflow — `sprout propose template` e
 fill-in-the-blanks proposal (one YAML file carrying the passage in every supported language,
 its provenance, the eval case the passage must satisfy, and a representational-harm
 checklist), a no-code
-[corpus-proposal issue form](../.github/ISSUE_TEMPLATE/corpus_proposal.yml) collects the parts
+[corpus-proposal issue form](https://github.com/ChelseaKR/sprout/blob/main/.github/ISSUE_TEMPLATE/corpus_proposal.yml) collects the parts
 only a contributor can supply for a maintainer to transcribe into that same file (a deliberate
 subset of the schema, not a field-for-field mirror of it),
 and `sprout propose check` (`src/sprout/propose.py`) reviews a proposal **offline and
@@ -247,7 +247,7 @@ whose sign-off artifact is a committed Markdown document under `docs/audits/` th
 species, the reviewer, and the date they signed — contained in the repository, so the strongest
 gate in the module cannot be discharged by pointing the field at any file that happens to exist.
 
-Worked example and full rule table: [`examples/corpus-proposal/`](../examples/corpus-proposal/README.md)
+Worked example and full rule table: [`examples/corpus-proposal/`](https://github.com/ChelseaKR/sprout/blob/main/examples/corpus-proposal/README.md)
 (*Chamaedorea elegans*, EN + ES, zero findings, `ready-for-expert-review`). Nothing is written
 to `corpus/`: a proposal is reviewed, never auto-applied. Verify with
 `uv run sprout propose check` and `uv run pytest tests/test_propose.py -q`.

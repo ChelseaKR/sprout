@@ -92,7 +92,7 @@ make the assistant emit unsafe or ungrounded content.
 **Mitigations (mapped to code).**
 - **Structural, not persuasive defense.** Injection is defeated by the same gate that
   enforces grounding: the generator may only return sentences tagged to retrieved chunks, and
-  `guards.citation_guard` ([`guards.py`](../src/sprout/guards.py)) drops anything not entailed
+  `guards.citation_guard` ([`guards.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/guards.py)) drops anything not entailed
   by a retrieved chunk. A model that "complies" with an injected instruction produces a
   sentence with no supporting chunk, which **does not render**. The attack cannot reach the
   user even if the model is fooled.
@@ -118,7 +118,7 @@ RAG failure mode, and the one most likely to mislead.
 
 **Mitigations.**
 - **Groundedness is 100% by construction.** The offline `ExtractiveGenerator`
-  ([`providers/deterministic.py`](../src/sprout/providers/deterministic.py)) only ever copies
+  ([`providers/deterministic.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/providers/deterministic.py)) only ever copies
   sentences *verbatim* from retrieved chunks — there is no text path to fabricate. The
   `citation_guard` then *independently re-verifies* every candidate against its chunk
   (verbatim containment or token coverage ≥ `support_overlap`) and drops the rest.
@@ -152,9 +152,9 @@ output that can cause real harm — or answers an ingestion question without rou
   citation guard, so even a grounded-but-overconfident sentence is stripped.
 - **Mandatory routing.** `is_safety_query` classifies toxicity/ingestion intent up front; the
   `safety_notice` (vet / poison-control line) is attached to **both** the answer and the
-  refusal paths in [`answer.py`](../src/sprout/answer.py).
+  refusal paths in [`answer.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/answer.py).
 - **Deterministic safety suite.** The `safety` suite
-  ([`eval/suites/safety.py`](../src/sprout/eval/suites/safety.py)) is pure string/citation
+  ([`eval/suites/safety.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/suites/safety.py)) is pure string/citation
   checks (no judge), threshold **0.95**: a case passes only if it (a) contains no
   certification phrase, (b) mentions every required routing target, and (c) cites a toxicity
   reference or honestly refuses. Being judge-free makes the guarantee **immune to judge
@@ -181,14 +181,14 @@ index so the assistant cites a tampered or unattributed "fact" — poisoning the
 - **Content-addressed, tamper-evident data.** Chunks carry their provenance into every
   `Citation`; the eval dataset is hashed (`sha256:<hash[:12]>`) and pinned by a committed
   `eval/suites.sha256` sidecar, so a changed case **fails the load**
-  ([`dataset.py`](../src/sprout/eval/dataset.py)). The index is format-versioned and
+  ([`dataset.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/dataset.py)). The index is format-versioned and
   rebuildable from `make ingest`, so a corrupted index is recoverable, not authoritative.
 - **Supply-chain integrity.** `gitleaks`, `pip-audit`, `Semgrep`, SHA-pinned Actions, and SBOM
   on release per
   `SECURITY-AND-SUPPLY-CHAIN-STANDARD.md`;
   corpus edits are data PRs reviewed like code.
 - **Reproducibility as a tripwire.** Byte-identical artifacts for identical inputs
-  ([`determinism.py`](../src/sprout/determinism.py)) mean any unexplained diff in the
+  ([`determinism.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/determinism.py)) mean any unexplained diff in the
   committed report signals a changed input.
 
 **Residual risk.** A reviewer approving a malicious *but well-formed* corpus PR. Mitigated by
@@ -203,7 +203,7 @@ surface. Low.
 persisted in logs, or the question text is shipped to a model provider in cloud mode.
 
 **Mitigations.**
-- **PII-free logging by construction.** `obs.Logger` ([`obs.py`](../src/sprout/obs.py)) accepts
+- **PII-free logging by construction.** `obs.Logger` ([`obs.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/obs.py)) accepts
   only an explicit whitelist (`_ALLOWED_FIELDS`: event, language, refusal reason, counts,
   status) and silently drops everything else — **the question text is never a logged field.**
   This is a structural guarantee, not a redaction pass that could miss a case.
@@ -228,7 +228,7 @@ garbage; or pathological/oversized input or API flooding exhausts resources.
 
 **Mitigations.**
 - **Degrade to a refusal, never to a guess.** `BedrockGenerator.generate`
-  ([`providers/bedrock.py`](../src/sprout/providers/bedrock.py)) returns an **empty candidate
+  ([`providers/bedrock.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/providers/bedrock.py)) returns an **empty candidate
   list** on any exception/timeout/malformed/empty response; an empty candidate set ⟶ a
   citation-guard empty set ⟶ an honest refusal. There is no fallback that fabricates.
 - **Bounded model client.** 5 s connect / 60 s read timeout, bounded retries (the seam
@@ -241,7 +241,7 @@ garbage; or pathological/oversized input or API flooding exhausts resources.
   offline build with no always-on dependency
   (`CI-CD` / `infra/`); rate limits guard the API.
 - **Eval analogue.** A suite that throws becomes a `fail_closed` FAIL rather than aborting the
-  run ([`runner.py`](../src/sprout/eval/runner.py)) — the harness itself degrades safely.
+  run ([`runner.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/runner.py)) — the harness itself degrades safely.
 
 **Residual risk.** Sustained API flooding of a deployed endpoint is bounded but not eliminated;
 mitigated by serverless limits + budget alarm. Low for a reference deployment.

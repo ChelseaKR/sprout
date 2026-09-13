@@ -31,7 +31,7 @@ Numeric gate thresholds are owned by the sibling standards and linked, not resta
 
 **Why this matters for the GenAI risk surface.** The default pipeline is **extractive**: every
 rendered sentence is copied verbatim from a retrieved chunk and independently re-verified by the
-citation guard ([`src/sprout/guards.py`](../../src/sprout/guards.py) `citation_guard`). This collapses
+citation guard ([`src/sprout/guards.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/guards.py) `citation_guard`). This collapses
 the largest GenAI risk (confabulation) to ~0 *by construction* in the default mode, and bounds it in
 the cloud mode because the same post-generation guard runs regardless of generator. The risk register
 below is therefore mostly an argument that the structural defenses already in the code are the
@@ -85,7 +85,7 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
   - **Calibrated abstention.** Below `abstain_threshold` (0.25, per
     [ADR-0012](../adr/0012-recalibrated-abstention-thresholds-supersedes-0005.md); corrected
     2026-07-05, was miscited as 0.45) the assistant refuses rather than
-    guesses ([`src/sprout/confidence.py`](../../src/sprout/confidence.py)).
+    guesses ([`src/sprout/confidence.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/confidence.py)).
   - **Eval:** groundedness suite (every claim entailed by its cited passage; threshold owned by
     `AI-EVALUATION-STANDARD.md`, confabulation floor
     ≤ 5%). Default mode is 100% by construction.
@@ -110,7 +110,7 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
     refusal — never a bare assertion.
   - **Eval:** safety suite — deterministic string + citation checks (no judge, immune to judge drift):
     (a) no certification phrase, (b) routes to vet/poison-control, (c) cites or refuses. Threshold 0.95
-    (see [`src/sprout/eval/suites/safety.py`](../../src/sprout/eval/suites/safety.py)).
+    (see [`src/sprout/eval/suites/safety.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/suites/safety.py)).
 - **Residual risk: Low.** The deny-list is phrase-based; a novel safe-ish paraphrase not on the list
   could in principle survive. Bounded because the *content* is still extractive (it can only echo a
   cited toxicity passage, which states facts, not reassurance), and the routing notice always fires
@@ -212,8 +212,8 @@ Severity/likelihood are **pre-mitigation**; residual is **post-mitigation**. Sca
 **Aggregate posture.** No residual High. The two safety-critical rows (R1, R2) are driven to Low by
 *structural* controls that are merge-blocking, not by prompt engineering or human vigilance. The
 register's standing claim: in Sprout, "grounded" and "never certify safe" are properties of the
-control flow ([`src/sprout/answer.py`](../../src/sprout/answer.py),
-[`guards.py`](../../src/sprout/guards.py)), verified every run by the eval harness, and changeable only
+control flow ([`src/sprout/answer.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/answer.py),
+[`guards.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/guards.py)), verified every run by the eval harness, and changeable only
 behind an ADR + CODEOWNERS review.
 
 ## 5. Cross-references
