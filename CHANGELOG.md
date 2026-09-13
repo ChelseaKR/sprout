@@ -28,9 +28,13 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   necessary and **not** sufficient.
 
   The step is now a pinned, checksum-verified gitleaks binary run as `gitleaks git .` with no
-  `--log-opts`, which walks every commit reachable from HEAD on every event. The
+  `--log-opts`, which walks `git log --full-history --all` on every event — measured, not
+  assumed: in a scratch repository whose HEAD reaches one commit and whose side branch holds a
+  second, it reports "2 commits scanned" and finds the key on the branch, so the count CI
+  prints is the whole clone `fetch-depth: 0` produced rather than `main`'s own 146. The
   `pull-requests: read` scope went with the action — nothing asks the API for a commit range
-  any more.
+  any more. The two downloads retry (`--retry 3 --retry-all-errors --retry-delay 2`); the
+  verdict does not, so a download that fails every attempt still fails the job.
 
   Measured on a throwaway clone (remote removed, nothing pushed): over the same 146-commit
   history, with a random real-shaped AWS key planted in one commit and deleted in the next,

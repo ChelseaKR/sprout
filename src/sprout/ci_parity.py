@@ -85,7 +85,7 @@ ALLOWED_MAKE_ONLY_PREFIXES = (
 # exemption cannot leak into a job it was not written for.
 ALLOWED_CI_ONLY_PREFIXES: dict[str, tuple[str, ...]] = {
     # The pinned-gitleaks install block and the scan it ends in. `gitleaks git .` carries no
-    # `--log-opts`, so it walks every commit reachable from HEAD on every event; that is the
+    # `--log-opts`, so it walks `git log --full-history --all` on every event; that is the
     # whole point of it being a shell step rather than the event-driven action it replaced.
     # `make security` cannot run this line — a `linux_x64` tarball is not something a local
     # `make verify` can use — and CI cannot run the Makefile's line, which trusts whatever
@@ -99,7 +99,7 @@ ALLOWED_CI_ONLY_PREFIXES: dict[str, tuple[str, ...]] = {
         "GL=",
         'BASE="https://github.com/gitleaks/gitleaks/releases/download/',
         'ARCHIVE="gitleaks_',
-        "curl -sSfL -o",
+        "curl -sSfL",
         "(cd /tmp && grep",
         "tar -xzf",
         "/tmp/gitleaks git .",

@@ -26,8 +26,16 @@ assertion is kept as the necessary precondition it actually is, and nothing more
 Measured on a throwaway clone of this repository (remote removed, nothing pushed): a
 random, real-shaped AWS key planted in one commit and deleted in the next left
 ``gitleaks git . --log-opts=-1`` exiting 0 while ``gitleaks git .`` exited 1, over the
-same 146-commit history. ``tests/test_secret_scanning.py`` is the other half of this —
-it proves the committed ``.gitleaks.toml`` has rules at all.
+same 146-commit history.
+
+``gitleaks git .`` walks ``git log --full-history --all``, not only what HEAD reaches, so
+the count CI prints is the whole clone ``fetch-depth: 0`` produced and will exceed
+``main``'s own 146. Measured, not assumed: in a scratch repository whose HEAD reaches one
+commit and whose side branch holds a second, it reports "2 commits scanned" and finds the
+key on the branch.
+
+``tests/test_secret_scanning.py`` is the other half of this — it proves the committed
+``.gitleaks.toml`` has rules at all.
 """
 
 from __future__ import annotations
@@ -97,7 +105,7 @@ def test_the_scanner_is_not_handed_a_range() -> None:
     text = _ci_code()
     assert _SCAN_INVOCATION in text, (
         "the secret scan no longer runs `gitleaks git .`. Whatever replaces it must still "
-        "walk every commit reachable from HEAD on every event."
+        "walk the whole history — `git log --full-history --all` — on every event."
     )
     assert "--log-opts" not in text, (
         "`--log-opts` scopes gitleaks to a commit range. A range chosen from the "

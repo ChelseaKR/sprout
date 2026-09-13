@@ -93,17 +93,26 @@ jobs:
       # status check on `main` — depends on.
       #
       # A pinned, checksum-verified binary run as `gitleaks git .` with no `--log-opts`
-      # walks every commit reachable from HEAD, on every event, so the range no longer
-      # depends on how the run was triggered. The repository's `.gitleaks.toml` is
-      # auto-discovered (it is what supplies the rule set — see tests/test_secret_scanning.py).
+      # walks `git log --full-history --all`, on every event, so the range no longer depends
+      # on how the run was triggered. Measured locally: in a repository whose HEAD reaches
+      # one commit and whose side branch holds a second, `gitleaks git .` reports
+      # "2 commits scanned" and finds the key on the branch — so the CI count here is the
+      # whole clone `fetch-depth: 0` produced, which is more than `main`'s own 146.
+      # The repository's `.gitleaks.toml` is auto-discovered (it is what supplies the rule
+      # set — see tests/test_secret_scanning.py).
+      #
+      # The downloads retry; the verdict does not. `--retry-all-errors` covers the transient
+      # `curl: (35) Recv failure` that turned a sibling repository's check red having read
+      # zero commits. `curl -f` under `set -euo pipefail` still fails the job when every
+      # attempt fails, which is the outcome that must never be silent.
       - name: Secret scan (gitleaks, full history)
         run: |
           set -euo pipefail
           GL=8.30.1
           BASE="https://github.com/gitleaks/gitleaks/releases/download/v${GL}"
           ARCHIVE="gitleaks_${GL}_linux_x64.tar.gz"
-          curl -sSfL -o "/tmp/${ARCHIVE}" "${BASE}/${ARCHIVE}"
-          curl -sSfL -o /tmp/gitleaks_checksums.txt "${BASE}/gitleaks_${GL}_checksums.txt"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 2 -o "/tmp/${ARCHIVE}" "${BASE}/${ARCHIVE}"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 2 -o /tmp/gitleaks_checksums.txt "${BASE}/gitleaks_${GL}_checksums.txt"
           (cd /tmp && grep "  ${ARCHIVE}$" gitleaks_checksums.txt | sha256sum --check --strict)
           tar -xzf "/tmp/${ARCHIVE}" -C /tmp gitleaks
           /tmp/gitleaks git . --no-banner --redact --exit-code 1
