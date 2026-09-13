@@ -18,31 +18,35 @@ HTTPS, and fails naming every byte-level difference.
 
 WHAT IS NOT COMPARED BYTE FOR BYTE, AND WHY
 
-Two files, both stamped by mkdocs with the day the build ran rather than with
-anything about the content:
+One file, stamped by mkdocs with the day the build ran rather than with anything
+about the content:
 
-  * `sitemap.xml` carries a `<lastmod>` per URL, which mkdocs fills from
-    `get_build_date()`. Every one of the 52 entries reads today's date on a page
-    untouched for weeks. It is compared with those elements removed, so the URL
-    set, the change frequencies and the priorities are all still gated and only
-    the build stamp is not.
   * `sitemap.xml.gz` embeds a gzip MTIME field, so its bytes move whenever a
     build crosses a UTC midnight. It is not compared as bytes. Instead its live
     body must decompress, and what it decompresses to must be the live
     `sitemap.xml` byte for byte, which is the property the file exists to have.
 
-Both are day-granular build stamps, and forcing byte equality on them would make
-the check fail for a reason that is not drift. Everything else is exact: the
-corpus index, the config bundle, every ES module, the shell, the 52 rendered
-pages, the theme assets, the search index and all seven audit artifacts.
+`sitemap.xml` used to be the second one. Its `<lastmod>` elements were mkdocs'
+`get_build_date()`, so every entry read the day of the build and the check had to
+strip them to compare anything at all. They are now the date of the commit that
+last changed each page (`docs_hooks/sitemap_lastmod.py`), which is a property of
+the commit and not of the run, so the file is byte-stable for a given commit and
+is compared exactly -- including the dates. That matters: the elements the old
+exclusion removed are precisely the ones the fix changed, and a check blind to
+them could not have told whether the deployed sitemap carried the honest dates or
+the build stamp.
+
+Everything else is exact too: the corpus index, the config bundle, every ES
+module, the shell, the 52 rendered pages, the theme assets, the search index and
+all seven audit artifacts.
 
 Vacuity is the failure mode a check like this is most exposed to, so four things
 are refused outright instead of being reported as a pass:
 
   * a build tree below the file floor, because a sentinel that compares nothing
     and prints OK is worse than no sentinel at all (`--minimum`);
-  * a build tree in which neither excluded file is present, which would mean the
-    two exclusions above had silently become the whole story;
+  * a build tree in which the one excluded file is not present, which would mean
+    the exclusion above had silently stopped describing this build;
   * any fetch that does not return HTTP 200, an unreachable host included;
   * an origin that answers a guaranteed-missing path with anything but 404,
     which is how a catch-all would make every matching comparison meaningless.
@@ -57,7 +61,6 @@ import argparse
 import gzip
 import hashlib
 import http.client
-import re
 import secrets
 import ssl
 import sys
@@ -76,7 +79,6 @@ MINIMUM_FILES = 100
 # The two files mkdocs stamps with the build date. See the note above.
 SITEMAP = "sitemap.xml"
 SITEMAP_GZ = "sitemap.xml.gz"
-LASTMOD = re.compile(rb"\s*<lastmod>[^<]*</lastmod>")
 
 MAXIMUM_FILE_BYTES = 16 * 1024 * 1024
 EXIT_DIFFERS = 1
@@ -202,15 +204,10 @@ def compare(origin: Origin, inventory: dict[str, bytes], nonce: str) -> list[str
             continue
         if relative == SITEMAP:
             live_sitemap = response.body
-            live = LASTMOD.sub(b"", response.body)
-            expected = LASTMOD.sub(b"", expected)
-            label = " (with the build-stamped lastmod elements removed)"
-        else:
-            live = response.body
-            label = ""
+        live = response.body
         if live != expected:
             differences.append(
-                f"{relative}{label}: live sha256 {short(live)} ({len(live)} bytes) is "
+                f"{relative}: live sha256 {short(live)} ({len(live)} bytes) is "
                 f"not the built {short(expected)} ({len(expected)} bytes)"
             )
     differences.extend(compare_sitemap_gz(origin, nonce, live_sitemap))
@@ -298,12 +295,11 @@ def main(argv: list[str] | None = None) -> int:
                 root = REPO / root
             inventory = built_inventory(root)
             refuse_an_empty_comparison(len(inventory), args.minimum, "the built tree")
-            excluded = {name for name in (SITEMAP, SITEMAP_GZ) if name in inventory}
-            if not excluded:
+            if SITEMAP_GZ not in inventory:
                 raise LiveSiteError(
-                    f"neither {SITEMAP} nor {SITEMAP_GZ} is in the built tree, so the two "
-                    f"documented exclusions no longer describe this build. Re-read them "
-                    f"before trusting what is left."
+                    f"{SITEMAP_GZ} is not in the built tree, so the one documented "
+                    f"exclusion no longer describes this build. Re-read it before "
+                    f"trusting what is left."
                 )
             origin = Origin(args.url, timeout_seconds=args.timeout_seconds)
             nonce = secrets.token_hex(16)
@@ -340,9 +336,9 @@ def main(argv: list[str] | None = None) -> int:
     total = sum(len(payload) for payload in inventory.values())
     print(
         f"{origin.url} serves exactly what this checkout builds: {len(inventory)} "
-        f"file(s), {total} bytes. {SITEMAP} was compared without its build-stamped "
-        f"lastmod elements and {SITEMAP_GZ} was checked by decompressing it, both "
-        f"for the reasons in this file's header."
+        f"file(s), {total} bytes. {SITEMAP} was compared byte for byte, its "
+        f"<lastmod> dates included; {SITEMAP_GZ} was checked by decompressing it, "
+        f"for the reason in this file's header."
     )
     return 0
 
