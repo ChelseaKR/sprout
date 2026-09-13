@@ -42,7 +42,7 @@ from .claims import load_claims
 from .config import Config, load_config
 from .models import Answer
 from .offline_shell import OfflineShellError, check_offline_shell
-from .site_meta import check_site
+from .site_meta import check_site, lastmod_coverage
 from .slo import check_all, covered_files
 
 app = typer.Typer(add_completion=False, help="Sprout — grounded, evaluated plant-care assistant.")
@@ -688,7 +688,14 @@ def site_check(
         for problem in problems:
             typer.echo(f"  - {problem}", err=True)
         raise typer.Exit(1)
-    typer.echo(f"{root}: every published page's address checks out")
+    # Both numbers on the success line, not just the reassuring one: a sitemap that
+    # dated four of its fifty-three pages passes this gate, correctly, and a reader
+    # of the green line should be able to see that is what happened.
+    dated, total = lastmod_coverage(root)
+    typer.echo(
+        f"{root}: every published page's address checks out; "
+        f"{dated} of {total} sitemap entries state when the page last changed"
+    )
 
 
 @app.command("offline-check")

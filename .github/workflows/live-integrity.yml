@@ -56,6 +56,14 @@ jobs:
         with:
           ref: main
           persist-credentials: false
+          # The sitemap's <lastmod> is the date of the commit that last changed each
+          # page (docs_hooks/sitemap_lastmod.py). A depth-1 checkout cannot answer that
+          # and does not fail trying: `git log -1 -- <path>` returns the tip commit's
+          # date for every path, because relative to no parent that commit introduces
+          # the whole tree. The hook refuses a shallow checkout rather than publish 53
+          # identical dates, so without full history the sitemap ships no <lastmod> at
+          # all and `sprout site-check` fails.
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:

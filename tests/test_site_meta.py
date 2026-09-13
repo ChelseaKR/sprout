@@ -8,13 +8,24 @@ can.
 from __future__ import annotations
 
 import importlib.util
+from datetime import date
 from pathlib import Path
 
 import pytest
 
-from sprout.site_meta import check_site, page_url
+from sprout.site_meta import check_site, lastmod_coverage, page_url
 
 _ORIGIN = "https://sprout.example"
+
+#: The day the fixture site is read against. Pinned, because "is this date in the
+#: future" is a question whose answer moves on its own otherwise.
+_TODAY = date(2026, 9, 13)
+
+#: When each fixture page last changed. Deliberately neither equal to each other
+#: nor to ``_TODAY``: a per-page date that happened to be the build date would pass
+#: a gate that only checks the shape of the value.
+_CHANGED_HOME = "2026-05-01"
+_CHANGED_DOCS = "2026-06-22"
 
 _HOOK = importlib.util.spec_from_file_location(
     "page_description",
@@ -62,15 +73,30 @@ def site(tmp_path: Path) -> Path:
     (root / "robots.txt").write_text(
         f"User-agent: *\nAllow: /\n\nSitemap: {_ORIGIN}/sitemap.xml\n", encoding="utf-8"
     )
+    # Two different dates, both months before the day this fixture is built, because
+    # that gap is the whole subject: a sitemap whose dates are the build's own date
+    # is indistinguishable from an honest one until the content is older than the
+    # build, and every page here is.
     (root / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-        f"<url><loc>{_ORIGIN}/</loc></url>"
-        f"<url><loc>{_ORIGIN}/docs/</loc></url>"
+        f"<url><loc>{_ORIGIN}/</loc><lastmod>{_CHANGED_HOME}</lastmod></url>"
+        f"<url><loc>{_ORIGIN}/docs/</loc><lastmod>{_CHANGED_DOCS}</lastmod></url>"
         "</urlset>\n",
         encoding="utf-8",
     )
     return root
+
+
+def _resitemap(site: Path, *entries: str) -> None:
+    """Replace the fixture's sitemap with these raw ``<url>`` entries."""
+    (site / "sitemap.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        + "".join(entries)
+        + "</urlset>\n",
+        encoding="utf-8",
+    )
 
 
 def test_a_site_with_nothing_wrong_reports_nothing(site: Path) -> None:
@@ -226,6 +252,99 @@ def test_the_error_page_is_neither_indexed_nor_expected_in_the_sitemap(site: Pat
         encoding="utf-8",
     )
     assert check_site(site, _ORIGIN) == []
+
+
+# ----------------------------------------------------------------------------------
+# <lastmod>: the one element in a sitemap that is a claim about the content
+# ----------------------------------------------------------------------------------
+
+
+def test_dates_that_are_the_pages_own_pass(site: Path) -> None:
+    """The fixture's dates are months older than the day it is read on, and stand."""
+    assert check_site(site, _ORIGIN, today=_TODAY) == []
+    assert lastmod_coverage(site) == (2, 2)
+
+
+def test_a_sitemap_that_dates_nothing_at_all_is_reported(site: Path) -> None:
+    """The shallow-checkout shape: history unreadable, so every element is dropped.
+
+    Omitting <lastmod> on a page whose change date is unknown is the right answer,
+    which is exactly why omitting it on *every* page has to be reported: the two are
+    the same file, and only the denominator tells them apart.
+    """
+    _resitemap(
+        site,
+        f"<url><loc>{_ORIGIN}/</loc></url>",
+        f"<url><loc>{_ORIGIN}/docs/</loc></url>",
+    )
+    assert lastmod_coverage(site) == (0, 2)
+    assert any(
+        "not one of the 2 sitemap entries says when its page last changed" in problem
+        for problem in check_site(site, _ORIGIN, today=_TODAY)
+    )
+
+
+def test_one_page_without_a_date_is_not_a_problem(site: Path) -> None:
+    """A page this build genuinely could not date is meant to carry no element."""
+    _resitemap(
+        site,
+        f"<url><loc>{_ORIGIN}/</loc></url>",
+        f"<url><loc>{_ORIGIN}/docs/</loc><lastmod>{_CHANGED_DOCS}</lastmod></url>",
+    )
+    assert check_site(site, _ORIGIN, today=_TODAY) == []
+    assert lastmod_coverage(site) == (1, 2)
+
+
+def test_a_date_in_the_future_is_reported(site: Path) -> None:
+    """A future date is a broken clock, and it satisfies "is this fresh" forever."""
+    _resitemap(
+        site,
+        f"<url><loc>{_ORIGIN}/</loc><lastmod>2026-09-14</lastmod></url>",
+        f"<url><loc>{_ORIGIN}/docs/</loc><lastmod>{_CHANGED_DOCS}</lastmod></url>",
+    )
+    assert any(
+        "which is in the future" in problem for problem in check_site(site, _ORIGIN, today=_TODAY)
+    )
+
+
+def test_todays_date_is_not_in_the_future(site: Path) -> None:
+    """A page really changed today reads as today. The boundary is not a failure."""
+    _resitemap(
+        site,
+        f"<url><loc>{_ORIGIN}/</loc><lastmod>{_TODAY.isoformat()}</lastmod></url>",
+        f"<url><loc>{_ORIGIN}/docs/</loc><lastmod>{_CHANGED_DOCS}</lastmod></url>",
+    )
+    assert check_site(site, _ORIGIN, today=_TODAY) == []
+
+
+def test_a_misshapen_date_is_reported(site: Path) -> None:
+    _resitemap(
+        site,
+        f"<url><loc>{_ORIGIN}/</loc><lastmod>2026-5-1</lastmod></url>",
+        f"<url><loc>{_ORIGIN}/docs/</loc><lastmod>{_CHANGED_DOCS}</lastmod></url>",
+    )
+    assert any(
+        "which is not a YYYY-MM-DD date" in problem
+        for problem in check_site(site, _ORIGIN, today=_TODAY)
+    )
+
+
+def test_a_well_shaped_date_that_is_not_a_day_is_reported(site: Path) -> None:
+    """`2026-02-30` has the right shape and is not a date."""
+    _resitemap(
+        site,
+        f"<url><loc>{_ORIGIN}/</loc><lastmod>2026-02-30</lastmod></url>",
+        f"<url><loc>{_ORIGIN}/docs/</loc><lastmod>{_CHANGED_DOCS}</lastmod></url>",
+    )
+    assert any(
+        "which is not a real date" in problem for problem in check_site(site, _ORIGIN, today=_TODAY)
+    )
+
+
+def test_coverage_of_an_unpublished_sitemap_is_zero_of_zero(tmp_path: Path) -> None:
+    """Absent is reported as absent, never as full coverage of nothing."""
+    (tmp_path / "empty").mkdir()
+    assert lastmod_coverage(tmp_path / "empty") == (0, 0)
 
 
 def test_an_empty_tree_says_it_checked_nothing(tmp_path: Path) -> None:
