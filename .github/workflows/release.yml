@@ -1,22 +1,44 @@
 name: release
 
-# Fires on pushing an existing signed stable SemVer tag, deliberately NOT on
-# `workflow_dispatch`. A `workflow_dispatch` run executes in the context of the default
-# branch, so it holds *write* access to main's Actions cache scope. The `verify` job
-# below then checks out the release commit and runs that commit's `make verify` gate,
-# which means checked-out code executes in a cache scope every branch cut from main can
-# later restore from. That is CodeQL `actions/cache-poisoning/poisonable-step`
-# (error severity, CWE-349), and it is GitHub's own stated failure mode: "Never run
-# untrusted code in the context of the default branch."
+# Fires when a GitHub Release is published, deliberately NOT on `push: tags` and NOT on
+# `workflow_dispatch`. Publishing is a separate, deliberate act from tagging.
 #
-# A tag push scopes the run's cache to `refs/tags/<tag>` instead of `refs/heads/main`,
-# so the gate physically cannot write anything main (or a branch cut from main) will
-# restore. The tag authorization in the `authorize` job below is unchanged and remains
-# the real trust boundary: only an annotated, allowed-signer-signed, stable SemVer tag
-# that is on main resolves to a release commit at all.
+# WHY NOT `push: tags`. A tag push made publication irreversible at the moment of the
+# push: `git push origin v1.2.3` is one command, needs no confirmation, and everything
+# downstream of it — including the PyPI upload — ran unattended. PyPI never allows a
+# version to be re-uploaded, so a tag pushed by mistake, or at the wrong commit, could
+# not be taken back.
+#
+# It also could not have worked. This workflow used to call the shared
+# ChelseaKR/.github `release-authorize` reusable workflow, whose first check is
+# `test "${GITHUB_REF}" = refs/heads/main`. On a tag push `GITHUB_REF` is
+# `refs/tags/v*`, so that job could only ever fail; the reusable workflow also takes
+# the tag as an *input* rather than reading the ref, so passing `github.ref_name` handed
+# it a value it does not consume that way. The trigger was changed to `push: tags`
+# without relaxing either assumption, and no tag has ever been cut here to expose it.
+#
+# WHY NOT `workflow_dispatch`. That is the other way to make the `refs/heads/main` check
+# hold, and it is worse here: a dispatch runs in the context of the default branch, so
+# the `verify` job below — which checks out the release commit and runs that commit's
+# `make verify` — would execute release code inside main's Actions cache scope. That is
+# CodeQL `actions/cache-poisoning/poisonable-step` (error severity, CWE-349), which this
+# repository's own `scripts/codeql_gate.py` fails the build on. Disabling the cache on
+# `setup-uv` does not answer it: the finding is about the checked-out code being able to
+# write that scope by any means, not about this workflow's own caching. A
+# published-release event is scoped to `refs/tags/<tag>`, so the gate physically cannot
+# write anything that main, or a branch cut from main, restores.
+#
+# Tag authorization therefore moves in-repo, to `.github/verify-release-tag.sh` checked
+# against the committed `.github/allowed_signers` — the same mechanism ctdl-validate and
+# tods-validate publish behind, copied byte-identical rather than reimplemented. It runs
+# before anything is verified, built or uploaded, and it supports exactly this event.
+#
+# Releasing is now two steps instead of one:
+#   git tag -s v0.1.0 -m "release: v0.1.0" && git push origin v0.1.0   # inert on its own
+#   gh release create v0.1.0 --title "sprout v0.1.0" --generate-notes  # this starts it
 on:
-  push:
-    tags: ["v*"]
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -26,35 +48,96 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # The shared trust-boundary primitive: it owns tag authorization only (annotated,
-  # signed by an allowed signer, stable SemVer, on main) and returns immutable
-  # identifiers this workflow's own build/publish jobs pin to. It is consumed from the
-  # publicly readable copy in the org profile repository, not from a copy a
-  # non-collaborator cannot resolve — a caller can only reuse a workflow it can read,
-  # so the public copy is the one that keeps working regardless of this repo's
-  # visibility. Same commit, same behaviour; SHA-pinned so the trust boundary cannot
-  # move under us.
-  authorize:
-    uses: ChelseaKR/.github/.github/workflows/release-authorize.yml@7be4c3e44e2acf20e8a98eeea4351c1e5d2789bc
+  # The trust boundary, and the first thing that runs. Nothing is verified, built,
+  # uploaded or published from a tag that is not an annotated tag object whose SSH
+  # signature verifies against the committed `.github/allowed_signers`.
+  #
+  # `.github/verify-release-tag.sh` is copied byte-identical from ctdl-validate rather
+  # than written fresh, so there is one implementation of "is this a tag the maintainer
+  # signed" across the portfolio instead of several that drift. It replaces the shared
+  # `release-authorize` reusable workflow, which cannot be used on this event: that
+  # workflow requires its caller to be dispatched from `refs/heads/main`, and a
+  # published-release event runs at `refs/tags/<tag>`. The same checks are resolved
+  # locally — annotated tag object, signature against a committed key, and below, stable
+  # SemVer and a commit reachable from main.
+  #
+  # GRANDFATHERED_TAGS is empty and must stay empty: no tag has ever been cut in this
+  # repository, so nothing predates this control and nothing is exempt.
+  verify-tag:
+    name: verify-tag (the release tag is one the maintainer signed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
-    with:
-      tag: ${{ github.ref_name }}
+    outputs:
+      release-tag: ${{ steps.verify.outputs.tag }}
+      release-commit: ${{ steps.verify.outputs.commit }}
+      tag-object-sha: ${{ steps.object.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Full history and tags: the tag object being verified has to be present
+          # locally for `git verify-tag` to read its signature, and the ancestry check
+          # below needs main's history.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The release tag is signed by a key this repository trusts
+        id: verify
+        env:
+          # Routed through env: rather than interpolated into the run: shell. A tag name
+          # reaches this script as `github` context data and carries no guarantee about
+          # shell metacharacters.
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          # Empty on purpose: this job resolves the commit, and every job below pins to
+          # what it resolved rather than to a second resolution of the same name.
+          EXPECT_COMMIT: ""
+          ALLOWED_SIGNERS: .github/allowed_signers
+          GRANDFATHERED_TAGS: ""
+        run: bash .github/verify-release-tag.sh
+      - name: The tag is stable SemVer and names a commit on main
+        # The two checks the shared reusable workflow made that the script does not: a
+        # release is cut from reviewed code on main, and pre-releases do not publish. A
+        # signature proves who made the tag, not that the code passed review.
+        env:
+          TAG: ${{ steps.verify.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.verify.outputs.commit }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Release tag '${TAG}' must be stable SemVer (vX.Y.Z)."
+            exit 1
+          fi
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "${RELEASE_COMMIT}" origin/main; then
+            echo "::error::${RELEASE_COMMIT} is not reachable from origin/main. Release tags are cut on main only."
+            exit 1
+          fi
+      - name: Record the immutable tag-object id
+        # Rechecked against the live ref just before the PyPI upload, so a tag moved
+        # between verification and publication is caught rather than assumed impossible.
+        id: object
+        env:
+          TAG: ${{ steps.verify.outputs.tag }}
+        run: |
+          set -euo pipefail
+          printf 'sha=%s\n' "$(git rev-parse "refs/tags/${TAG}")" >> "${GITHUB_OUTPUT}"
 
   verify:
-    needs: authorize
+    needs: verify-tag
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.authorize.outputs.release-commit }}
+          ref: ${{ needs.verify-tag.outputs.release-commit }}
           persist-credentials: false
-      # No caching here either: this whole workflow triggers on `push: tags`, i.e. a
-      # release event, so a cache poisoned by an earlier, less-trusted run could be
-      # consumed here even though this job itself holds no write credentials (zizmor
-      # `cache-poisoning`, high severity — found 2026-07-05, applies workflow-wide on a
-      # tag-push trigger, not just to the job holding OIDC/attestation permissions).
+      # No caching here either: this is a release event, so a cache poisoned by an
+      # earlier, less-trusted run could be consumed here even though this job itself
+      # holds no write credentials (zizmor `cache-poisoning`, high severity — found
+      # 2026-07-05, applies workflow-wide on a release trigger, not just to the job
+      # holding OIDC/attestation permissions).
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
@@ -67,12 +150,12 @@ jobs:
         # `make eval RELEASE_TAG=<tag>` locally and commits the updated ledger before tagging;
         # this step is the fail-closed re-verification at the tagged commit, not the writer.
         env:
-          TAG: ${{ needs.authorize.outputs.release-tag }}
+          TAG: ${{ needs.verify-tag.outputs.release-tag }}
         run: uv sync --locked --extra serve && uv run sprout ingest && make verify RELEASE_TAG="${TAG}"
 
       - name: Require tag, package, and changelog versions to match
         env:
-          TAG: ${{ needs.authorize.outputs.release-tag }}
+          TAG: ${{ needs.verify-tag.outputs.release-tag }}
         run: |
           set -euo pipefail
           VERSION="${TAG#v}"
@@ -81,7 +164,7 @@ jobs:
           grep -Fq "## [${VERSION}]" CHANGELOG.md
 
   build:
-    needs: [authorize, verify]
+    needs: [verify-tag, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -91,12 +174,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.authorize.outputs.release-commit }}
+          ref: ${{ needs.verify-tag.outputs.release-commit }}
           persist-credentials: false
       # No caching in the OIDC signing/publish job: this job holds id-token: write +
       # attestations: write, and a poisoned/stale cache is the standard's canonical
       # cache-poisoning exposure for a provenance job (SEC-30, CICD-24). The `verify`
-      # job above has no credentials and may cache freely.
+      # job above has no credentials, but it does not cache either — see the note on its
+      # `setup-uv` step.
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
@@ -122,10 +206,16 @@ jobs:
         with:
           subject-path: "dist/*"
   publish-pypi:
-    needs: [authorize, build]
+    needs: [verify-tag, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: pypi
+    # The irreversible step. `pypi` carries a required reviewer, so this job waits for
+    # a human even though every gate above it is green: PyPI does not allow a version
+    # to be re-uploaded, and this is the last point at which the release can be
+    # stopped. The url is what the approval prompt shows the reviewer.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sprout-plantcare
     permissions:
       contents: read
       id-token: write
@@ -137,8 +227,8 @@ jobs:
       - name: Recheck immutable tag object before PyPI publication
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.authorize.outputs.release-tag }}
-          TAG_OBJECT_SHA: ${{ needs.authorize.outputs.tag-object-sha }}
+          TAG: ${{ needs.verify-tag.outputs.release-tag }}
+          TAG_OBJECT_SHA: ${{ needs.verify-tag.outputs.tag-object-sha }}
         run: |
           set -euo pipefail
           LIVE_TAG_OBJECT="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)"
@@ -147,7 +237,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
 
   publish-release:
-    needs: [authorize, build, publish-pypi]
+    needs: [verify-tag, build, publish-pypi]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -161,15 +251,18 @@ jobs:
         with:
           name: sbom
           path: dist
-      - name: Recheck immutable tag object and create the release
+      - name: Recheck the immutable tag object and attach the artifacts
+        # The Release is what triggered this run, so it already exists and this attaches
+        # to it rather than creating it — `gh release create` would fail here. That is
+        # the point of the split: cutting the Release is the maintainer's deliberate act,
+        # and everything verified, built and published hangs off it.
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ needs.authorize.outputs.release-tag }}
-          TAG_OBJECT_SHA: ${{ needs.authorize.outputs.tag-object-sha }}
+          TAG: ${{ needs.verify-tag.outputs.release-tag }}
+          TAG_OBJECT_SHA: ${{ needs.verify-tag.outputs.tag-object-sha }}
         run: |
           set -euo pipefail
           LIVE_TAG_OBJECT="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)"
           test "${LIVE_TAG_OBJECT}" = "${TAG_OBJECT_SHA}"
-          gh release create "${TAG}" dist/* \
-            --title "sprout ${TAG}" --generate-notes
+          gh release upload "${TAG}" dist/* --clobber

@@ -47,6 +47,37 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   locally — so the pinned-install block is allowlisted by prefix, scoped to the `security`
   group so a `curl` anywhere else is still drift.
 
+- **The release workflow could never have released, and a tag push would have been
+  irreversible if it had.** `.github/workflows/release.yml` fired on `push: tags: v*`,
+  which meant `git push origin vX.Y.Z` — one command, no confirmation — would have run
+  straight through to a PyPI upload that PyPI never allows to be re-uploaded. It could
+  not actually get there: the `authorize` job called the shared `ChelseaKR/.github`
+  `release-authorize` workflow, whose first check is
+  `test "${GITHUB_REF}" = refs/heads/main`, and on a tag push `GITHUB_REF` is
+  `refs/tags/v*`. That workflow also takes the tag as an *input* rather than reading the
+  ref, so `tag: ${{ github.ref_name }}` handed it a value it does not consume that way.
+  No tag has ever been cut here, so nothing was published and nothing is being corrected
+  after the fact.
+
+  The trigger is now `release: [published]`: tagging and publishing are separate acts,
+  and pushing a tag does nothing on its own. `workflow_dispatch` was the other way to
+  satisfy the authorizer's `refs/heads/main` check and is worse — a dispatch runs in the
+  default branch's context, so the `verify` job, which checks out the release commit and
+  runs that commit's `make verify`, would execute release code in main's Actions cache
+  scope. CodeQL flags exactly that as `actions/cache-poisoning/poisonable-step` (error
+  severity, CWE-349) and `scripts/codeql_gate.py` fails the build on it; disabling
+  `setup-uv`'s cache does not answer it, because the finding is about the checked-out
+  code being able to write that scope by any means. A published-release event is scoped
+  to `refs/tags/<tag>`, which neither main nor a branch cut from main restores.
+
+  Tag authorization moves in-repo accordingly, since the shared reusable workflow cannot
+  run on this event: `.github/verify-release-tag.sh` is copied byte-identical from
+  `ctdl-validate` and checked against the committed `.github/allowed_signers`, with
+  stable-SemVer and reachable-from-`main` checks alongside it. It runs before anything is
+  verified, built or uploaded. `publish-release` now attaches artifacts to the Release
+  that triggered the run instead of creating one, and `publish-pypi` names the
+  environment's url so the `pypi` required reviewer can see what they are approving.
+
 - **The only required status check could not name the gate that failed, and could pass
   having checked nothing.** `ci-gate` is the single required check for branch
   protection, so it is the one place a reader looks when a merge is blocked. It joined
