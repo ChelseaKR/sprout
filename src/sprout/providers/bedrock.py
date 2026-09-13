@@ -16,7 +16,7 @@ from typing import Any
 
 from ..models import RetrievedChunk
 from ..text import coverage, split_sentences
-from .base import context_hint
+from .base import context_hint, l2_normalize
 
 _PRICING_PER_1K = {"haiku": 0.0013, "sonnet": 0.018, "opus": 0.09}
 
@@ -56,8 +56,7 @@ class TitanEmbedding:
         )
         payload = json.loads(resp["body"].read())
         vec: list[float] = [float(x) for x in payload["embedding"]]
-        norm = sum(v * v for v in vec) ** 0.5
-        return [v / norm for v in vec] if norm else vec
+        return l2_normalize(vec)
 
 
 class BedrockGenerator:
