@@ -75,7 +75,7 @@ email addresses, and phone numbers from free-text questions before transmission.
 | **S**poofing | API caller identity (cloud mode); corpus source authenticity | Key auth + manifest provenance; offline default has no caller |
 | **T**ampering | Corpus/index tampering; eval dataset tampering | Content-hashing + sidecar pin; fail-closed loaders |
 | **R**epudiation | Which model/prompt/corpus produced a result | Run fingerprint; release records model+prompt+corpus versions |
-| **I**nfo disclosure | PII in logs; query leakage to a model provider | Whitelist-only logging; PII redaction at the network boundary; offline default |
+| **I**nfo disclosure | PII in logs; query leakage to a model provider | Whitelist-only logging; offline default; **opt-in** PII redaction at the network boundary (off in every shipped config — see T5) |
 | **D**enial of service | Provider outage; pathological input; API flooding | Degrade-to-refusal; bounded work; serverless scale-to-zero + budget alarm |
 | **E**levation of privilege | Prompt injection steering the model into ungrounded/unsafe output | Structural grounding (citation guard) defeats injection regardless of model compliance |
 
@@ -207,17 +207,27 @@ persisted in logs, or the question text is shipped to a model provider in cloud 
   only an explicit whitelist (`_ALLOWED_FIELDS`: event, language, refusal reason, counts,
   status) and silently drops everything else — **the question text is never a logged field.**
   This is a structural guarantee, not a redaction pass that could miss a case.
-- **Redaction at the network boundary.** `guards.redact_pii` masks emails / SSNs / phones
-  before any text crosses to a network provider (cloud mode only).
+- **Opt-in redaction at the network boundary — off by default.** `guards.redact_pii` masks
+  emails / SSNs / phones before text crosses to a network provider, but it runs only when the
+  separate `generation.redact_query_pii` switch is on, and that switch is
+  `False`<!-- claim:threat-model-redact-query-pii-default --> in every shipped config
+  (`src/sprout/config.py`, `config/sprout.yaml`, and the packaged `src/sprout/data/sprout.yaml`).
+  Selecting a cloud `generation.provider` does **not** flip it: a deployer who follows the
+  documented route to the cloud path and changes nothing else sends the question unredacted.
+  Redaction here is a second, deliberate opt-in, not a property of cloud mode — turn it on in
+  `config/sprout.yaml` (`docs/ADAPT.md`) before enabling a network provider. The three classes
+  above are also the only ones `redact_pii` knows; names, addresses and locations are not
+  matched by any pattern.
 - **No query persistence.** The demo keeps no user-query store and the offline default makes no
   network call, so there is nothing to leak and no third party to leak to (Confidentiality).
   Offline is also the privacy-preserving default.
 - **Observability tier.** Tier C for the offline CLI; Tier A for the optional serverless API,
   per `OBSERVABILITY-STANDARD.md`.
 
-**Residual risk.** A model *provider's* own request logs in cloud mode are outside Sprout's
-control; mitigated by redaction + the offline default + the model card disclosure. Low in
-default mode.
+**Residual risk.** **Low in the default (offline) mode**, where no query leaves the process at
+all — that, not redaction, is what carries this row. In cloud mode the residual is **Medium**: a
+model *provider's* own request logs are outside Sprout's control, and the redaction that would
+narrow what reaches them is off unless the deployer turns it on. Disclosed in the model card.
 
 ---
 
@@ -267,7 +277,7 @@ so a quiet judge swap is detectable and invalidates stale calibration records.
 | T2 | Ungrounded output | High | **Low** — 100% grounded by construction | `citation_guard`, groundedness suite |
 | T3 | Never-certify-safe bypass | **Critical** | **Low** — deny-list + routing + 0.95 deterministic gate | `safety_filter`, safety suite |
 | T4 | Corpus/index tampering | High | **Low** — mandatory provenance + hash pinning | `load_corpus`, dataset sidecar |
-| T5 | PII in logs / leakage | Medium | **Low** (offline) — whitelist logging + redaction | `obs.Logger`, `redact_pii` |
+| T5 | PII in logs / leakage | Medium | **Low** (offline) — whitelist logging, no network call / **Medium** (cloud) — redaction is opt-in and off by default | `obs.Logger`, `redact_pii` (gated by `generation.redact_query_pii`) |
 | T6 | Provider outage / DoS | Medium | **Low** — degrade-to-refusal + bounds + scale-to-zero | `BedrockGenerator`, infra limits |
 
 No residual risk is rated above Low in the offline default configuration; the elevated

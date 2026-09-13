@@ -36,9 +36,10 @@ phase.
   committed (`config.py`); no user-query persistence in the demo. Supply-chain controls are
   *not* waived: **pip-audit, gitleaks, Semgrep, CodeQL, SHA-pinned Actions, and SBOM on
   release** apply regardless (per the standard, scanning is never N/A for code that ships).
-- **Defense-in-depth for the optional network seam.** When the cloud generator is enabled,
-  `redact_pii()` scrubs email/SSN/phone patterns from text sent to a provider, and
-  prompt-injection attempts are detected and logged (defense is structural via the citation
+- **Defense-in-depth for the optional network seam.** When the cloud generator is enabled *and*
+  `generation.redact_query_pii` is turned on — a second switch, off in every shipped config —
+  `redact_pii()` scrubs email/SSN/phone patterns from text sent to a provider. Prompt-injection
+  attempts are detected and logged unconditionally (defense is structural via the citation
   guard — ADR-0003 — not the detector).
 - **L2 is deferred, not skipped.** The README and ROADMAP record that the household-data
   path (field-level authz, cross-tenant isolation, the sentinel-PII data-flow proof) raises
@@ -56,5 +57,5 @@ phase.
 - **Negative.** A future contributor who adds a network ingress or a persistence layer to
   the default path would invalidate the L1 declaration; this ADR plus the
   `RESPONSIBLE-TECH-AUDITS` declaration are the tripwire that should force a re-evaluation.
-- **Neutral.** The cloud seam's PII redaction and injection detection are L1-appropriate
-  hygiene, not an L2 control; they do not change the declared level.
+- **Neutral.** The cloud seam's opt-in PII redaction and its injection detection are
+  L1-appropriate hygiene, not an L2 control; they do not change the declared level.
