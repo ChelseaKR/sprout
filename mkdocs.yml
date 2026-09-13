@@ -29,6 +29,11 @@ theme:
 hooks:
   - docs_hooks/page_description.py
   - docs_hooks/sitemap_lastmod.py
+  # Every page said what it was to a person and nothing to a machine.
+  # This writes one schema.org block per page out of the title, description,
+  # canonical and nav mkdocs already has — no new copy, and no `Dataset`
+  # node, which would be a request to be harvested rather than a description.
+  - docs_hooks/structured_data.py
   # Google Analytics 4 on every handbook page, with the footer opt-out (ADR 0023). The
   # loader itself is web-static/public/analytics.js, published at the site root.
   - docs_hooks/analytics.py
