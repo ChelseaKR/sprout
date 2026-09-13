@@ -20,6 +20,11 @@ theme:
 # declares its own description alone.
 hooks:
   - docs_hooks/page_description.py
+  # Every page said what it was to a person and nothing to a machine.
+  # This writes one schema.org block per page out of the title, description,
+  # canonical and nav mkdocs already has — no new copy, and no `Dataset`
+  # node, which would be a request to be harvested rather than a description.
+  - docs_hooks/structured_data.py
 
 markdown_extensions:
   - admonition
