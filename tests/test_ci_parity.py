@@ -98,7 +98,8 @@ def test_diff_group_ignores_allowlisted_ci_only_command() -> None:
 
 
 def test_diff_group_ignores_allowlisted_make_only_prefix() -> None:
-    # gitleaks runs as a GitHub Action in CI, so it never appears as a `run:` command.
+    # The local gitleaks line names whatever is on `PATH`; CI's names a pinned binary it
+    # downloaded, so the two can never compare equal and both sides are exempted by name.
     report = diff_group(
         "security",
         {"uv run pip-audit"},
@@ -108,6 +109,35 @@ def test_diff_group_ignores_allowlisted_make_only_prefix() -> None:
         },
     )
     assert report.ok
+
+
+def test_diff_group_ignores_the_pinned_gitleaks_install_in_ci() -> None:
+    """CI's half of the same exemption: the pinned download and the history scan."""
+    report = diff_group(
+        "security",
+        {
+            "uv run pip-audit",
+            "set -euo pipefail",
+            "GL=8.30.1",
+            'curl -sSfL -o "/tmp/${ARCHIVE}" "${BASE}/${ARCHIVE}"',
+            "/tmp/gitleaks git . --no-banner --redact --exit-code 1",
+        },
+        {"uv run pip-audit"},
+    )
+    assert report.ok, report
+
+
+def test_the_ci_only_gitleaks_exemption_does_not_leak_into_other_jobs() -> None:
+    """Keyed by group on purpose: a `curl` in `test` is drift, not a secret scan.
+
+    A global prefix list would have made every job in the workflow free to download and
+    run an arbitrary binary with the parity gate reporting OK.
+    """
+    report = diff_group(
+        "test", {"uv run pytest", "curl -sSfL -o /tmp/x https://example"}, {"uv run pytest"}
+    )
+    assert not report.ok, report
+    assert report.ci_only == ("curl -sSfL -o /tmp/x https://example",)
 
 
 def test_the_old_gitleaks_and_or_form_is_no_longer_allowlisted() -> None:

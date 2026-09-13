@@ -10,8 +10,9 @@ was added to one side and forgotten on the other. `ROADMAP.md` tracked the gap a
 This module parses ``.github/workflows/ci.yml`` and the ``Makefile``, normalizes each side's
 shell commands to a comparable form, and reports any command present on one side with no
 counterpart on the other — except for a short, explicitly documented allowlist of intentional
-one-sided steps (a packaging smoke-build, environment-sync steps, and gitleaks, which CI runs
-as a GitHub Action rather than a shell command).
+one-sided steps (a packaging smoke-build, environment-sync steps, and the secret scan, which
+the two sides deliberately invoke differently: CI installs a pinned, checksum-verified
+gitleaks binary, while ``make security`` uses whatever gitleaks is on ``PATH``).
 
 Wired in two places so drift is caught automatically rather than re-relying on a human noticing:
 
@@ -67,14 +68,43 @@ ALLOWED_CI_ONLY = {
 
 # Commands (by prefix) that legitimately exist only in the Makefile.
 ALLOWED_MAKE_ONLY_PREFIXES = (
-    # `gitleaks` runs as a GitHub Action in CI (`gitleaks/gitleaks-action`), not a shell command,
-    # so it never appears as a `run:` step to diff against. The Makefile recipe documents the
-    # same fallback inline (see CONTRIBUTING.md's "CI parity" note). The prefix matches the
-    # `if`-form the recipe uses since 2026-08-28; the older `command -v gitleaks && ... || ...`
-    # form routed a real finding into the "not installed" branch and exited 0, which is why it
-    # is gone (see tests/test_security_gate.py).
+    # The local gitleaks invocation. This comment used to say gitleaks "runs as a GitHub Action
+    # in CI, not a shell command, so it never appears as a `run:` step" — true until 2026-09-13
+    # and no longer: `gitleaks/gitleaks-action` chose its scan range from the triggering event
+    # and read one commit on a single-commit push, so CI now runs a pinned binary as a shell
+    # step (see ALLOWED_CI_ONLY_PREFIXES). The two sides still cannot compare equal — one names
+    # a downloaded `/tmp/gitleaks`, the other whatever is on `PATH` — so both remain one-sided,
+    # each with the reason written down. The prefix matches the `if`-form the recipe uses since
+    # 2026-08-28; the older `command -v gitleaks && ... || ...` form routed a real finding into
+    # the "not installed" branch and exited 0, which is why it is gone (see
+    # tests/test_security_gate.py).
     "if command -v gitleaks",
 )
+
+# Commands (by prefix) that legitimately exist only in CI, keyed by comparison group so an
+# exemption cannot leak into a job it was not written for.
+ALLOWED_CI_ONLY_PREFIXES: dict[str, tuple[str, ...]] = {
+    # The pinned-gitleaks install block and the scan it ends in. `gitleaks git .` carries no
+    # `--log-opts`, so it walks every commit reachable from HEAD on every event; that is the
+    # whole point of it being a shell step rather than the event-driven action it replaced.
+    # `make security` cannot run this line — a `linux_x64` tarball is not something a local
+    # `make verify` can use — and CI cannot run the Makefile's line, which trusts whatever
+    # gitleaks is on `PATH` rather than a checksum-verified pin.
+    #
+    # Enumerated line by line rather than waving the whole job through: a `curl` or a `tar`
+    # that appears anywhere else in `security` is still drift, and the download is only
+    # exempt for as long as it stays this download.
+    "security": (
+        "set -euo pipefail",
+        "GL=",
+        'BASE="https://github.com/gitleaks/gitleaks/releases/download/',
+        'ARCHIVE="gitleaks_',
+        "curl -sSfL -o",
+        "(cd /tmp && grep",
+        "tar -xzf",
+        "/tmp/gitleaks git .",
+    ),
+}
 
 # Environment-setup commands are not "tools/thresholds" in the CONTRIBUTING.md sense — both
 # sides install dependencies before running the gates, but with different flags (CI uses
@@ -219,7 +249,12 @@ def ci_job_commands(ci_yaml: dict[str, object], job: str) -> set[str]:
 
 
 def diff_group(group: str, ci_commands: set[str], make_commands: set[str]) -> ParityReport:
-    ci_only = {c for c in (ci_commands - make_commands) if c not in ALLOWED_CI_ONLY}
+    ci_prefixes = ALLOWED_CI_ONLY_PREFIXES.get(group, ())
+    ci_only = {
+        c
+        for c in (ci_commands - make_commands)
+        if c not in ALLOWED_CI_ONLY and not any(c.startswith(p) for p in ci_prefixes)
+    }
     make_only = {
         c
         for c in (make_commands - ci_commands)

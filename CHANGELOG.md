@@ -10,6 +10,43 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The required secret scan read 1 of `main`'s 146 commits.** The `security` job is one of
+  `ci-gate`'s `needs:`, and `ci-gate` is the only required status check on `main`, so this
+  was the merge gate. It ran `gitleaks/gitleaks-action`, which picks its scan range from the
+  triggering event: `gitleaks detect --log-opts=--no-merges --first-parent BASE^..HEAD` on a
+  push, and `--log-opts=-1` — exactly one commit — when the push carries one, which every
+  squash merge into `main` is. The action drops `--log-opts` and reads the whole history only
+  on `schedule` and `workflow_dispatch`, and `ci.yml` triggers on neither, so no lane in this
+  repository had ever read more than a single commit. A credential added in one commit and
+  deleted in the next was invisible to it.
+
+  `fetch-depth: 0` did not prevent that and could not. It decides how much history
+  `actions/checkout` puts on **disk**; what the scanner reads is decided by how it is
+  invoked. This job had a full checkout and an invocation that asked for one commit of it,
+  and the comment on that line asserted the opposite ("gitleaks needs real history"), which
+  is the false reason that kept the gap from being seen. The comment now says the checkout is
+  necessary and **not** sufficient.
+
+  The step is now a pinned, checksum-verified gitleaks binary run as `gitleaks git .` with no
+  `--log-opts`, which walks every commit reachable from HEAD on every event. The
+  `pull-requests: read` scope went with the action — nothing asks the API for a commit range
+  any more.
+
+  Measured on a throwaway clone (remote removed, nothing pushed): over the same 146-commit
+  history, with a random real-shaped AWS key planted in one commit and deleted in the next,
+  `gitleaks git . --log-opts=-1` exited 0 and `gitleaks git .` exited 1. The clean baseline
+  passes, so the gate does not turn red on today's history.
+  `tests/test_secret_scan_reads_history.py` asserts the **invocation**, reads `ci.yml` with
+  comments stripped (four conformance checks in this portfolio have passed on a tool name
+  inside a comment, and the comment here names both the action removed and the flag
+  forbidden), and keeps the `fetch-depth: 0` assertion only as the precondition it is.
+
+  `sprout ci-parity-check` gained the other half of an exemption it already carried: gitleaks
+  was allowlisted as Makefile-only because CI ran it as an Action. It is a shell step on both
+  sides now, invoked differently on purpose — a pinned binary in CI, whatever is on `PATH`
+  locally — so the pinned-install block is allowlisted by prefix, scoped to the `security`
+  group so a `curl` anywhere else is still drift.
+
 - **The only required status check could not name the gate that failed, and could pass
   having checked nothing.** `ci-gate` is the single required check for branch
   protection, so it is the one place a reader looks when a merge is blocked. It joined
