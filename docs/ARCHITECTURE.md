@@ -28,7 +28,7 @@ runs with no network and no cloud account.
 ## 2. The answer pipeline
 
 The pipeline contract is encoded as control flow in
-[`src/sprout/answer.py`](../src/sprout/answer.py) (`Assistant.answer`). Each stage can only
+[`src/sprout/answer.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/answer.py) (`Assistant.answer`). Each stage can only
 *narrow* what reaches the user; none can introduce unsupported content.
 
 ```
@@ -80,7 +80,7 @@ The pipeline contract is encoded as control flow in
 
 Stage by stage:
 
-1. **Language resolution** ([`lang.py`](../src/sprout/lang.py)). An explicit `language`
+1. **Language resolution** ([`lang.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/lang.py)). An explicit `language`
    wins if supported; otherwise it is detected, falling back to the corpus default. The
    resolved language drives every downstream string (refusal, safety routing, disclosure)
    so EN/ES parity is a property of one variable, not scattered branches.
@@ -89,7 +89,7 @@ Stage by stage:
    detected from per-language keyword lists *before* retrieval, so the routing directive can
    be attached to both the answer and the refusal paths.
 
-3. **Retrieval is mandatory and first** ([`retrieve.py`](../src/sprout/retrieve.py)). Two
+3. **Retrieval is mandatory and first** ([`retrieve.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/retrieve.py)). Two
    ranking paths — cosine over `HashingEmbedding` vectors and Okapi BM25 — are fused by
    Reciprocal Rank Fusion (`rrf_k`), then near-duplicates are dropped by a Jaccard
    threshold. A conservative species/topic filter restricts candidates to the named plant
@@ -123,7 +123,7 @@ Stage by stage:
    asserts "safe"/"non-toxic"/"harmless" (per-language deny-list, accent-normalized) is
    dropped. The guarantee is enforced on rendered output, in both languages.
 
-7. **Calibrated confidence** ([`confidence.py`](../src/sprout/confidence.py)). Confidence is
+7. **Calibrated confidence** ([`confidence.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/confidence.py)). Confidence is
    a transparent logistic of *retrieval evidence* — best cosine, nudged by the margin over
    the runner-up — deliberately **not** answer fluency (which would reward confident
    nonsense). Below `abstain_threshold` the assistant refuses; below
@@ -145,8 +145,8 @@ changing the answer.
 ## 3. The provider seam (offline default / cloud production)
 
 All model-touching code hides behind two narrow `Protocol`s in
-[`providers/base.py`](../src/sprout/providers/base.py); callers never import a concrete
-provider, and [`providers/__init__.py`](../src/sprout/providers/__init__.py) resolves config
+[`providers/base.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/providers/base.py); callers never import a concrete
+provider, and [`providers/__init__.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/providers/__init__.py) resolves config
 strings to implementations with **lazy imports** (so `boto3`/`httpx` are only imported when
 the cloud path is actually selected — a plain `uv sync` with no extras runs end to end).
 
@@ -174,7 +174,7 @@ Offline is the **default and the privacy-preserving mode**: it costs nothing, ne
 account, and makes every component unit-testable. The cloud path is a config switch
 (Interchangeability), not a code change at the call sites.
 
-The index itself ([`store.py`](../src/sprout/store.py)) is a flat in-memory cosine store
+The index itself ([`store.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/store.py)) is a flat in-memory cosine store
 serialized to one JSON file — **no database, no mutable server state**. Recovery is
 "re-ingest" (`sprout ingest`).
 
@@ -182,7 +182,7 @@ serialized to one JSON file — **no database, no mutable server state**. Recove
 
 ## 4. The eval harness (the actual product)
 
-The harness lives in [`src/sprout/eval/`](../src/sprout/eval/) and is corpus-agnostic and
+The harness lives in [`src/sprout/eval/`](https://github.com/ChelseaKR/sprout/tree/main/src/sprout/eval/) and is corpus-agnostic and
 reusable. It blends **deterministic checks** with an **LLM-as-judge**, and is **fail-closed
 everywhere**: a hash mismatch, a malformed case, an empty suite, or a malformed judge
 response fails the run rather than passing quietly.
@@ -218,21 +218,21 @@ eval/suites/*.yaml ─▶ dataset.load_suite_dir() ──▶ Dataset (content-ad
 
 Key design points, mapped to code:
 
-- **Fail-closed data boundary** ([`dataset.py`](../src/sprout/eval/dataset.py)). Cases are
+- **Fail-closed data boundary** ([`dataset.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/dataset.py)). Cases are
   authored one YAML file per suite, parsed into a strict `DatasetItem`
   (`extra="forbid", frozen=True`). The combined `Dataset` is **content-addressed** — its
   version is `sha256:<hash[:12]>` over canonical items — and a committed `suites.sha256`
   sidecar pins it. A mismatch raises `DatasetError`: the dataset is tamper-evident and
   reproducible. Duplicate ids and empty datasets also raise.
 
-- **Run identity = fingerprint** ([`runner.py`](../src/sprout/eval/runner.py)). The
+- **Run identity = fingerprint** ([`runner.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/runner.py)). The
   `RunFingerprint` (harness version, seed, dataset hash, judge config hash, target, suite
   names) deliberately excludes wall-clock time, so the JSON artifact is **byte-identical for
   identical inputs** — the reproducibility property the report and the baseline diff rely
   on. Threshold overrides are applied copy-on-write so registry singletons are never
   mutated.
 
-- **No "skipped" verdict** ([`suite.py`](../src/sprout/eval/suite.py)). `Verdict` is only
+- **No "skipped" verdict** ([`suite.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/suite.py)). `Verdict` is only
   PASS or FAIL. A `SuiteResult` with `n_items == 0` *cannot* be PASS (a validator raises);
   any suite that throws is converted to a zero-item `fail_closed` FAIL. Every suite carries a
   written `MetricDefinition` (name, definition, threshold, direction) reproduced verbatim in
@@ -240,8 +240,8 @@ Key design points, mapped to code:
   and an `underpowered` (n<30) flag; the optional statistical gate flips PASS→FAIL when the
   CI lower bound does not clear the threshold.
 
-- **Judge ≠ answer model, behind one Protocol** ([`judge.py`](../src/sprout/eval/judge.py),
-  [`llm_judge.py`](../src/sprout/eval/llm_judge.py)). A suite asks only three relational
+- **Judge ≠ answer model, behind one Protocol** ([`judge.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/judge.py),
+  [`llm_judge.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/llm_judge.py)). A suite asks only three relational
   questions — `entails` (groundedness), `contains` (fact/anchor coverage), `equivalent`
   (multilingual). That is the *only* place a model is consulted, so a suite is identical
   whether run under the offline `DeterministicJudge` (lexical coverage + a negation-polarity
@@ -252,7 +252,7 @@ Key design points, mapped to code:
   The model call is an injected `CompletionFn`, so the harness is fully testable offline and
   never hit in CI; malformed judge JSON raises (fail-closed).
 
-- **The 9 suites**<!-- claim:architecture-eval-suite-count --> ([`suites/`](../src/sprout/eval/suites/)). `groundedness` (every claim
+- **The 9 suites**<!-- claim:architecture-eval-suite-count --> ([`suites/`](https://github.com/ChelseaKR/sprout/tree/main/src/sprout/eval/suites/)). `groundedness` (every claim
   entailed by its cited passage; contradicted vs unsupported), `safety` (deterministic: no
   "safe" certification, routes to vet/poison-control, cites a toxicity reference or honestly
   refuses — threshold 0.95, immune to judge drift), `calibration` (reliability diagram +
@@ -272,7 +272,7 @@ Key design points, mapped to code:
   ASPCA-listed pet-toxic plant the corpus covers carries an English "## Toxicity" section
   that routes to a vet and a poison-control line, so no lucky generation can satisfy it).
 
-- **Reproducible reporting** ([`report.py`](../src/sprout/eval/report.py)). Every artifact
+- **Reproducible reporting** ([`report.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/report.py)). Every artifact
   is a pure function of `RunResult` (no wall-clock): Markdown scoreboard, an HTML report that
   is **structurally accessibility-checked before it is written** (we never emit an
   inaccessible accessibility tool), plus JUnit and SARIF so any CI can annotate failures.
@@ -300,7 +300,7 @@ corpus/processed/*.{en,es}.md ──▶ Document ──▶ chunk_document() ─�
 ```
 
 Provenance is enforced at the data boundary, not hoped for downstream
-([`ingest.py`](../src/sprout/ingest.py)): the manifest is the source of truth, and a
+([`ingest.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/ingest.py)): the manifest is the source of truth, and a
 processed file with no matching `ManifestEntry` (source, url, license, fetch_date, language,
 topic) raises during ingest. Every chunk — and therefore every citation — carries source,
 license, and fetch date, which is how the UI honestly shows "based on references as of
@@ -311,7 +311,7 @@ license, and fetch date, which is how the UI honestly shows "based on references
 ## 6. Key invariants (what the CI gates protect)
 
 These are the properties a reviewer must preserve. Several are guarded by CODEOWNERS +
-an ADR requirement; see the [README "Hard guardrails"](../README.md) note.
+an ADR requirement; see the [README "Hard guardrails"](https://github.com/ChelseaKR/sprout/blob/main/README.md) note.
 
 | # | Invariant | Enforced in |
 |---|---|---|
@@ -337,7 +337,7 @@ an ADR requirement; see the [README "Hard guardrails"](../README.md) note.
 - **No user-query persistence** in the demo (Securability/Confidentiality).
 - **Family Greenhouse personalization** (household-data path, provenance tag
   `from your Greenhouse`, ASVS L2) is **deferred to a later phase**; see
-  [`CLAUDE.md`](../CLAUDE.md) and [`docs/ROADMAP.md`](ROADMAP.md). The grounding contract is
+  [`CLAUDE.md`](https://github.com/ChelseaKR/sprout/blob/main/CLAUDE.md) and [`docs/ROADMAP.md`](ROADMAP.md). The grounding contract is
   already designed for it: household data may *select and personalize* but never renders as a
   cited horticultural fact.
 
@@ -345,5 +345,5 @@ an ADR requirement; see the [README "Hard guardrails"](../README.md) note.
 
 - [`docs/THREAT-MODEL.md`](THREAT-MODEL.md) — STRIDE analysis with mitigations mapped to code.
 - [`docs/cards/model-card.md`](cards/model-card.md) — limits stated plainly.
-- [`docs/ACCESSIBILITY.md`](ACCESSIBILITY.md) + the ACR — WCAG 2.2 AA posture.
+- [`docs/a11y/STATEMENT.md`](a11y/STATEMENT.md) and [`docs/accessibility/ACR.md`](accessibility/ACR.md) — WCAG 2.2 AA posture.
 - `STANDARDS/` — the cross-cutting rigor this repo conforms to.

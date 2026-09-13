@@ -27,16 +27,19 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
 
-# The docs are GitHub-first and intentionally link to source files (../src/...),
-# the README — which is not a site page. Tolerate
-# those cross-tree links and the not-in-nav reference docs (ADRs, audits) while still
-# catching broken in-site anchors under --strict.
+# `links.not_found: ignore` was here to tolerate GitHub-first links into the source
+# tree (`../src/...`, `../README.md`). It tolerated them on the published site too,
+# where they are 404s: twenty-five were live at once. Those links are now absolute
+# GitHub URLs, which work in both places, so the check is on — under --strict it is an
+# error, and `sprout site-check` repeats it over the deployed tree, which is the only
+# place the copied web-static surface can be seen.
+# The not-in-nav reference docs (ADRs, audits) are still deliberate.
 validation:
   nav:
     omitted_files: ignore
     not_found: warn
   links:
-    not_found: ignore
+    not_found: warn
     absolute_links: ignore
     unrecognized_links: ignore
     anchors: warn

@@ -109,7 +109,7 @@ personalization or a managed-service offering ships. No control is unaddressed b
 
 The management-system claim Sprout makes: the controls that matter most for an AI assistant —
 provenance (A.7.5), V&V (A.6.2.4), responsible-use objectives (A.9.3) — are not policy documents but
-*code paths* in [`src/sprout/`](../../src/sprout/), verified every run by the eval harness and gated by
+*code paths* in [`src/sprout/`](https://github.com/ChelseaKR/sprout/tree/main/src/sprout/), verified every run by the eval harness and gated by
 `make verify`.
 
 ## Cross-references

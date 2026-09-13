@@ -8,6 +8,7 @@ can.
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -386,3 +387,91 @@ def test_a_page_with_no_card_image_is_still_fine(site: Path) -> None:
     check must not start failing them by implication.
     """
     assert check_site(site, _ORIGIN) == []
+
+
+# --- Links. Every same-site address a page publishes must lead somewhere. -------------
+#
+# The defect this section pins shipped to the live site and left no mark on the page
+# carrying it: the docs are written to be read in the repository, where
+# `../src/sprout/answer.py` resolves from `docs/`, and are published at `/ARCHITECTURE/`,
+# where the same link addresses a path the site does not serve. Twenty-five such links
+# were live at once, and every gate the project had was green.
+
+
+def _links(site: Path, markup: str, *, page: str = "docs/index.html") -> None:
+    """Put `markup` in the body of a published page, leaving its head alone."""
+    target = site / page
+    target.write_text(
+        target.read_text(encoding="utf-8").replace("</body>", f"{markup}</body>"),
+        encoding="utf-8",
+    )
+
+
+def test_a_link_to_a_published_page_passes(site: Path) -> None:
+    _links(site, '<a href="../">Home</a>')
+    assert check_site(site, _ORIGIN) == []
+
+
+def test_a_relative_link_that_escapes_the_published_tree_is_reported(site: Path) -> None:
+    """The live defect, exactly: a repository path published as a site path."""
+    _links(site, '<a href="../src/sprout/answer.py">answer.py</a>')
+    problems = check_site(site, _ORIGIN)
+    assert any("links '../src/sprout/answer.py'" in p for p in problems)
+
+
+def test_a_root_relative_link_to_a_file_the_build_did_not_write_is_reported(
+    site: Path,
+) -> None:
+    _links(site, '<a href="/ACCESSIBILITY.md">Accessibility</a>')
+    assert any("links '/ACCESSIBILITY.md'" in p for p in check_site(site, _ORIGIN))
+
+
+def test_a_link_to_a_directory_with_no_index_is_reported(site: Path) -> None:
+    """A directory answers on its index.html; without one the address is a 404."""
+    (site / "reference").mkdir()
+    (site / "reference" / "notes.txt").write_text("", encoding="utf-8")
+    _links(site, '<a href="/reference/">Reference</a>')
+    assert any("links '/reference/'" in p for p in check_site(site, _ORIGIN))
+
+
+def test_a_link_written_against_this_origin_in_full_is_checked_like_a_relative_one(
+    site: Path,
+) -> None:
+    _links(site, f'<a href="{_ORIGIN}/nowhere/">Nowhere</a>')
+    assert any("links '/nowhere/'" in p for p in check_site(site, _ORIGIN))
+
+
+def test_an_address_on_another_site_is_not_this_gate_s_business(site: Path) -> None:
+    """Reaching off-site to check a link would make this gate need a network."""
+    _links(site, '<a href="https://github.com/ChelseaKR/sprout/blob/main/src/x.py">x</a>')
+    assert check_site(site, _ORIGIN) == []
+
+
+def test_a_fragment_query_or_mail_address_is_not_a_file(site: Path) -> None:
+    _links(site, '<a href="#section">S</a><a href="?q=1">Q</a><a href="mailto:a@b.c">M</a>')
+    assert check_site(site, _ORIGIN) == []
+
+
+def test_an_href_inside_a_script_body_is_not_read_as_a_link(site: Path) -> None:
+    """Script bodies carry template strings; a gate reading them invents failures."""
+    _links(site, "<script>var t = '<a href=\"../src/nope.py\">x</a>';</script>")
+    assert check_site(site, _ORIGIN) == []
+
+
+def test_an_image_or_stylesheet_the_build_did_not_write_is_reported(site: Path) -> None:
+    _links(site, '<img src="/assets/missing.png" alt="">')
+    assert any("links '/assets/missing.png'" in p for p in check_site(site, _ORIGIN))
+
+
+def test_a_tree_whose_pages_link_nothing_says_the_sweep_read_nothing(site: Path) -> None:
+    """A sweep with no input passes forever, and its green means nothing.
+
+    This is the check on the check: strip every address out of the tree and the
+    gate must say it read nothing rather than reporting no problems.
+    """
+    for page in site.rglob("*.html"):
+        page.write_text(
+            re.sub(r"\b(?:href|src)=", "data-was=", page.read_text(encoding="utf-8")),
+            encoding="utf-8",
+        )
+    assert any("the link sweep read nothing" in p for p in check_site(site, _ORIGIN))

@@ -426,7 +426,7 @@ the same audit-as-artifact discipline applied across the portfolio.
 
 ## Related documents
 
-- Front door and standards table: [`README.md`](../../README.md)
+- Front door and standards table: [`README.md`](https://github.com/ChelseaKR/sprout/blob/main/README.md)
 - Architecture: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) · Threat model:
   [`docs/THREAT-MODEL.md`](../THREAT-MODEL.md)
 - Eval report (authoritative scores): [`docs/audits/eval-report.md`](../audits/eval-report.md)

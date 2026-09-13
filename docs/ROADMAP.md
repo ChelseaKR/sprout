@@ -234,7 +234,7 @@ level. The single deferred scope is noted explicitly.
 minimized context, HMAC authentication, provenance labeling, sentinel-PII proofs, and a scoped
 **ASVS L2** review. Corpus-only remains the privacy-preserving default. Phases B (proactive
 notifications) and C (confirmed write-back) remain deferred. See **Family Greenhouse integration** in
-[`../CLAUDE.md`](../CLAUDE.md) for the full plan and phasing (A → B → C).
+[`CLAUDE.md`](https://github.com/ChelseaKR/sprout/blob/main/CLAUDE.md) for the full plan and phasing (A → B → C).
 
 ---
 

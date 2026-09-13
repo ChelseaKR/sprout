@@ -19,6 +19,8 @@ is*, because a wrong one is worse than a missing one:
 * a declared ``og:image``/``twitter:image`` is absolute on this origin, carries
   alt text, and resolves to a file the build actually wrote -- an unfurler caches
   whatever it got, so a card naming a missing file is a permanently blank one;
+* every link a page makes to this site -- relative, or written against this
+  origin in full -- names a file the build actually wrote;
 * ``robots.txt`` exists and advertises the sitemap at the origin;
 * every ``<loc>`` in ``sitemap.xml`` resolves to a file the build actually
   wrote, and every built page appears in the sitemap.
@@ -31,7 +33,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from html import unescape as html_unescape
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
 __all__ = ["check_site", "page_url"]
@@ -50,6 +52,12 @@ _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 # read `content="Sprout's value..."` as the single word `Sprout`.
 _TAG = re.compile(r"""<(?:meta|link)\b(?:[^>"']|"[^"]*"|'[^']*')*>""", re.IGNORECASE)
 _ATTR = re.compile(r"""\b([a-zA-Z:_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+# The elements that ask a browser for another address. Built the same quote-aware
+# way as `_TAG`, so an apostrophe in an attribute cannot end the match early.
+_LINKING = re.compile(
+    r"""<(?:a|area|link|img|script|source|iframe)\b(?:[^>"']|"[^"]*"|'[^']*')*>""",
+    re.IGNORECASE,
+)
 
 #: A page declaring one of these declares all of them. A half-written card is a
 #: card a crawler fills in from somewhere else.
@@ -184,6 +192,86 @@ def _check_card(name: str, values: dict[str, str], root: Path, origin: str) -> l
     return problems
 
 
+#: Script and style bodies are text, not markup. A template string inside one can
+#: hold a whole `<a href=...>`, and a gate that read it would invent failures no
+#: reader can meet.
+_INERT_BODY = re.compile(r"<(script|style)\b[^>]*>.*?</\1\s*>", re.IGNORECASE | re.DOTALL)
+
+#: Attributes that carry an address this site is responsible for resolving.
+_LINK_ATTRS = ("href", "src")
+#: Prefixes that address something other than a path on this site.
+_OFFSITE = ("http://", "https://", "//", "mailto:", "tel:", "data:", "javascript:", "#")
+
+
+def _link_targets(doc: str, origin: str) -> list[str]:
+    """Every same-site address a page asks the reader's browser to follow.
+
+    A link written against this origin in full is reduced to its path, so it is
+    checked the same way a relative one is. Fragments and queries are dropped:
+    what is being checked is whether the file at the other end exists.
+    """
+    targets: list[str] = []
+    for tag in _LINKING.finditer(_INERT_BODY.sub(" ", doc)):
+        attrs = _attributes(tag.group(0))
+        for attr in _LINK_ATTRS:
+            if attr not in attrs:
+                continue
+            value = html_unescape(attrs[attr]).strip()
+            if value.startswith(f"{origin}/"):
+                value = value[len(origin) :]
+            if not value or value.lower().startswith(_OFFSITE):
+                continue
+            targets.append(value.split("#", 1)[0].split("?", 1)[0])
+    return [target for target in targets if target]
+
+
+def _resolves(target: str, page: Path, root: Path) -> bool:
+    """Whether ``target``, read from ``page``, names something the build wrote."""
+    if target.startswith("/"):
+        resolved = PurePosixPath(target)
+    else:
+        resolved = PurePosixPath("/") / page.relative_to(root).as_posix()
+        resolved = resolved.parent / target
+    parts: list[str] = []
+    for part in resolved.parts[1:]:
+        if part == "..":
+            if not parts:
+                # Escapes the published tree. Nothing above the site root is
+                # served, so this address is one no reader can reach.
+                return False
+            parts.pop()
+        elif part not in (".", ""):
+            parts.append(part)
+    published = root.joinpath(*parts) if parts else root
+    if published.is_dir():
+        return (published / "index.html").is_file()
+    return published.is_file()
+
+
+def _check_links(pages: list[Path], root: Path, origin: str) -> list[str]:
+    """Every same-site link on a published page must name a published file.
+
+    The failure this exists for leaves no mark on the page that carries it: the
+    markup is well formed, the build is green, and the only symptom is the 404 the
+    reader meets after clicking. It reached this site because the docs are written
+    to be read in the repository, where ``../src/sprout/answer.py`` resolves, and
+    are published at an address where it does not.
+    """
+    problems: list[str] = []
+    checked = 0
+    for page in pages:
+        name = page.relative_to(root).as_posix()
+        for target in _link_targets(page.read_text(encoding="utf-8"), origin):
+            checked += 1
+            if not _resolves(target, page, root):
+                problems.append(f"{name}: links {target!r}, which this build did not write")
+    if not checked:
+        # A sweep that read no link proves nothing, and would go on proving
+        # nothing for as long as whatever emptied it stayed broken.
+        return ["no page links anything on this site; the link sweep read nothing"]
+    return problems
+
+
 def _check_robots(root: Path, origin: str) -> list[str]:
     robots = root / "robots.txt"
     if not robots.is_file():
@@ -247,7 +335,8 @@ def check_site(root: Path, origin: str) -> list[str]:
     list when the site's claims about where its pages live are all true.
     """
     origin = origin.rstrip("/")
-    pages = _indexable(sorted(root.rglob("*.html")), root)
+    built = sorted(root.rglob("*.html"))
+    pages = _indexable(built, root)
     if not pages:
         return [f"{root} holds no indexable page, so this checked nothing"]
 
@@ -283,6 +372,7 @@ def check_site(root: Path, origin: str) -> list[str]:
                 f"{len(names)} pages share one description: {names[0]} ... ({shared[:60]!r})"
             )
 
+    problems.extend(_check_links(built, root, origin))
     problems.extend(_check_robots(root, origin))
     problems.extend(_check_sitemap(root, origin, pages))
     return problems
