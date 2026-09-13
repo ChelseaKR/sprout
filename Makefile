@@ -65,7 +65,7 @@ security: ## Dependency + secret + SAST scanning — the same tools/thresholds C
 	@if command -v gitleaks >/dev/null 2>&1; then \
 	  gitleaks detect --no-banner --redact; \
 	elif [ -n "$$CI" ]; then \
-	  echo "gitleaks not installed — failing (CI=true; CI runs it via gitleaks-action instead of this target)"; \
+	  echo "gitleaks not installed — failing (CI=true; CI runs a pinned gitleaks over the full history instead of this target)"; \
 	  exit 1; \
 	else \
 	  echo "gitleaks not installed locally — install it (https://github.com/gitleaks/gitleaks) to run this check; CI enforces it regardless"; \

@@ -1020,8 +1020,8 @@ def ci_parity_check(
 
     Fails if a CI job required by `ci-gate` runs a command `make verify` doesn't (drift the
     other direction is also reported), except for the small documented allowlist in
-    `sprout.ci_parity` (packaging smoke-build, environment sync, and gitleaks — which CI
-    runs as an Action, not a shell command).
+    `sprout.ci_parity` (packaging smoke-build, environment sync, and the secret scan — which
+    CI runs from a pinned, checksum-verified binary and `make security` runs from `PATH`).
     """
     import yaml
 

@@ -51,18 +51,18 @@ jobs:
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # `pull-requests: read` used to sit here so gitleaks-action could resolve a pull
+    # request's commit range through `GET /repos/{owner}/{repo}/pulls/{n}/commits`.
+    # Nothing in this job asks the API for a commit range any more, so the scope is gone.
     permissions:
       contents: read
-      # gitleaks-action resolves a pull_request's commit range through
-      # `GET /repos/{owner}/{repo}/pulls/{n}/commits`, which 403s on a private repo
-      # without this scope. Least privilege: read on contents + pull requests, nothing
-      # else — no write anywhere.
-      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # The PR-event scan is `git log <first-commit>^..<last-commit>`; those commits
-          # are not in a depth-1 checkout of the merge ref, so gitleaks needs real history.
+          # Puts the whole history on disk. Necessary, and on its own NOT sufficient:
+          # how much is fetched is not how much is read. What the scanner reads is decided
+          # by how it is invoked — see the secret-scan step below. This job spent months
+          # with a full checkout on disk and an invocation that asked for one commit of it.
           fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
@@ -81,14 +81,41 @@ jobs:
       # PR was not caught until it had already been merged to main — the PR's own
       # "security" check went green having scanned nothing for secrets. Blocking, no
       # `|| true`, no continue-on-error.
-      - name: gitleaks (secret scan)
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # On a PR finding the action would otherwise try to comment, which needs write
-          # scope. Turn the comment off rather than grant it — the failing step is the
-          # signal. (The same stance the author's other repos take.)
-          GITLEAKS_ENABLE_COMMENTS: "false"
+      #
+      # It was `gitleaks/gitleaks-action` until 2026-09-13, and that action picks its scan
+      # range from the triggering event: on a push it runs
+      # `gitleaks detect --log-opts=--no-merges --first-parent BASE^..HEAD`, and when the
+      # push carries a single commit — which every squash merge into `main` is — it runs
+      # `--log-opts=-1`, exactly one commit. `main` has 146. It drops `--log-opts` only on
+      # `schedule` and `workflow_dispatch`, and this workflow has neither trigger, so no
+      # lane here had ever read more than one commit. A credential added in one commit and
+      # deleted in the next was invisible to a job that `ci-gate` — the only required
+      # status check on `main` — depends on.
+      #
+      # A pinned, checksum-verified binary run as `gitleaks git .` with no `--log-opts`
+      # walks `git log --full-history --all`, on every event, so the range no longer depends
+      # on how the run was triggered. Measured locally: in a repository whose HEAD reaches
+      # one commit and whose side branch holds a second, `gitleaks git .` reports
+      # "2 commits scanned" and finds the key on the branch — so the CI count here is the
+      # whole clone `fetch-depth: 0` produced, which is more than `main`'s own 146.
+      # The repository's `.gitleaks.toml` is auto-discovered (it is what supplies the rule
+      # set — see tests/test_secret_scanning.py).
+      #
+      # The downloads retry; the verdict does not. `--retry-all-errors` covers the transient
+      # `curl: (35) Recv failure` that turned a sibling repository's check red having read
+      # zero commits. `curl -f` under `set -euo pipefail` still fails the job when every
+      # attempt fails, which is the outcome that must never be silent.
+      - name: Secret scan (gitleaks, full history)
+        run: |
+          set -euo pipefail
+          GL=8.30.1
+          BASE="https://github.com/gitleaks/gitleaks/releases/download/v${GL}"
+          ARCHIVE="gitleaks_${GL}_linux_x64.tar.gz"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 2 -o "/tmp/${ARCHIVE}" "${BASE}/${ARCHIVE}"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 2 -o /tmp/gitleaks_checksums.txt "${BASE}/gitleaks_${GL}_checksums.txt"
+          (cd /tmp && grep "  ${ARCHIVE}$" gitleaks_checksums.txt | sha256sum --check --strict)
+          tar -xzf "/tmp/${ARCHIVE}" -C /tmp gitleaks
+          /tmp/gitleaks git . --no-banner --redact --exit-code 1
 
   eval-a11y:
     runs-on: ubuntu-latest

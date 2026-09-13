@@ -29,7 +29,7 @@ it records. They are described by role.
 |---|---|---|
 | `docs/adr/0019-frozen-plugin-api-for-sprout-eval.md` | an unpublished sibling eval harness, cited as the motivating consumer of the plugin seam | "the author maintains other, unpublished eval-shaped projects that could consume the same runner" — the argument for freezing the API is unchanged; only the example is generalised |
 | `src/sprout/_vendor/genai_telemetry/README.md` | three unpublished repositories, listed as the shim's binding scope | "every AI-full repo in the author's portfolio — this one included" — the scope rule is identical, the roster is not enumerated |
-| `.github/workflows/ci.yml` | an unpublished repository, cited as precedent for disabling gitleaks PR comments | "the same stance the author's other repos take" — still records that this is a portfolio-wide decision rather than a one-off |
+| `.github/workflows/ci.yml` | an unpublished repository, cited as precedent for disabling gitleaks PR comments | the sentence was first generalised to "the same stance the author's other repos take"; since 2026-09-13 the secret scan is a pinned gitleaks binary rather than `gitleaks/gitleaks-action`, so there is no PR-comment setting left to justify and the comment is gone |
 | `.github/workflows/release.yml` | an unpublished repository hosting the shared `release-authorize` reusable workflow | repointed at the publicly readable copy in the org profile repository |
 | one commit message | an unpublished repository the CodeQL gate was ported from | unchanged in the tree; **only a history rewrite can reach a commit message** — see below |
 
