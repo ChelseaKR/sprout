@@ -10,6 +10,25 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The release workflow could never have released, and a tag push would have been
+  irreversible if it had.** `.github/workflows/release.yml` fired on `push: tags: v*`,
+  which meant `git push origin vX.Y.Z` — one command, no confirmation — would have run
+  straight through to a PyPI upload that PyPI never allows to be re-uploaded. It could
+  not actually get there: the `authorize` job calls the shared
+  `ChelseaKR/.github` `release-authorize` workflow, whose first check is
+  `test "${GITHUB_REF}" = refs/heads/main`, and on a tag push `GITHUB_REF` is
+  `refs/tags/v*`. The reusable workflow also takes the tag as an *input* rather than
+  reading the ref, so `tag: ${{ github.ref_name }}` was passing a value the authorizer
+  does not use that way. The trigger is now `workflow_dispatch` with a required `tag`
+  input dispatched from `main` — the shape the authorizer was written for, and the one
+  this workflow used before the trigger was changed. No tag has ever been cut here, so
+  nothing was published and nothing is being corrected after the fact. The
+  cache-poisoning finding that motivated the tag-push trigger (CodeQL
+  `actions/cache-poisoning/poisonable-step`) is handled where it actually lives: every
+  job sets `enable-cache: false` and none uses `actions/cache`, so no poisonable step
+  has a cache to write. `publish-pypi` now also names the environment's url, so the
+  required reviewer sees what they are approving.
+
 - **The only required status check could not name the gate that failed, and could pass
   having checked nothing.** `ci-gate` is the single required check for branch
   protection, so it is the one place a reader looks when a merge is blocked. It joined

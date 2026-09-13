@@ -1,22 +1,38 @@
 name: release
 
-# Fires on pushing an existing signed stable SemVer tag, deliberately NOT on
-# `workflow_dispatch`. A `workflow_dispatch` run executes in the context of the default
-# branch, so it holds *write* access to main's Actions cache scope. The `verify` job
-# below then checks out the release commit and runs that commit's `make verify` gate,
-# which means checked-out code executes in a cache scope every branch cut from main can
-# later restore from. That is CodeQL `actions/cache-poisoning/poisonable-step`
-# (error severity, CWE-349), and it is GitHub's own stated failure mode: "Never run
-# untrusted code in the context of the default branch."
+# Dispatched by hand from `main`, naming an existing signed tag. Deliberately NOT
+# `push: tags`.
 #
-# A tag push scopes the run's cache to `refs/tags/<tag>` instead of `refs/heads/main`,
-# so the gate physically cannot write anything main (or a branch cut from main) will
-# restore. The tag authorization in the `authorize` job below is unchanged and remains
-# the real trust boundary: only an annotated, allowed-signer-signed, stable SemVer tag
-# that is on main resolves to a release commit at all.
+# A tag push made publication irreversible at the moment of the push: `git push origin
+# v1.2.3` is one command, it needs no confirmation, and everything downstream of it —
+# including the PyPI upload — ran unattended. PyPI never allows a version to be
+# re-uploaded, so a tag pushed by mistake, or pushed at the wrong commit, could not be
+# taken back. The dispatch below is the same release, with the irreversible step moved
+# behind a deliberate second action and the `pypi` environment's required reviewer.
+#
+# The tag-push trigger was also broken, which is why nothing here ever published. The
+# `authorize` job below asserts `GITHUB_REF = refs/heads/main` (it is the shared
+# authorizer's first check). On a tag push `GITHUB_REF` is `refs/tags/v*`, so the job
+# could only ever fail, and the reusable workflow takes the tag as an *input* rather
+# than reading the ref. This restores the dispatch-from-main + `tag` input shape the
+# authorizer was written for and that this workflow used before the trigger was
+# changed.
+#
+# On the cache-poisoning concern that motivated the tag-push trigger (CodeQL
+# `actions/cache-poisoning/poisonable-step`, CWE-349: a dispatch runs in the default
+# branch's cache scope, so a job that checks out release code could write a cache that
+# branches cut from main later restore): every job in this workflow sets
+# `enable-cache: false` and no job uses `actions/cache`, so there is no cache entry for
+# a poisonable step to write. That, not the trigger, is what makes this safe — and it
+# is checked rather than assumed, because a tag-push trigger bought the same property
+# at the cost of an unattended, irreversible publish.
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing signed stable SemVer tag (vX.Y.Z)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -39,7 +55,7 @@ jobs:
     permissions:
       contents: read
     with:
-      tag: ${{ github.ref_name }}
+      tag: ${{ inputs.tag }}
 
   verify:
     needs: authorize
@@ -50,11 +66,15 @@ jobs:
         with:
           ref: ${{ needs.authorize.outputs.release-commit }}
           persist-credentials: false
-      # No caching here either: this whole workflow triggers on `push: tags`, i.e. a
-      # release event, so a cache poisoned by an earlier, less-trusted run could be
+      # No caching here either, and now it is load-bearing in both directions. This is
+      # a release event, so a cache poisoned by an earlier, less-trusted run could be
       # consumed here even though this job itself holds no write credentials (zizmor
-      # `cache-poisoning`, high severity — found 2026-07-05, applies workflow-wide on a
-      # tag-push trigger, not just to the job holding OIDC/attestation permissions).
+      # `cache-poisoning`, high severity — found 2026-07-05, applies workflow-wide, not
+      # just to the job holding OIDC/attestation permissions). It is also what lets this
+      # workflow be dispatched from `main` at all: with caching off there is no cache
+      # entry for a poisonable step to write into main's scope (CodeQL
+      # `actions/cache-poisoning/poisonable-step`). Turning caching on here would
+      # reintroduce that finding — see this file's header.
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
@@ -96,7 +116,8 @@ jobs:
       # No caching in the OIDC signing/publish job: this job holds id-token: write +
       # attestations: write, and a poisoned/stale cache is the standard's canonical
       # cache-poisoning exposure for a provenance job (SEC-30, CICD-24). The `verify`
-      # job above has no credentials and may cache freely.
+      # job above has no credentials, but it does not cache either: on a dispatch from
+      # `main` its cache writes would land in main's scope.
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
@@ -125,7 +146,13 @@ jobs:
     needs: [authorize, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: pypi
+    # The irreversible step. `pypi` carries a required reviewer, so this job waits for
+    # a human even though every gate above it is green: PyPI does not allow a version
+    # to be re-uploaded, and this is the last point at which the release can be
+    # stopped. The url is what the approval prompt shows the reviewer.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sprout-plantcare
     permissions:
       contents: read
       id-token: write
