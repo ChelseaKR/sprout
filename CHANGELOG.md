@@ -10,6 +10,28 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The threat model claimed a PII redaction the cloud path does not perform.** Three
+  documents stated redaction at the network boundary as a property of *cloud mode*:
+  `docs/THREAT-MODEL.md`'s STRIDE info-disclosure row and its T5 mitigation bullet, and
+  `docs/audits/ai-risk-register.md`'s R3 summary row, which rated the residual on it. The code
+  gates redaction behind a **second** switch, `generation.redact_query_pii`, which is `false`
+  in all three places it is declared — `src/sprout/config.py`, `config/sprout.yaml`, and the
+  packaged `src/sprout/data/sprout.yaml` — and nothing couples it to `generation.provider`.
+  Measured: under the documented route to the cloud path, **0 of the 3 claimed PII classes**
+  were redacted; with the switch on, 3 of 3 (emails, US dashed SSNs, phones) and no others.
+
+  The prose now says that, at every site: redaction is an opt-in that enabling a cloud
+  provider does not turn on, T5's residual is Low offline / **Medium** in cloud rather than
+  Low everywhere, and R3's control is labelled OPT-IN rather than AUTO, with its residual
+  carried by the offline default and the opt-in-and-labelled nature of cloud mode rather than
+  by redaction. `docs/adr/0008`, the corpus data card, and the `docs/ADAPT.md` and
+  `config/sprout.yaml` comments a deployer actually reads say the same. Three new
+  `docs/claims.yaml` entries pin the sentences to `config:generation.redact_query_pii`, and
+  `tests/test_redaction_is_opt_in.py` pins what the prose asserts: the three declaration sites
+  agree, no provider choice flips them, and `redact_pii` recognises exactly the three classes
+  the documents name. Behaviour is unchanged — defaulting the flag on for cloud providers is
+  the other repair, and it is the owner's call (#179).
+
 - **The required secret scan read 1 of `main`'s 146 commits.** The `security` job is one of
   `ci-gate`'s `needs:`, and `ci-gate` is the only required status check on `main`, so this
   was the merge gate. It ran `gitleaks/gitleaks-action`, which picks its scan range from the

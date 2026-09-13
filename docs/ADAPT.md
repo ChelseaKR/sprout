@@ -197,7 +197,9 @@ generation:
   # model: claude-haiku-4-5-20251001                  # provider: anthropic (native)
   region: us-west-2                   # cloud region, not a secret
   max_cost_usd: 0.05                  # per-answer preflight ceiling; unpriced models refuse
-  redact_query_pii: false             # redact PII before sending a query to a network provider
+  redact_query_pii: false             # OFF: set true to redact PII before sending a query to a
+                                      # network provider. Choosing a cloud provider above does not
+                                      # turn this on; it is an independent switch.
 ```
 
 `generation.model` is provider-specific: Bedrock uses an `anthropic.*` model id or supported

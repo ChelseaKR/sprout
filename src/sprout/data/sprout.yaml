@@ -58,7 +58,10 @@ generation:
   # model: claude-haiku-4-5-20251001                  # provider: anthropic (native)
   region: us-west-2
   max_cost_usd: 0.05             # per-answer preflight ceiling; unpriced models refuse
-  redact_query_pii: false         # redact PII before sending to a network provider
+  # OFF. Independent of `provider` above: choosing bedrock/anthropic does NOT turn this on.
+  # Set true to run guards.redact_pii (emails/SSNs/phones) over the query before it is sent to
+  # a network provider. docs/THREAT-MODEL.md T5 states the consequence of leaving it false.
+  redact_query_pii: false
   # EXP-04 (docs/adr/0018): an additional cross-encoder NLI entailment gate behind the
   # citation guard, for the cloud path only — provider must not be "deterministic" and
   # nli.model_sha256 must be pinned, enforced at config load (fail closed).

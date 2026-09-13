@@ -227,9 +227,11 @@ no personal data to protect**, by design.
   in the set and never reaches a log line. This is the data-flow proof: a free-text field has
   no path to the sink.
 - **Lawful basis / minimization.** Default build collects no personal data, so there is no
-  lawful-basis question; the cloud seam, if enabled, redacts emails/SSNs/phone numbers from
-  text sent to the provider (`guards.redact_pii`, gated by `generation.redact_query_pii`) and
-  sends no logs to the provider.
+  lawful-basis question; the cloud seam sends no logs to the provider, and it can redact
+  emails/SSNs/phone numbers from the text it does send (`guards.redact_pii`) — but only when
+  `generation.redact_query_pii` is turned on, and that flag ships as
+  `False`<!-- claim:responsible-tech-redact-query-pii-default --> everywhere it is declared.
+  Enabling a cloud provider does not enable it.
 - **Photo-ID egress is opt-in, minimal, and non-retaining (DPIA delta for ADR-0010).** The
   default `offline` identifier makes **no network call** and performs no on-device
   inference. Enabling the `plantnet` provider introduces **exactly one** allowlisted

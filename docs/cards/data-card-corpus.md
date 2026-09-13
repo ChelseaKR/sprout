@@ -130,8 +130,8 @@ these passages.
 **Sensitive data / PII / offensive content?**
 **None by design.** The corpus is synthetic prose about plants; it contains no personal data, no
 human subjects, and no offensive content. The PII story is a *guard* concern, not a corpus concern:
-`guards.redact_pii` and the Family-Greenhouse sentinel-PII checks govern the (optional) network path
-and household-data path, never this static corpus.
+`guards.redact_pii` (opt-in, off by default) and the Family-Greenhouse sentinel-PII checks govern
+the (optional) network path and household-data path, never this static corpus.
 
 **Errors, noise, redundancies?**
 The deliberate near-duplication is the EN/ES mirror and the 24-word chunk overlap; both are

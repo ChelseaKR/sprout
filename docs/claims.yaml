@@ -345,3 +345,31 @@ claims:
     source: "dataset:case-count"
     expected: "158"
     marker: "<!-- claim:web-dist-committed-case-count -->"
+
+  # --- Cloud-path PII redaction is a second switch, off by default (#179) --------------------
+  # Three documents described redaction as a property of "cloud mode". The code gates it behind
+  # `generation.redact_query_pii`, which is false in all three places it is declared, and no
+  # validator couples it to `generation.provider` — so the documented route to the cloud path
+  # sent the raw question. The prose now says so, and these entries keep it saying so: the day
+  # the default flips to true, `source` resolves to "True", these entries go stale, and
+  # `sprout claims-check` fails until the sentences are rewritten to match.
+  # The third declaration site (the packaged src/sprout/data/sprout.yaml) is outside this
+  # registry's `config:` resolver; tests/test_redaction_is_opt_in.py pins all three together.
+
+  - id: threat-model-redact-query-pii-default
+    file: docs/THREAT-MODEL.md
+    source: "config:generation.redact_query_pii"
+    expected: "False"
+    marker: "<!-- claim:threat-model-redact-query-pii-default -->"
+
+  - id: risk-register-redact-query-pii-default
+    file: docs/audits/ai-risk-register.md
+    source: "config:generation.redact_query_pii"
+    expected: "False"
+    marker: "<!-- claim:risk-register-redact-query-pii-default -->"
+
+  - id: responsible-tech-redact-query-pii-default
+    file: docs/RESPONSIBLE-TECH-AUDITS.md
+    source: "config:generation.redact_query_pii"
+    expected: "False"
+    marker: "<!-- claim:responsible-tech-redact-query-pii-default -->"
