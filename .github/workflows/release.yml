@@ -138,7 +138,7 @@ jobs:
       # holds no write credentials (zizmor `cache-poisoning`, high severity — found
       # 2026-07-05, applies workflow-wide on a release trigger, not just to the job
       # holding OIDC/attestation permissions).
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: false
       - name: Re-run the full gate set at the tagged commit
@@ -181,7 +181,7 @@ jobs:
       # cache-poisoning exposure for a provenance job (SEC-30, CICD-24). The `verify`
       # job above has no credentials, but it does not cache either — see the note on its
       # `setup-uv` step.
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: false
       - name: Build sdist + wheel
