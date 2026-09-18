@@ -4,7 +4,7 @@
 # HTTP-listening container run on Lambda unmodified — no handler rewrite, no Mangum
 # shim, so this image and the root one never drift in what code path they run.
 # Built from the repo root: `docker build -f infra/Dockerfile .`
-FROM public.ecr.aws/awsguru/aws-lambda-adapter:0.8.4 AS adapter
+FROM public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0 AS adapter
 
 FROM python:3.12-slim AS base
 
