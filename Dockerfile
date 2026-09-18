@@ -1,6 +1,6 @@
 # Minimal container for the offline reference UI + API. Builds the index at image time so
 # the container is self-contained and needs no network at runtime.
-FROM python:3.12-slim AS base
+FROM python:3.14-slim AS base
 
 # Apply pending Debian security updates on top of the base image. The upstream
 # python:3.12-slim tag lags the trixie-security suite: on 2026-08-26 it still shipped
