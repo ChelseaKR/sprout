@@ -16,7 +16,7 @@
  * than no check because somebody deletes it. So the assertion here is not that the TS
  * digest equals another TS digest — it is that the TS digest equals **the string Python
  * wrote into the committed bundle**, which is the only comparison that can catch a
- * canonicalisation disagreement between the two implementations.
+ * canonicalization disagreement between the two implementations.
  */
 
 import { readFileSync } from "node:fs";

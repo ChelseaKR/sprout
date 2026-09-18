@@ -1,10 +1,10 @@
 /**
- * A flat cosine store over pre-normalised dense vectors — a mirror of `store.py`'s
+ * A flat cosine store over pre-normalized dense vectors — a mirror of `store.py`'s
  * `VectorStore`, minus the write path (the browser only ever loads the index the Python
  * `sprout ingest` + `scripts/export_web_bundle.py` pair produced; it never writes one).
  *
  * Format v2 (FIX-07) carries the corpus's BM25 postings alongside chunks/vectors, so the
- * browser never re-tokenises the corpus either — `Retriever` loads them via
+ * browser never re-tokenizes the corpus either — `Retriever` loads them via
  * `BM25Index.fromState`.
  */
 
@@ -81,7 +81,7 @@ export class VectorStore {
   }
 
   /**
-   * Top-k chunks by cosine similarity (dot product on pre-normalised vectors).
+   * Top-k chunks by cosine similarity (dot product on pre-normalized vectors).
    *
    * `candidateIds`, when given, bounds the scan to those chunks instead of the whole
    * store — mirrors `store.py::search`'s `candidate_ids` (FIX-07). Ordering matches

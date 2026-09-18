@@ -804,7 +804,7 @@ def test_calibrate_warns_when_labeled_date_missing(tmp_path: Path) -> None:
 def test_calibrate_gate_refuses_a_freshness_check_that_could_not_run(
     tmp_path: Path, labeled_date: str | None, fragment: str
 ) -> None:
-    """AIEV-20's neighbour: three ways the freshness check silently stops existing.
+    """AIEV-20's neighbor: three ways the freshness check silently stops existing.
 
     `sprout calibrate --gate` is the merge-blocking mode, and the ROADMAP row says probe
     freshness is "checked by `sprout calibrate`". All three of these used to take the

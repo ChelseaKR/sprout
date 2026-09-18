@@ -1,9 +1,9 @@
 """In-memory cosine vector store, JSON-persistable — the default index.
 
-No database: the whole index is a list of (chunk, vector) pairs that serialises to one
-JSON file and rebuilds from ``make ingest``. Vectors are stored pre-normalised, so cosine
+No database: the whole index is a list of (chunk, vector) pairs that serializes to one
+JSON file and rebuilds from ``make ingest``. Vectors are stored pre-normalized, so cosine
 similarity is a dot product. The store also carries the corpus's **BM25 postings**, built
-once (at ingest, or lazily on first use) rather than re-tokenised on every query — see
+once (at ingest, or lazily on first use) rather than re-tokenized on every query — see
 ``build_bm25``/``bm25`` and FIX-07 in ``docs/ideation/02-large-scale-fixes.md``. There is
 no mutable server state to lose; recovery is "re-ingest".
 """
@@ -25,7 +25,7 @@ _FORMAT_VERSION = 2
 
 
 class VectorStore:
-    """A flat cosine store over pre-normalised dense vectors, plus BM25 postings."""
+    """A flat cosine store over pre-normalized dense vectors, plus BM25 postings."""
 
     def __init__(self) -> None:
         self._chunks: list[Chunk] = []
@@ -51,7 +51,7 @@ class VectorStore:
         """Build BM25 postings over every stored chunk, in store order.
 
         Intended to run **once**, at ingest time, so ``index.json`` carries the postings
-        and no query ever pays for re-tokenising the corpus. Idempotent — safe to call
+        and no query ever pays for re-tokenizing the corpus. Idempotent — safe to call
         again (e.g. after a lazy fallback) since it only reads already-stored chunk text.
         """
         self._bm25 = BM25Index([c.text for c in self._chunks], k1=k1, b=b)
@@ -69,7 +69,7 @@ class VectorStore:
         *,
         candidate_ids: Iterable[str] | None = None,
     ) -> list[RetrievedChunk]:
-        """Top-k chunks by cosine similarity (dot product on normalised vectors).
+        """Top-k chunks by cosine similarity (dot product on normalized vectors).
 
         ``candidate_ids``, when given, bounds the scan to those chunks instead of the
         whole store — the species/topic filter in ``Retriever`` uses this so a scoped

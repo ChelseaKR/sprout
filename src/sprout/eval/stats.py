@@ -21,7 +21,7 @@ def wilson_interval(successes: int, n: int, z: float = Z_95) -> tuple[float, flo
         return (0.0, 0.0)
     phat = successes / n
     denom = 1.0 + z * z / n
-    centre = phat + z * z / (2 * n)
+    center = phat + z * z / (2 * n)
     # `math.sqrt`, not `** 0.5`: `pow` is not required to be correctly rounded and
     # `sqrt` is, so the two differ in the last bit on some inputs and on some platforms
     # (99 of the 80600 (successes, n) pairs with n<=400, measured on macOS 2026-09-01).
@@ -29,8 +29,8 @@ def wilson_interval(successes: int, n: int, z: float = Z_95) -> tuple[float, flo
     # against a fresh regeneration, so a last-bit platform difference here is a red build
     # on a file nobody edited.
     margin = z * math.sqrt(phat * (1 - phat) / n + z * z / (4 * n * n))
-    low = (centre - margin) / denom
-    high = (centre + margin) / denom
+    low = (center - margin) / denom
+    high = (center + margin) / denom
     return (max(0.0, low), min(1.0, high))
 
 
@@ -41,7 +41,7 @@ def wilson_difference_interval(
 
     Returns (low, high) for ``p_a - p_b``. Each proportion gets its own Wilson interval and
     the two are squares-and-added, so the difference inherits Wilson's small-sample
-    behaviour instead of a normal approximation that misbehaves as either rate approaches
+    behavior instead of a normal approximation that misbehaves as either rate approaches
     0 or 1 — which is exactly the regime a pass-rate slice lives in.
 
     An empty slice returns the vacuous [-1, 1]: a difference between something and nothing

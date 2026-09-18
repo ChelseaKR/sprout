@@ -250,7 +250,7 @@ garbage; or pathological/oversized input or API flooding exhausts resources.
 - **Availability shape.** Serverless scales to zero with a budget alarm, or ships as a static
   offline build with no always-on dependency
   (`CI-CD` / `infra/`); rate limits guard the API.
-- **Eval analogue.** A suite that throws becomes a `fail_closed` FAIL rather than aborting the
+- **Eval analog.** A suite that throws becomes a `fail_closed` FAIL rather than aborting the
   run ([`runner.py`](https://github.com/ChelseaKR/sprout/blob/main/src/sprout/eval/runner.py)) — the harness itself degrades safely.
 
 **Residual risk.** Sustained API flooding of a deployed endpoint is bounded but not eliminated;

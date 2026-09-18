@@ -79,7 +79,7 @@ def test_append_is_additive_never_rewrites_prior_entries(tmp_path: Path) -> None
     assert [e.release for e in loaded] == ["v1.0.0", "v1.1.0"]
 
 
-def test_history_entry_is_frozen_and_serialisable(tmp_path: Path) -> None:
+def test_history_entry_is_frozen_and_serializable(tmp_path: Path) -> None:
     entry = history_entry_from_result(_result(safety=0.97), release="v1.0.0")
     with pytest.raises(ValidationError):
         entry.release = "mutated"

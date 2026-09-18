@@ -392,7 +392,7 @@ def test_every_exemption_carries_a_reason() -> None:
 # --- the aggregator itself: the ONLY required check, and what it can say ---------------
 #
 # Everything above holds the workflow *file* to the registry. These run the aggregator's
-# own shipped script, because its two defects were runtime behaviour and neither was
+# own shipped script, because its two defects were runtime behavior and neither was
 # visible in the file: it named the failing gate's *value* rather than its identity, and
 # its loop had no floor, so an empty `needs:` produced a required check that reported
 # success having examined nothing.
@@ -477,7 +477,7 @@ def test_a_skipped_path_filtered_job_is_still_a_pass() -> None:
     assert "::error::" not in out, out
 
 
-def test_a_cancelled_gate_is_not_a_pass_and_is_named() -> None:
+def test_a_canceled_gate_is_not_a_pass_and_is_named() -> None:
     """`cancelled` is no verdict rather than a good one, and this repository has already
     lost verdicts to concurrency eviction. Both non-success results are named, not just
     the first."""

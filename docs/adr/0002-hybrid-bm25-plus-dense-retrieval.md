@@ -50,7 +50,7 @@ delta, per the spec.
 
 - **Positive.** Recall is materially more robust than pure-dense over the offline embedder;
   the lexical path catches exact-term questions, the dense path catches loose paraphrase,
-  and RRF needs no score normalisation between the two.
+  and RRF needs no score normalization between the two.
 - **Positive.** The species filter is a structural defense against cross-species grounding,
   which is a *safety*-relevant error (toxicity answers must cite the right plant).
 - **Positive.** `min_score` remains the single answer-vs-refuse knob, retrievable and

@@ -29,7 +29,7 @@ checks make it mechanical, and add the questions it did not answer:
   *every tracked prose file* stop asserting that nothing was released, rather
   than the one file the rule happens to be pinned in.
 
-That last one is the generalisation. The two-directional README rule below is
+That last one is the generalization. The two-directional README rule below is
 correct and was applied to a single sentence in a single file; the same fact is
 restated in four more tracked files here, and each was written against the code
 rather than against the repository, so all four would go stale in the same
@@ -84,7 +84,7 @@ README_SAYS_NOTHING_TO_INSTALL = "There is no release to install"
 PRERELEASE_MARKER = "-dev"
 
 #: The sentinel `sprout.__version__` falls back to when the distribution is not
-#: installed. It is a labelled unknown, not a version, and must never be read
+#: installed. It is a labeled unknown, not a version, and must never be read
 #: as one — comparing it to the manifest is the whole point.
 NOT_INSTALLED = "0.0.0+unknown"
 
@@ -217,7 +217,7 @@ def test_every_restatement_of_the_version_agrees_with_the_manifest() -> None:
     declared = _manifest_version()
 
     # `sprout.__version__` is read from installed metadata rather than written
-    # down (REL-02). The sentinel is a labelled unknown; reading it as a version
+    # down (REL-02). The sentinel is a labeled unknown; reading it as a version
     # is the defect class this repository exists to avoid, so name it.
     assert sprout.__version__ != NOT_INSTALLED, (
         "sprout.__version__ is the not-installed sentinel; run `uv sync --locked` so this "
@@ -329,7 +329,7 @@ THIS_FILE = Path(__file__).resolve()
 
 #: Markdown wraps prose, and a wrapped claim is invisible to a substring match:
 #: `CHANGELOG.md` carries `There is no release to install` split across two
-#: lines behind a `>` quote marker, and only normalising finds it. Measured on
+#: lines behind a `>` quote marker, and only normalizing finds it. Measured on
 #: this tree: one file's claim is reachable only after this runs.
 _LINE_MARKERS = re.compile(r"^\s*(?:[>#*\-]|//)*\s*", re.MULTILINE)
 
@@ -443,7 +443,7 @@ def test_the_claim_vocabulary_is_real_and_not_self_matching() -> None:
     for pinned in (README_SAYS_NO_TAG, README_SAYS_NOTHING_TO_INSTALL):
         assert pinned in CLAIMS_OF_NO_RELEASE, (
             f"the vocabulary does not cover {pinned!r}, one of the two sentences this "
-            "repository already pins in both directions, so it generalises nothing"
+            "repository already pins in both directions, so it generalizes nothing"
         )
     own = _own_docstrings()
     assert len(own) >= MIN_DOCSTRINGS_IN_THIS_MODULE, (
@@ -459,7 +459,7 @@ def test_the_claim_vocabulary_is_real_and_not_self_matching() -> None:
             f"{' '.join(text.split())[:400]}"
         )
     assert _claims_in("> no tag has ever\n> been cut yet"), (
-        "a claim wrapped across two quoted lines is not found, so the normalisation this "
+        "a claim wrapped across two quoted lines is not found, so the normalization this "
         "scan depends on has stopped working and every wrapped sentence is invisible to it"
     )
     assert _claims_in("# 1.2.0): no git tag has ever been cut for this project"), (

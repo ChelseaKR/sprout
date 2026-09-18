@@ -52,7 +52,7 @@ survives; injection detection in `guards.py` is observability only).
   which provider is configured.
 - **Positive.** Injection defense is a free side effect of the entailment requirement.
 - **Negative — the honest limit.** Extractive prose reads stiffly: answers are stitched
-  source sentences, not a synthesised paragraph. We accept reduced fluency for guaranteed
+  source sentences, not a synthesized paragraph. We accept reduced fluency for guaranteed
   groundedness; the model card states this.
 - **Negative.** The coverage-overlap check is lexical, so a *correct* paraphrase from the
   cloud generator can be dropped as "unsupported." This is a deliberate false-negative bias

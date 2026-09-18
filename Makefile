@@ -143,7 +143,7 @@ demo: ingest ## Reproduce a short scripted session
 web-static-bundle: ingest ## Export index.json + config.json for the TS port (EXP-08)
 	$(PY) python scripts/export_web_bundle.py --config $(CONFIG)
 # Re-derive the provenance the export just wrote. Here, after `ingest`, this is close to
-# tautological and is honestly labelled as such: its job at this point is to catch an
+# tautological and is honestly labeled as such: its job at this point is to catch an
 # export that did not land (a partial write, a stale destination). It has real teeth in
 # `site-check` below and in pages.yml, where it reads the tree that is actually
 # published rather than the one make just built.

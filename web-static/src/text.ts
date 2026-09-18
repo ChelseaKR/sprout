@@ -13,7 +13,7 @@
 // unaccented forms `tokenize()` actually produces (Python's `content_tokens` also
 // NFKD-folds every token *before* the stop-word lookup, so accented entries in
 // `_STOPWORDS` such as "está"/"están"/"cómo"/"qué" never match there either — this set
-// keeps only the forms that are reachable, which is behaviourally identical).
+// keeps only the forms that are reachable, which is behaviorally identical).
 const STOPWORDS: ReadonlySet<string> = new Set([
   // English
   "a", "an", "and", "are", "as", "at", "be", "been", "being", "but", "by", "do", "does",
@@ -47,7 +47,7 @@ const TOKEN_RE = /[0-9]+(?:\.[0-9]+)?|\p{L}+/gu;
 const SENTENCE_SPLIT_RE = /(?<=[.!?])\s+/;
 const NEG_NT_RE = /\b\w+n't\b/i;
 
-/** Fold accents so 'también' and 'tambien' tokenise identically (mirrors `unicodedata.normalize("NFKD", ...)`). */
+/** Fold accents so 'también' and 'tambien' tokenize identically (mirrors `unicodedata.normalize("NFKD", ...)`). */
 export function stripAccents(token: string): string {
   // U+0300–U+036F is the Unicode "Combining Diacritical Marks" block — exactly the
   // marks NFKD decomposition splits accented letters into (e.g. "á" -> "a" + U+0301).

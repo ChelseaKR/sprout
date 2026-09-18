@@ -102,7 +102,7 @@ def build_index(config: Config) -> VectorStore:
 
     BM25 postings are built here — once, over every chunk — and persisted in
     ``index.json`` by ``store.save`` (FIX-07: see ``docs/ideation/02-large-scale-fixes.md``).
-    No query pays to retokenise the corpus at request time.
+    No query pays to retokenize the corpus at request time.
     """
     embedder = build_embedding(config)
     store = VectorStore()

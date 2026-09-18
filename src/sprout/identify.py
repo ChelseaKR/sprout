@@ -5,11 +5,11 @@ A plant photograph is identified by a pluggable vision identifier that returns a
 The resolved species is then routed back through the unchanged grounded care-RAG
 (``Assistant.answer``), so every rendered claim is still retrieval-mandatory, cited,
 and run through the never-certify-safe guard. The visual identification is surfaced
-separately and labelled "a visual match, not a cited fact"; it never enters
+separately and labeled "a visual match, not a cited fact"; it never enters
 ``Answer.sentences`` and is never presented as grounded.
 
 This mirrors the Family-Greenhouse contract already documented in the README: an
-external signal may *select and personalise*, but only the cited corpus is a source of
+external signal may *select and personalize*, but only the cited corpus is a source of
 fact. If the identifier is offline/unavailable, returns nothing, scores below
 ``min_confidence``, or names a species the corpus does not cover, the path degrades to a
 graceful "type the plant's name" fallback rather than guessing.
@@ -66,7 +66,7 @@ class ResolvedSpecies(_Frozen):
 
 
 class IdentifiedAnswer(_Frozen):
-    """What the photo path returns: the (labelled) identification plus a grounded answer.
+    """What the photo path returns: the (labeled) identification plus a grounded answer.
 
     When ``identified`` is false, ``answer`` is ``None`` and ``message`` carries the
     localized "type the plant's name" fallback. When true, ``answer`` is an ordinary

@@ -13,7 +13,7 @@ species — and checks the properties FIX-07 actually changes:
   ``BM25Index.__init__`` calls during retrieval.
 - An **unfiltered query** no longer asks ``VectorStore.search`` to rank and fully sort
   the *entire* store (``top_k=len(store)``); the request is capped, bounding the
-  downstream RRF/cosine-lookup work. This is a behavioural assertion, not a timing one,
+  downstream RRF/cosine-lookup work. This is a behavioral assertion, not a timing one,
   and deliberately does not claim flat *wall-clock* latency for the fully-unfiltered
   case: computing a dot product against every vector remains an O(corpus) cost of the
   pure-Python reference path with no species filter to narrow it, and an ANN/numpy fast
@@ -23,7 +23,7 @@ species — and checks the properties FIX-07 actually changes:
 The wall-clock assertions compare a *growth ratio*, not an absolute wall-clock budget
 (that is ``test_latency.py``'s job over the small fixture corpus) — a generous multiplier
 keeps this robust to slow/loaded CI hardware while still catching a regression to the old
-per-query "rebuild BM25 over every candidate" behaviour, which grew roughly linearly with
+per-query "rebuild BM25 over every candidate" behavior, which grew roughly linearly with
 corpus size.
 """
 
@@ -56,9 +56,9 @@ _LETTERS = string.ascii_lowercase
 def _slug_word(i: int) -> str:
     """A fully-alphabetic, distinct-per-index slug.
 
-    The species filter (``Retriever._slug_tokens``) tokenises on letter/digit
+    The species filter (``Retriever._slug_tokens``) tokenizes on letter/digit
     boundaries, so a shared alphabetic prefix followed by digits (e.g. "species0003")
-    would spuriously tokenise into a shared "species" word plus a distinct number,
+    would spuriously tokenize into a shared "species" word plus a distinct number,
     making every synthetic species "named" by any query mentioning another one. Coding
     the index entirely in letters keeps each slug a single, wholly distinct token.
     """
@@ -144,7 +144,7 @@ def test_unfiltered_query_bounds_dense_top_k_not_full_store(
 ) -> None:
     """An unfiltered query no longer requests ``top_k=len(store)`` off a growing store.
 
-    This is a behavioural assertion, not a timing one, and deliberately narrower than
+    This is a behavioral assertion, not a timing one, and deliberately narrower than
     "unfiltered retrieval is flat": computing a dot product against every vector is an
     inherent O(corpus) cost of the pure-Python reference path with no species filter to
     narrow it (an ANN/numpy fast path would be the next step, out of scope here — see

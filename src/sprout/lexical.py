@@ -92,7 +92,7 @@ class BM25Index:
     # --- persistence -------------------------------------------------------------
     # The postings (inverted term -> {doc: tf}, idf, lengths, avg length) are exactly
     # what ``scores``/``ranking`` need; persisting them lets ``from_state`` reconstruct
-    # an index without re-tokenising every document, which is the per-query cost this
+    # an index without re-tokenizing every document, which is the per-query cost this
     # class exists to avoid once the corpus is indexed at ingest time (FIX-07).
     def to_state(self) -> dict[str, object]:
         """Serialise the fitted postings — everything needed to score without retokenising."""

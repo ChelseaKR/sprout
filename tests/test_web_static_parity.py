@@ -75,7 +75,7 @@ def test_the_slug_set_covers_every_toxicity_heading_the_corpus_actually_uses() -
 
     A hand-maintained set is only as good as the documents it was written against. This
     reads every `## `-level heading in the processed corpus whose slug the routing must
-    recognise -- the toxicity sections -- and asserts the set covers them.
+    recognize -- the toxicity sections -- and asserts the set covers them.
     """
     processed = _ROOT / "corpus" / "processed"
     documents = sorted(processed.glob("*.md"))

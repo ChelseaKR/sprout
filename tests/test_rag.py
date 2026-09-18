@@ -80,7 +80,7 @@ def test_bm25_empty_corpus() -> None:
     assert BM25Index([]).scores("anything") == []
 
 
-def test_bm25_from_state_roundtrips_scores_without_retokenising() -> None:
+def test_bm25_from_state_roundtrips_scores_without_retokenizing() -> None:
     """FIX-07: persisted postings reconstruct an index with identical scores/ranking."""
     docs = [
         "yellow leaves indicate overwatering",
@@ -103,7 +103,7 @@ def test_bm25_from_state_empty_corpus() -> None:
 
 
 # --- embedding -------------------------------------------------------------------
-def test_hashing_embedding_deterministic_and_normalised() -> None:
+def test_hashing_embedding_deterministic_and_normalized() -> None:
     emb = HashingEmbedding(dim=128)
     v1 = emb.embed("yellow leaves")
     v2 = emb.embed("yellow leaves")
@@ -243,7 +243,7 @@ def test_hybrid_and_vector_only_agree_on_top(
 
 
 def test_bm25_not_rebuilt_per_query(monkeypatch: pytest.MonkeyPatch, assistant: Assistant) -> None:
-    """FIX-07: BM25 is constructed once per Retriever, never re-tokenised per query."""
+    """FIX-07: BM25 is constructed once per Retriever, never re-tokenized per query."""
     calls = {"n": 0}
     real_init = BM25Index.__init__
 
@@ -502,7 +502,7 @@ def test_citation_guard_drops_ungrounded(tiny_chunks: list[Chunk]) -> None:
     retrieved = [RetrievedChunk(chunk=chunk, score=0.5)]
     candidates = [
         (chunk.text.split(".")[0] + ".", chunk.chunk_id),  # supported (verbatim-ish)
-        ("Monsteras love being fertilised every single day.", chunk.chunk_id),  # unsupported
+        ("Monsteras love being fertilized every single day.", chunk.chunk_id),  # unsupported
         ("Some sentence.", "no-such-chunk"),  # cites a chunk that was never retrieved
     ]
     out = citation_guard(candidates, retrieved, support_overlap=0.66)
@@ -530,7 +530,7 @@ def test_safety_filter_drops_certifications(tiny_chunks: list[Chunk]) -> None:
     [
         ("Water your Monstera every 7 days once soil is dry.", [("water", 7.0, "every 7 days")]),
         ("Riega cada 14 días en invierno.", [("water", 14.0, "cada 14 días")]),
-        # weeks normalise to days, so a 2-week cadence compares equal to a 14-day one
+        # weeks normalize to days, so a 2-week cadence compares equal to a 14-day one
         ("Fertilize every 2 weeks during spring.", [("fertilize", 14.0, "every 2 weeks")]),
         # no anchoring action word nearby -> conservatively skipped, not a false conflict
         ("Check the soil every 3 days.", []),
@@ -795,7 +795,7 @@ def test_safety_directive_is_urgency_forward_and_escalates(assistant: Assistant)
     assert not asserts_safety(ans.display_text, "en", Config().guards)
 
 
-def test_safety_directive_localised_to_spanish(assistant: Assistant) -> None:
+def test_safety_directive_localized_to_spanish(assistant: Assistant) -> None:
     ans = assistant.answer("¿es tóxico el potos para los gatos?", language="es")
     assert ans.language == "es"
     notice = ans.safety_notice or ""
@@ -919,7 +919,7 @@ def test_facet_split_is_unchanged_by_the_redos_hardening(query: str) -> None:
     """The rewrite of ``_FACET_SPLIT_RE`` must be observably equivalent.
 
     The pattern no longer swallows the whitespace around a delimiter, so the raw ``split``
-    pieces differ — but ``extract_facets`` strips and tokenises every piece, so the facets it
+    pieces differ — but ``extract_facets`` strips and tokenizes every piece, so the facets it
     yields must be identical to those of the original, quadratic pattern.
     """
     ambiguous = re.compile(
@@ -997,7 +997,7 @@ def test_extractive_generator_covers_facet_crowded_out_by_near_duplicates() -> N
 
 
 def test_extractive_generator_single_facet_unchanged_by_diversity_selection() -> None:
-    """A single-clause query degrades to plain top-score ranking (no behaviour change)."""
+    """A single-clause query degrades to plain top-score ranking (no behavior change)."""
     chunk = _fern_chunk(
         "Water your fern every five days during the growing season. "
         "A fern likes consistent water on a five day rotation. "

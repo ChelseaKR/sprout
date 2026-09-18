@@ -30,7 +30,7 @@ no hosted dependency.
 The **default and only-required** generation stack is offline and deterministic:
 
 - `HashingEmbedding` — a signed SHA-256 token-hashing bag-of-tokens projection,
-  L2-normalised (`providers/deterministic.py`). SHA-256 is used purely as a stable
+  L2-normalized (`providers/deterministic.py`). SHA-256 is used purely as a stable
   token→dimension map, a non-cryptographic use that also keeps SAST quiet.
 - pure-Python **BM25** (`lexical.py`) fused with the dense path (see ADR-0002).
 - `ExtractiveGenerator` — returns only sentences copied verbatim from retrieved chunks,

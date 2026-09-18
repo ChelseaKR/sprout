@@ -132,7 +132,7 @@ guard → confidence/abstention → answer-or-refuse`.
 ### Offline deterministic stack (default — `provider: deterministic`)
 
 - **Embedding:** `HashingEmbedding` — a signed SHA-256 token-hashing bag-of-tokens projection,
-  L2-normalised, 512-d. SHA-256 is used purely as a stable token→dimension map (a non-cryptographic
+  L2-normalized, 512-d. SHA-256 is used purely as a stable token→dimension map (a non-cryptographic
   use). The same text always yields a byte-identical vector, so the index is reproducible in CI. It
   is a retrieval *baseline*, not a semantic model.
 - **Retrieval:** pure-Python **Okapi BM25** fused with dense cosine via **Reciprocal Rank Fusion**,

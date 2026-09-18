@@ -36,14 +36,14 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
   The prose now says that, at every site: redaction is an opt-in that enabling a cloud
   provider does not turn on, T5's residual is Low offline / **Medium** in cloud rather than
-  Low everywhere, and R3's control is labelled OPT-IN rather than AUTO, with its residual
-  carried by the offline default and the opt-in-and-labelled nature of cloud mode rather than
+  Low everywhere, and R3's control is labeled OPT-IN rather than AUTO, with its residual
+  carried by the offline default and the opt-in-and-labeled nature of cloud mode rather than
   by redaction. `docs/adr/0008`, the corpus data card, and the `docs/ADAPT.md` and
   `config/sprout.yaml` comments a deployer actually reads say the same. Three new
   `docs/claims.yaml` entries pin the sentences to `config:generation.redact_query_pii`, and
   `tests/test_redaction_is_opt_in.py` pins what the prose asserts: the three declaration sites
-  agree, no provider choice flips them, and `redact_pii` recognises exactly the three classes
-  the documents name. Behaviour is unchanged — defaulting the flag on for cloud providers is
+  agree, no provider choice flips them, and `redact_pii` recognizes exactly the three classes
+  the documents name. Behavior is unchanged — defaulting the flag on for cloud providers is
   the other repair, and it is the owner's call (#179).
 
 - **The required secret scan read 1 of `main`'s 146 commits.** The `security` job is one of
@@ -198,7 +198,7 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   *file* to a non-empty list; nothing held the *run* to it.
 
   The tests **execute the shipped script**, extracted from the workflow rather than
-  retyped, because both defects were runtime behaviour and neither is visible in a file
+  retyped, because both defects were runtime behavior and neither is visible in a file
   check — and a test that compiles its own copy of the thing under test is a second,
   weaker gate. `skipped` is asserted to remain a pass in the same suite: a check that
   names the failing gate is otherwise satisfied by one that refuses everything.
@@ -233,7 +233,7 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   The cross-language half is pinned rather than argued. `indexChunkIdsDigest` mirrors
   `web_bundle.index_chunk_ids_digest`, and the test asserts it equals **the string
   Python wrote into the committed bundle**, not another TypeScript digest — the only
-  comparison that can catch a canonicalisation disagreement. A digest the port computes
+  comparison that can catch a canonicalization disagreement. A digest the port computes
   differently would fire on every correct bundle, which is worse than no check because
   somebody deletes it. `indexChunkIds` refuses an index with no chunks or a chunk with
   no id *before* hashing, because an empty list hashes to a perfectly good digest.
@@ -357,7 +357,7 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   `date-released` and `-dev` marker compared against `git tag --list` — needs no vocabulary
   and is unchanged. Claims are matched after stripping Markdown line markers and collapsing
   whitespace, because a wrapped sentence is invisible to a substring match: `CHANGELOG.md`
-  carries one such claim split across two `>`-quoted lines, and only normalising finds it.
+  carries one such claim split across two `>`-quoted lines, and only normalizing finds it.
 
   Nothing here is tagged, so the live scan can only return an empty result — and an empty
   result is also what a scan that stopped finding the tree returns.
@@ -383,7 +383,7 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   bundle carries `confidence.well_supported_cutoff` and `prompts.confidence_band_labels`
   (`BUNDLE_FORMAT_VERSION` 2 → 3, and a version-2 bundle is refused rather than
   defaulted — an absent cutoff compares as `confidence >= undefined`, which is false for
-  every score, so every answered question would be labelled "partially supported" and
+  every score, so every answered question would be labeled "partially supported" and
   read as a calibration result). `derive_band_cutoff` re-derives that cut point whenever
   the confidence function is re-fit, which is precisely why a TypeScript copy of `0.70`
   would have been correct until the first `sprout fit-confidence` and silently wrong
@@ -454,7 +454,7 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
   Both defect classes at once: a gate that could not fail, and an absence rendered as a
   measurement. `tests/test_eval_core.py` pinned it in place with
-  `assert cohens_kappa([], []) == 1.0`, asserting the behaviour as intended.
+  `assert cohens_kappa([], []) == 1.0`, asserting the behavior as intended.
 
   The two degenerate cases are not the same thing, and conflating them is what did it.
   When every label agrees and expected agreement is therefore 1.0, perfect agreement was
@@ -515,17 +515,17 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   computed, because they do not measure the same thing. Flips are still listed, since "it
   failed there and not here" survives a judge change even when the arithmetic does not. A
   new failure stays a regression in both cases — only the absence was ever ambiguous.
-- **The embedders normalised with `pow`, and the browser port with `Math.sqrt`.**
+- **The embedders normalized with `pow`, and the browser port with `Math.sqrt`.**
   `x ** 0.5` is libm's `pow`, which IEEE 754 does not require to be correctly rounded;
   `math.sqrt` is `sqrt`, which it does. The hashing, static-vector and Titan embedders
   each repeated `sum(v * v for v in vec) ** 0.5`, while `web-static/src/hashEmbedding.ts`
-  -- the port that runs sprout.chelseakr.com -- has always normalised with `Math.sqrt`.
+  -- the port that runs sprout.chelseakr.com -- has always normalized with `Math.sqrt`.
   The CLI and the browser were therefore using **different square roots** for a pipeline
   this repo claims agrees bit-for-bit, and two runs of the CLI on different platforms did
   not have to agree either. That already turned one build red on a file nobody had edited
   (`static_vectors.json`).
 
-  `providers/base.py` gains one `l2_normalize` and all three embedders normalise through
+  `providers/base.py` gains one `l2_normalize` and all three embedders normalize through
   it, so there is a single square root to be right about. Measured on macOS (arm64,
   CPython 3.12.14): `n ** 0.5 != math.sqrt(n)` for 274 of the integers 1..200000 -- the
   shape of the hashing embedder's norms -- and for 32 of 5000 random static-vector sums.
@@ -571,7 +571,7 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   appears must carry the declared version, must retire those sentences and the
   `-dev` marker, must bring `date-released` back, and must have a `CHANGELOG.md`
   section behind it. `sprout.__version__` must equal `pyproject.toml` and must
-  not be the `0.0.0+unknown` not-installed sentinel, which is a labelled unknown
+  not be the `0.0.0+unknown` not-installed sentinel, which is a labeled unknown
   and never a version. `CITATION.cff`'s base version must equal the manifest's.
 
   The README's Status line now reads ``In build`` (0.1.0, untagged): the number
@@ -766,7 +766,7 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 - **The published site's root page now has a link-preview card.** `web-static/public/index.html`
   declared the full OpenGraph and Twitter set except an image, on the explicit reasoning that
   "an og:image naming a file that is not there is worse than none" — sound, but it left every
-  shared sprout.chelseakr.com link unfurling as a blank grey box. `og.png` (1280x640) ships with
+  shared sprout.chelseakr.com link unfurling as a blank gray box. `og.png` (1280x640) ships with
   the static bundle, and the page names it with `twitter:card` raised to `summary_large_image`.
 
   The comment's reasoning is now enforced rather than trusted. `sprout site-check` fails a
@@ -783,7 +783,7 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   cases would be answered and what fraction of *those* would be wrong. The `calibration`
   suite appends the curve to its existing segments. Report-only: the suite's PASS/FAIL is
   still ECE ≤ 0.15 plus abstention enforcement, unchanged. Rows read
-  `risk @ confidence≥T (coverage C)` — `T` is a confidence cutoff, so labelling them
+  `risk @ confidence≥T (coverage C)` — `T` is a confidence cutoff, so labeling them
   `coverage≥T` named the wrong axis and contradicted the numbers beside them (at
   `confidence≥0.25` the committed corpus covers 100% of calibration cases, not 25%), and
   left coverage itself unpublished. A point covering nothing reports `risk: None`, not
@@ -807,11 +807,11 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
     on any machine-made artifact not either gated or listed with a reason, so the list
     cannot go quietly short.
   - `scripts/generate_static_vectors.py` gained a `--check` mode that renders through the
-    same serialiser `main()` writes with and compares without touching the file. Editing
+    same serializer `main()` writes with and compares without touching the file. Editing
     `src/sprout/data/embeddings/clusters.yaml` and forgetting to regenerate previously
     shipped a table the code no longer produces, with every gate green.
   - **The static-vector table was not reproducible off the machine that wrote it.**
-    `scripts/generate_static_vectors.py` L2-normalised with `x ** 0.5`, which is libm's
+    `scripts/generate_static_vectors.py` L2-normalized with `x ** 0.5`, which is libm's
     `pow` — not required by IEEE 754 to be correctly rounded — rather than `math.sqrt`,
     which is. Measured 2026-09-01 on macOS (arm64, CPython 3.12.14): 91 of the 276 norms
     the generator computes gave a different double from `math.sqrt` of the same sum, and
@@ -820,8 +820,8 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
     gate above duly said "is current" locally and "is stale" in CI for a file nobody had
     edited. The generator now uses `math.sqrt` and the committed table is regenerated;
     every value moved by at most 2.8e-17, so no rendered score or report changed. A test
-    rebuilds the generator's un-normalised inputs from the real `clusters.yaml` and
-    compares its normalisation against a `math.sqrt` reference, so the divergence fails
+    rebuilds the generator's un-normalized inputs from the real `clusters.yaml` and
+    compares its normalization against a `math.sqrt` reference, so the divergence fails
     on whichever machine has the disagreeing `pow` rather than only in CI.
   - `src/sprout/data/embeddings/manifest.yaml` restates the table's `dim` by hand and
     names its source, its generator and its ADR. The dimension is now checked against
@@ -1201,7 +1201,7 @@ the public evaluation harness as the headline artifact.
 - **Facet-coverage answer planner + a `completeness` eval metric** (EXP-01,
   `providers/deterministic.py`, `eval/suites/completeness.py`). The extractive generator now
   splits a multi-part question into per-clause "facets" (`text.extract_facets`) and selects
-  sentences greedily to maximise *marginal* facet coverage before raw relevance score, so a
+  sentences greedily to maximize *marginal* facet coverage before raw relevance score, so a
   two-part question ("how often should I water, and does that change in winter?") surfaces
   both clauses instead of three near-duplicate answers to the first one — a single-clause
   question is unaffected (verified byte-for-byte identical output). A new deterministic
@@ -1234,7 +1234,7 @@ the public evaluation harness as the headline artifact.
   `providers/plantnet.py`). A photo is identified into candidate species, the best confident
   match is resolved to a species **already in the cited corpus**, and that species is routed
   back through the *unchanged* grounded pipeline — so every rendered claim is still cited and
-  toxicity still routes to a vet. The identification is labelled "a visual match, not a cited
+  toxicity still routes to a vet. The identification is labeled "a visual match, not a cited
   fact" and never enters the answer's sentences. Offline by default (no network, always falls
   back to "type the plant's name"); a `plantnet` provider calls the allowlisted Pl@ntNet API
   with its key from `PLANTNET_API_KEY` (env only). New `sprout identify` command and
@@ -1396,7 +1396,7 @@ the public evaluation harness as the headline artifact.
   key-and-placeholder-parity diff.
 - **Retrieval scale architecture (FIX-07).** `BM25Index` is now an inverted-postings structure
   (`term -> {doc_index: term_freq}`, `lexical.py`) built **once per corpus** instead of being
-  retokenised on every query: `ingest.py` builds it over every chunk and `store.py` persists it in
+  retokenized on every query: `ingest.py` builds it over every chunk and `store.py` persists it in
   `index.json` (format version bumped to 2; a v1 file now fails to load with a message pointing at
   `sprout ingest`). `VectorStore.search` accepts a `candidate_ids` filter and selects with
   `heapq.nlargest` instead of a full sort, so a species-scoped query's dense scan and BM25 scoring

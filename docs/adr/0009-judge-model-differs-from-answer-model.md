@@ -12,7 +12,7 @@ properties no string match can settle — groundedness (does the claim follow fr
 sources?) and helpfulness. The integrity of that judgment is the integrity of the headline
 artifact. The well-documented failure mode is **self-preference / self-evaluation bias**: a
 model grading its own outputs systematically scores them higher, because the same training
-distribution that produced the answer also recognises and favours its own style. A judge
+distribution that produced the answer also recognizes and favors its own style. A judge
 that *is* the answer model launders the assistant's own blind spots into a passing grade.
 
 `AI-EVALUATION-STANDARD` standardizes on Anthropic Claude for both generation and
@@ -48,7 +48,7 @@ pinned in versioned config (`eval/llm_judge.py`, `eval/judge.py`).
 - **Positive.** Self-preference bias is structurally excluded: the grader is never the
   gradee. Groundedness/helpfulness scores are independent of the answer model's own taste.
 - **Positive.** The default offline path uses the `DeterministicJudge`, so the entire eval —
-  including the judged suites' deterministic analogue — runs reproducibly with no network or
+  including the judged suites' deterministic analog — runs reproducibly with no network or
   key; the LLM judge is an opt-in upgrade, not a CI dependency.
 - **Positive.** Folding the judge config hash into the run fingerprint means a judge change
   can never silently move scores — it is visible in the run identity and invalidates stale

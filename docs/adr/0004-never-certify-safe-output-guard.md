@@ -31,7 +31,7 @@ A dedicated **safety guard** layer, separate from the citation guard, enforces t
 2. **Deny-list output filter.** `safety_filter()` / `asserts_safety()` drop *any* rendered
    sentence — even a grounded one — that contains a forbidden certification phrase, in
    either language: EN `"is safe"`, `"non-toxic"`, `"harmless"`, …; ES `"es seguro"`,
-   `"no es tóxica"`, `"inofensiva"`, … The deny-list is per-language config, normalised
+   `"no es tóxica"`, `"inofensiva"`, … The deny-list is per-language config, normalized
    before matching, and runs *after* the citation guard so it can veto an otherwise-valid
    sentence.
 3. **Routing.** Every safety query — whether it answers or refuses — carries a

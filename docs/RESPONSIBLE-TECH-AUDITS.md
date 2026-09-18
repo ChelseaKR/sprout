@@ -64,7 +64,7 @@ value-chain are recorded as not-applicable with one-line reasons in the risk reg
 - **Not** a vision model that treats a photo as a source of fact. Sprout *can* accept a
   photo to *select* a candidate species — offline by default (no network, always falls
   back to "type the plant's name"), with an allowlisted Pl@ntNet provider behind a config
-  switch — but a visual match is labelled *"a visual match, not a cited fact,"* never
+  switch — but a visual match is labeled *"a visual match, not a cited fact,"* never
   enters `Answer.sentences`, and is never citation-checked. The care/toxicity answer still
   flows through the grounded, cited, never-certify-safe pipeline, so the photo path adds no
   new way for an unsupported claim to render. See

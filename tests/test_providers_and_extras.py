@@ -147,7 +147,7 @@ def test_accent_authored_language_marker_matches_folded_query() -> None:
 
 
 def _reference_l2(vec: list[float]) -> list[float]:
-    """L2-normalise with ``math.sqrt``, the correctly-rounded IEEE 754 square root."""
+    """L2-normalize with ``math.sqrt``, the correctly-rounded IEEE 754 square root."""
     norm = math.sqrt(sum(v * v for v in vec))
     return [v / norm for v in vec] if norm else vec
 
@@ -158,8 +158,8 @@ def _pow_l2(vec: list[float]) -> list[float]:
     return [v / norm for v in vec] if norm else vec
 
 
-def _vectors_pow_and_sqrt_normalise_differently(limit: int = 5) -> list[list[float]]:
-    """Vectors the two square roots give *different normalised output* for, on this box.
+def _vectors_pow_and_sqrt_normalize_differently(limit: int = 5) -> list[list[float]]:
+    """Vectors the two square roots give *different normalized output* for, on this box.
 
     A last-bit difference in the norm often washes out in the division, so it is not
     enough to find inputs whose norms differ — the search keeps only the ones that
@@ -181,14 +181,14 @@ def _vectors_pow_and_sqrt_normalise_differently(limit: int = 5) -> list[list[flo
 def test_l2_normalize_is_the_correctly_rounded_square_root() -> None:
     """``x ** 0.5`` is ``pow``, which IEEE 754 does not require to be correctly rounded.
 
-    ``web-static/src/hashEmbedding.ts`` — the port that runs the live site — normalises
-    with ``Math.sqrt`` while the embedders here normalised with ``pow``, so the two
+    ``web-static/src/hashEmbedding.ts`` — the port that runs the live site — normalizes
+    with ``Math.sqrt`` while the embedders here normalized with ``pow``, so the two
     surfaces this repo claims agree bit-for-bit were using different square roots for the
     same pipeline. And since #122 the committed eval artifacts are byte-compared against
     a fresh regeneration, which turns any last-bit platform difference into a red build on
     a file nobody edited (as it already did once, for ``static_vectors.json``).
     """
-    separating = _vectors_pow_and_sqrt_normalise_differently()
+    separating = _vectors_pow_and_sqrt_normalize_differently()
     if not separating:
         pytest.skip("this platform's pow is correctly rounded for every searched input")
     for vec in separating:
@@ -196,8 +196,8 @@ def test_l2_normalize_is_the_correctly_rounded_square_root() -> None:
         assert l2_normalize(vec) != _pow_l2(vec)
 
 
-def test_the_hashing_embedder_normalises_with_sqrt() -> None:
-    """Rebuild the raw pre-normalisation vector and compare the whole pipeline.
+def test_the_hashing_embedder_normalizes_with_sqrt() -> None:
+    """Rebuild the raw pre-normalization vector and compare the whole pipeline.
 
     Testing ``l2_normalize`` alone would stay green while an embedder kept its own inline
     ``** 0.5``, which is the state this replaced.
@@ -212,7 +212,7 @@ def test_the_hashing_embedder_normalises_with_sqrt() -> None:
     assert HashingEmbedding(dim=dim).embed(text) == _reference_l2(raw)
 
 
-def test_the_static_embedder_normalises_with_sqrt() -> None:
+def test_the_static_embedder_normalizes_with_sqrt() -> None:
     embedder = StaticEmbedding()
     text = "riego de la monstera en invierno con poca luz"
     raw = [0.0] * embedder.dim
@@ -225,9 +225,9 @@ def test_the_static_embedder_normalises_with_sqrt() -> None:
     assert embedder.embed(text) == _reference_l2(raw)
 
 
-def test_the_titan_embedder_normalises_with_sqrt() -> None:
+def test_the_titan_embedder_normalizes_with_sqrt() -> None:
     """Titan's vector arrives over the wire, so feed it one that separates the two roots."""
-    separating = _vectors_pow_and_sqrt_normalise_differently(limit=1)
+    separating = _vectors_pow_and_sqrt_normalize_differently(limit=1)
     if not separating:
         pytest.skip("this platform's pow is correctly rounded for every searched input")
     payload = separating[0]

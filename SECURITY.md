@@ -42,7 +42,7 @@ If you want an encrypted channel, say so in a first low-detail email and we will
 
 | Stage                      | Target                                                              |
 |----------------------------|---------------------------------------------------------------------|
-| Acknowledgement & triage   | **≤ 72 hours** from receipt                                         |
+| Acknowledgment & triage   | **≤ 72 hours** from receipt                                         |
 | Severity assessment        | CVSS-based, shared with you with the triage reply                   |
 | Fix or mitigation plan     | communicated after triage, prioritized by severity                  |
 | Coordinated disclosure     | by mutual agreement; default embargo up to 90 days                  |

@@ -174,7 +174,7 @@ def test_the_known_gap_is_still_a_gap() -> None:
     """An exemption that has stopped exempting anything reads as coverage.
 
     Every entry above has to still contain the thing it is excused for. The day the
-    docstring is corrected — or the day `tuning_scope` stops treating one as a behaviour
+    docstring is corrected — or the day `tuning_scope` stops treating one as a behavior
     change — this fails and the entry goes, rather than sitting in the tuple looking like
     a considered decision about a file nobody has looked at in a year.
 
@@ -202,7 +202,7 @@ def test_the_package_derives_its_version_from_the_distribution_the_manifest_decl
 
     `sprout.__init__` asks the installed metadata for a distribution *by name*. Given a
     name that is not installed it raises `PackageNotFoundError` and the module falls back
-    to a labelled unknown — so a rename that moves the manifest and not this line
+    to a labeled unknown — so a rename that moves the manifest and not this line
     publishes the sentinel as though it were a version, with nothing raised anywhere.
 
     Asserted against the source text rather than against the imported module, so it holds
@@ -267,5 +267,5 @@ def test_the_scanner_reports_a_wrong_name_and_accepts_the_declared_one() -> None
     assert distribution != IMPORT_NAME, (
         "the import name and the distribution name are the same, so this whole check is "
         "vacuous — every install command naming one names the other. If the collision on "
-        "PyPI was resolved in this project's favour, delete this module and say so."
+        "PyPI was resolved in this project's favor, delete this module and say so."
     )

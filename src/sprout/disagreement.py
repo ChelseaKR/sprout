@@ -87,7 +87,7 @@ def numeric_cadence_conflicts(
     checked for a cadence mention of the same care action but a different day-value.
     One :class:`SourceDisagreement` is returned per (chunk pair, action), deduplicated
     so a conflict found from either side is only reported once. Never averages the two
-    values and never drops one in favour of the other — both citations are always
+    values and never drops one in favor of the other — both citations are always
     carried together.
     """
     topic_by_chunk_id = {rc.chunk.chunk_id: rc.chunk.topic for rc in retrieved}

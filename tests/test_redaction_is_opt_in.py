@@ -9,10 +9,10 @@ instead of re-opening the gap.
 Two directions are pinned:
 
 * **The default.** All three declaration sites agree, and choosing a cloud provider does not
-  flip any of them. If the default is ever changed to true (the behaviour-change repair
+  flip any of them. If the default is ever changed to true (the behavior-change repair
   recorded in #179), these fail together with the three ``*-redact-query-pii-default`` entries
   in ``docs/claims.yaml`` -- the docs cannot silently keep the old sentence either way.
-* **The scope.** ``redact_pii`` recognises exactly the three classes the documents name.
+* **The scope.** ``redact_pii`` recognizes exactly the three classes the documents name.
   A document that grows a fourth class has to grow a pattern with it.
 
 Every literal below is synthetic: ``example.invalid`` is reserved by RFC 2606, ``555-0100`` is
@@ -45,7 +45,7 @@ def test_the_flag_is_false_in_all_three_declaration_sites() -> None:
     )
     assert dataclass_default is False, (
         "generation.redact_query_pii is no longer false by default -- that is the "
-        "behaviour-change repair recorded in #179, and it requires rewriting the T5 "
+        "behavior-change repair recorded in #179, and it requires rewriting the T5 "
         "mitigation bullet, the R3 control bullet and the RESPONSIBLE-TECH-AUDITS "
         "lawful-basis bullet, plus their docs/claims.yaml entries"
     )

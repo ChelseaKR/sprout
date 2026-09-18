@@ -13,7 +13,7 @@ import re
 import unicodedata
 
 # Bilingual stop-word set. Kept deliberately small and explicit (not a downloaded
-# corpus) so the behaviour is auditable and stable across releases.
+# corpus) so the behavior is auditable and stable across releases.
 _STOPWORDS: frozenset[str] = frozenset(
     {
         # English
@@ -211,7 +211,7 @@ _NEG_NT_RE = re.compile(r"\b\w+n't\b", re.IGNORECASE)
 #
 # Equivalent for this module's only consumer: the pieces now keep their surrounding whitespace,
 # and ``extract_facets`` feeds every piece through ``.strip()`` and ``token_set`` (which
-# tokenises with ``_TOKEN_RE``), so leading/trailing whitespace on a clause is not observable.
+# tokenizes with ``_TOKEN_RE``), so leading/trailing whitespace on a clause is not observable.
 # ``\s++`` is possessive because no conjunction begins with whitespace, so a whitespace run
 # never had a match to give back.
 _FACET_SPLIT_RE = re.compile(
@@ -221,7 +221,7 @@ _FACET_SPLIT_RE = re.compile(
 
 
 def strip_accents(token: str) -> str:
-    """Fold accents so 'también' and 'tambien' tokenise identically."""
+    """Fold accents so 'también' and 'tambien' tokenize identically."""
     decomposed = unicodedata.normalize("NFKD", token)
     return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
 
@@ -239,7 +239,7 @@ def _strip_zero_width(text: str) -> str:
     to dodge exact-phrase and token matching without changing how the text *looks* or reads
     aloud. Characters are removed outright (not replaced with a space) so the surrounding
     letters re-join into the original word instead of being split into spurious sub-tokens.
-    Applied before tokenisation so every consumer of ``tokenize``/``normalize`` — retrieval,
+    Applied before tokenization so every consumer of ``tokenize``/``normalize`` — retrieval,
     the citation guard, and the never-certify-safe deny-list — sees the same de-obfuscated
     text.
     """
@@ -296,7 +296,7 @@ def extract_facets(query: str) -> list[frozenset[str]]:
     """Split a query into per-clause content-token sets ("facets").
 
     A single-part question ("How often should I water my pothos?") yields one facet —
-    its whole content-token set — so single-part behaviour is unchanged downstream. A
+    its whole content-token set — so single-part behavior is unchanged downstream. A
     multi-part question ("How often should I water, and does that change in winter?")
     yields one facet per clause, so a caller can require each clause's topic to surface
     in the answer instead of ranking every candidate against one pooled bag of tokens
@@ -445,7 +445,7 @@ _CADENCE_UNIT_DAYS: dict[str, float] = {
     "semanas": 7.0,
 }
 
-# Small, explicit bilingual care-action vocabulary. Each key is the normalised action
+# Small, explicit bilingual care-action vocabulary. Each key is the normalized action
 # name a cadence mention is reported under, so an English chunk and a Spanish chunk
 # that disagree about the same action still compare equal.
 _CARE_ACTIONS: dict[str, frozenset[str]] = {
@@ -479,9 +479,9 @@ def extract_cadences(text: str) -> list[tuple[str, float, str]]:
     """Bilingual 'every N day(s)/week(s)' mentions anchored to a known care action.
 
     Returns one ``(action, days, mention)`` tuple per anchored match, e.g.
-    ``[("water", 7.0, "every 7 days")]``. Weeks normalise to days so "every 2 weeks"
+    ``[("water", 7.0, "every 7 days")]``. Weeks normalize to days so "every 2 weeks"
     and "every 14 days" compare equal instead of registering as a false conflict. A
-    cadence with no recognised action word in its surrounding window is dropped —
+    cadence with no recognized action word in its surrounding window is dropped —
     unanchored numbers are exactly the over-firing risk this stays conservative about.
     """
     out: list[tuple[str, float, str]] = []
