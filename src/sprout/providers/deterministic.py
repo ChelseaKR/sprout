@@ -18,7 +18,7 @@ from .base import l2_normalize
 
 
 class HashingEmbedding:
-    """Signed token-hashing bag-of-tokens projection, L2-normalized.
+    """Signed token-hashing bag-of-tokens projection, L2-normalised.
 
     Each content token is hashed with SHA-256; the first 4 bytes pick a dimension and
     the next bit picks a sign. SHA-256 (not SHA-1) is used purely as a stable
@@ -50,7 +50,7 @@ class ExtractiveGenerator:
 
     Selection is facet-coverage aware: the query is split into clauses (``text.
     extract_facets``) and, after ranking every candidate sentence by query overlap as
-    before, sentences are picked greedily to maximize *marginal* facet coverage first
+    before, sentences are picked greedily to maximise *marginal* facet coverage first
     and raw score second. A single-clause query ("How often should I water my pothos?")
     degrades to plain top-score selection — unchanged from before this was added. A
     multi-clause query ("How often should I water, and does that change in winter?")
@@ -136,11 +136,11 @@ class ExtractiveGenerator:
     def _select_diverse(
         candidates: list[tuple[float, str, str, frozenset[int]]], max_sentences: int
     ) -> list[tuple[str, str]]:
-        """Greedily pick sentences maximizing marginal facet coverage, then score.
+        """Greedily pick sentences maximising marginal facet coverage, then score.
 
         With a single facet (or none), every candidate's marginal coverage is
         identical on the first pick and zero thereafter, so this reduces to plain
-        top-score selection — the pre-facet-coverage behavior is unchanged.
+        top-score selection — the pre-facet-coverage behaviour is unchanged.
         """
         out: list[tuple[str, str]] = []
         covered_facets: set[int] = set()

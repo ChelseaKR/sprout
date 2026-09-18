@@ -37,7 +37,7 @@ def _client(region: str) -> Any:
 
 
 class TitanEmbedding:
-    """Amazon Titan text embeddings (returns an L2-normalized vector)."""
+    """Amazon Titan text embeddings (returns an L2-normalised vector)."""
 
     def __init__(self, dim: int = 512, region: str = "us-west-2", client: Any = None) -> None:
         self._dim = dim
