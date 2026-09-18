@@ -15,7 +15,13 @@ or client material. The bundled corpus and eval data are **synthetic and CC0-1.0
 
 **Live reference:** [sprout.chelseakr.com](https://sprout.chelseakr.com) — the
 deterministic cited-answer pipeline runs entirely in the browser; questions are not
-sent, saved, or logged.
+sent, saved, or logged. The site's pages use Google Analytics 4 to count visits
+([ADR 0023](docs/adr/0023-google-analytics-4-on-the-published-site.md), and the site's
+[privacy page](https://sprout.chelseakr.com/privacy/)): it loads only on that host, not at
+all under Global Privacy Control, Do Not Track or the footer's "Opt out of analytics", with
+Google signals and ad personalization off and analytics storage denied by default in the
+EEA, the UK and Switzerland. It never sees a question. The CLI, the local server and the
+eval harness have no analytics.
 
 ## Sprout is Gauntlet's reference target
 

@@ -200,6 +200,7 @@ no personal data to protect**, by design.
 | Photo bytes (photo-ID, opt-in) | *select* a candidate species to route to the corpus (ADR-0010) | **not persisted**; the offline default does no I/O; the `plantnet` provider streams the image once to the allowlisted Pl@ntNet endpoint and retains nothing | duration of the request | the process; Pl@ntNet **only if** the `plantnet` provider is enabled |
 | Care reminders (opt-in) | user-set watering/fertilizing schedule the user asked Sprout to remember (ADR-0011) | **one local JSON file** (`var/reminders.json`) on the user's own device; created lazily on first use | until the user deletes it; **never uploaded**, no sync, no push | the local process only |
 | Review queue (opt-in, **off by default**) | maintainer-side labeling of flagged/refused traces feeding the judge probe set, confidence re-fit, and draft eval cases (ADR-0020, EXP-17) | **one local JSON file** (`var/review/queue.json`) on the maintainer's own machine; written only when `review.enabled: true`; created lazily on first capture | until the maintainer deletes it; **never uploaded**, no sync, no push; exports go to `var/review/*.yaml` (also local, never auto-merged into a committed file) | the local maintainer process only |
+| Page views on the published site (sprout.chelseakr.com) | count visits to the reference and the handbook (ADR-0023) | Google Analytics 4 (Google LLC): page address cut to origin, path and `utm_*`, referrer origin, browser/device, approximate location; `_ga` cookies outside the EEA/UK/CH | 14 months | the maintainer, in the GA4 property |
 | API keys (cloud + Pl@ntNet seams) | auth to Bedrock/Anthropic; `PLANTNET_API_KEY` for the photo seam | **env vars only**, never config/repo | n/a | operator |
 | Conversation turn selector (opt-in, EXP-07) | resolve which species/topic a follow-up question is about | **in-memory only** (`conversation.SessionMemory`), keyed by a caller-supplied opaque session id; holds only `{species_slug, topic, language}` per turn — **never** question or answer text | last `ConversationConfig.session_memory` turns (default 4) per session, cleared on process restart | the process |
 
@@ -242,6 +243,17 @@ no personal data to protect**, by design.
   generator seam. A home photo can incidentally reveal a location, so the provider stays
   **off by default** and a future external-exposure phase steps the privacy posture to ASVS L2
   (see §F).
+- **Visitor analytics on the published site (DPIA delta for ADR-0023).** Since 2026-09-17
+  the pages of sprout.chelseakr.com load Google Analytics 4 through
+  `web-static/public/analytics.js`. It concerns people reading the site, not the assistant:
+  a question typed into the reference is never part of a page address, and nothing the
+  pipeline handles reaches GA. It loads only on that host and not at all under Global
+  Privacy Control, Do Not Track, or the footer opt-out; Google signals and ad
+  personalization are off; the advertising consent settings are denied everywhere and
+  analytics storage is denied by default in the EEA, the UK and Switzerland (cookieless
+  pings there); retention is 14 months. `/privacy/` on the site states this in English and
+  Spanish. The CLI, the local server and the eval harness carry no analytics, so the
+  default offline build's inventory above is unchanged.
 - **Reminders are local-only state (DPIA delta for ADR-0011).** Watering/fertilizing
   reminders live in a single JSON file on the user's machine (`var/reminders.json`), created
   lazily on first use; nothing is uploaded, there is no sync and no push delivery, and

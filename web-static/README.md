@@ -6,8 +6,11 @@ its existing paths such as `/architecture/` and `/audits/eval-report/`.
 
 **EXP-08** (`docs/ideation/03-expansions.md`): a TypeScript port of Sprout's deterministic
 stack — hashing embedder, BM25, extractive generator, guards — that runs entirely
-client-side over a static, exported `index.json` and `config.json`. No backend, no
-telemetry, nothing a question ever leaves this tab for.
+client-side over a static, exported `index.json` and `config.json`. No backend, and
+nothing a question ever leaves this tab for. The page itself loads Google Analytics 4 for
+page views through `public/analytics.js` (ADR 0023): only on `sprout.chelseakr.com`, never
+under Global Privacy Control, Do Not Track or the footer opt-out, and never with a
+question in anything it sends.
 
 ## What's here
 
