@@ -1,7 +1,7 @@
 """Reminder scheduler: add/list/due/complete/remove, rescheduling, persistence, errors.
 
 Reminders are local user data, so the store is a single JSON file with an injectable
-clock. These tests pin the scheduling arithmetic and the round-trip so behaviour is
+clock. These tests pin the scheduling arithmetic and the round-trip so behavior is
 deterministic and offline.
 """
 

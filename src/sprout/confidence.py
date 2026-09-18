@@ -3,7 +3,7 @@
 Confidence is a transparent function of *retrieval evidence* — how strongly the best
 passage matched and how cleanly it separated from the runner-up — mapped through a fixed
 logistic. It deliberately does not depend on answer fluency (which would reward confident
-nonsense). Two thresholds turn the score into behaviour: below ``abstain_threshold`` the
+nonsense). Two thresholds turn the score into behavior: below ``abstain_threshold`` the
 assistant refuses rather than guesses; below ``low_confidence_threshold`` it answers but
 flags the answer for human review. The reliability diagram and Expected Calibration Error
 let the eval harness check that these stated confidences actually track correctness.

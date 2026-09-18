@@ -1,6 +1,6 @@
 """``BundleManifest`` schema tests (EXP-15): the enforcement is the schema itself.
 
-A manifest with an unrecognised top-level key (``guards``, ``config``, or anything not
+A manifest with an unrecognized top-level key (``guards``, ``config``, or anything not
 declared on ``BundleManifest``) must fail to parse — that is what makes an installed
 bundle structurally unable to alter Sprout's own routing/deny-list strings.
 """

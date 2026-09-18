@@ -4,7 +4,7 @@
  *
  * Selection is facet-coverage aware (EXP-01): the query is split into clauses
  * (`extractFacets`) and, after ranking every candidate sentence by query overlap,
- * sentences are picked greedily to maximise *marginal* facet coverage first and raw
+ * sentences are picked greedily to maximize *marginal* facet coverage first and raw
  * score second. Single-clause queries reduce to plain top-score selection.
  */
 
@@ -99,7 +99,7 @@ export class ExtractiveGenerator {
   }
 
   /**
-   * Greedily pick sentences maximising marginal facet coverage, then score — mirrors
+   * Greedily pick sentences maximizing marginal facet coverage, then score — mirrors
    * `_select_diverse` (Python `max` keeps the *first* maximal candidate on ties).
    */
   private static selectDiverse(candidates: Candidate[], maxSentences: number): [string, string][] {

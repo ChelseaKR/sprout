@@ -83,7 +83,7 @@ key and makes no cloud call.
   than guesses.
 - Works in **English and Spanish** with enforced parity.
 - **Identifies a plant from a photo**, then answers from the *same* cited corpus. The
-  visual match only *selects* the species (it's labelled "a visual match, not a cited
+  visual match only *selects* the species (it's labeled "a visual match, not a cited
   fact" and never rendered as one); the care answer still flows through the grounded,
   guarded pipeline. Offline by default, with a graceful "type the plant's name" fallback
   and an allowlisted Pl@ntNet provider behind a config switch — see

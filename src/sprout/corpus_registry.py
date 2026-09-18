@@ -85,7 +85,7 @@ def _open_bundle(bundle_path: Path, max_bytes: int) -> tarfile.TarFile:
 def _safe_members(tf: tarfile.TarFile, max_member_bytes: int) -> dict[str, tarfile.TarInfo]:
     """Validate every archive member before anything is read: no absolute paths or
     ``..`` traversal, no symlinks/devices/etc., only the fixed bundle layout, and a
-    per-member size cap (defence against a decompression bomb)."""
+    per-member size cap (defense against a decompression bomb)."""
     out: dict[str, tarfile.TarInfo] = {}
     for m in tf.getmembers():
         name = m.name

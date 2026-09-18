@@ -12,7 +12,7 @@ Five properties get their own tests, because each is a way this tool could quiet
 * an edit to one sentence names the chunk, the eval cases whose answers moved, and the
   smoke questions whose answers moved;
 * a removed document that a case still cites is an error and a non-zero exit;
-* an analysis that could not run is rendered as not analysed, never as zero affected;
+* an analysis that could not run is rendered as not analyzed, never as zero affected;
 * the output is byte-identical across separate interpreters, not only within one.
 """
 
@@ -377,7 +377,7 @@ def test_a_toxicity_row_change_is_reported_and_gated(corpora: tuple[Path, Path, 
     assert exit_code_for(diff, fail_on_toxicity_change=True) == 1
 
 
-def test_a_missing_toxicity_table_is_not_analysed_rather_than_unchanged(
+def test_a_missing_toxicity_table_is_not_analyzed_rather_than_unchanged(
     tmp_path: Path,
 ) -> None:
     """The absence-as-a-value trap: no table is not a table with no changes in it."""
@@ -397,7 +397,7 @@ def test_a_missing_toxicity_table_is_not_analysed_rather_than_unchanged(
 # --- analyses that could not run ------------------------------------------------
 
 
-def test_an_unloadable_eval_dataset_is_not_analysed_rather_than_zero(
+def test_an_unloadable_eval_dataset_is_not_analyzed_rather_than_zero(
     corpora: tuple[Path, Path, Path], tmp_path: Path
 ) -> None:
     before, after, _ = corpora
@@ -407,11 +407,11 @@ def test_an_unloadable_eval_dataset_is_not_analysed_rather_than_zero(
     assert not diff.eval_cases
     assert "could not be loaded" in diff.eval_section.not_analysed_reason
     rendered = render_markdown(diff)
-    assert "**Not analysed.**" in rendered
+    assert "**Not analyzed.**" in rendered
     assert "An analysis that did not run is not a result of zero." in rendered
 
 
-def test_a_missing_claims_registry_is_not_analysed(corpora: tuple[Path, Path, Path]) -> None:
+def test_a_missing_claims_registry_is_not_analyzed(corpora: tuple[Path, Path, Path]) -> None:
     before, after, suites = corpora
     (after / "processed" / "pothos.md").write_text(_POTHOS + "\nExtra sentence.\n", "utf-8")
     diff = _diff(before, after, suites, claims_path="does-not-exist.yaml")
@@ -436,7 +436,7 @@ def test_the_committed_registry_has_no_corpus_derived_claim(
     assert "gap in the registry" in render_markdown(diff)
 
 
-def test_the_markdown_says_a_missing_toxicity_table_was_not_analysed(tmp_path: Path) -> None:
+def test_the_markdown_says_a_missing_toxicity_table_was_not_analyzed(tmp_path: Path) -> None:
     before = _write_root(tmp_path / "before", {"pothos.md": _POTHOS}, toxicity=False)
     after = _write_root(tmp_path / "after", {"pothos.md": _POTHOS + "\nExtra.\n"}, toxicity=False)
     suites = _write_suites(tmp_path / "eval", _CASES[:1])
@@ -452,7 +452,7 @@ def test_the_markdown_says_a_missing_toxicity_table_was_not_analysed(tmp_path: P
         ("something_else: 1\n", "has no 'claims' list"),
     ],
 )
-def test_an_unreadable_claims_registry_is_not_analysed(
+def test_an_unreadable_claims_registry_is_not_analyzed(
     corpora: tuple[Path, Path, Path], tmp_path: Path, body: str, fragment: str
 ) -> None:
     before, after, suites = corpora
@@ -509,7 +509,7 @@ def test_a_bad_corpus_root_fails_closed(tmp_path: Path, broken: str, fragment: s
 # --- the CLI --------------------------------------------------------------------
 
 
-def test_cli_reports_an_edit_and_honours_the_toxicity_gate(
+def test_cli_reports_an_edit_and_honors_the_toxicity_gate(
     corpora: tuple[Path, Path, Path],
 ) -> None:
     before, after, suites = corpora

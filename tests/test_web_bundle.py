@@ -8,7 +8,7 @@ exported from last month's corpus was indistinguishable from a current one, and 
 comparison built on top of it (the TS↔Python parity gate in #143, the offline banner in
 #149) would have been comparing against an unknown.
 
-The tests below are organised around the ways a staleness check like this lies:
+The tests below are organized around the ways a staleness check like this lies:
 
 * it passes on a bundle it could not read (missing, unparseable, or from before
   provenance existed) — the version this module was written against;
@@ -301,7 +301,7 @@ def test_re_exporting_without_re_ingesting_is_refused(
 def test_the_chunk_id_digest_does_not_depend_on_the_order_chunks_appear_in(
     bundle: tuple[Path, Config, Path, Path],
 ) -> None:
-    """The digest identifies a *set* of passages, not a serialisation of one.
+    """The digest identifies a *set* of passages, not a serialization of one.
 
     Written after a measured negative control: dropping the ``sorted()`` from both sides
     of the chunk-id comparison left the whole suite green, because the index writer emits

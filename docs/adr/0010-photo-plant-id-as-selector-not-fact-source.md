@@ -22,7 +22,7 @@ contract at its weakest seam.
 
 A photo identification is treated as a **selector, never a fact** — the same contract the
 README already defines for Family-Greenhouse household data ("household data only selects and
-personalises; only the cited corpus is a source of fact").
+personalizes; only the cited corpus is a source of fact").
 
 The path (`identify.py`) is:
 

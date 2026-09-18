@@ -57,7 +57,7 @@ LABELS: tuple[ReviewLabel, ...] = (
 # A label counts as "what shipped was right" for exporters that need a boolean (judge-probe
 # human_label, calibration is_correct). Only "correct" passes -- every other label,
 # including "should-have-refused" (the assistant answered when it should have abstained),
-# is a negative signal about the shipped behaviour.
+# is a negative signal about the shipped behavior.
 _POSITIVE_LABELS: frozenset[str] = frozenset({"correct"})
 
 

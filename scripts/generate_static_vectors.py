@@ -8,7 +8,7 @@ English and Spanish synonyms/paraphrases of one plant-care concept; this script:
    which is not guaranteed stable across Python versions).
 2. Tokenizes every term in the cluster with the *same* ``content_tokens()`` pipeline
    retrieval and grounding use, so lookups at query time hit the same keys.
-3. Assigns each resulting token the L2-normalised sum of the seed vectors of every
+3. Assigns each resulting token the L2-normalized sum of the seed vectors of every
    cluster it appears in (a token that legitimately belongs to more than one concept
    lands between them rather than arbitrarily picking one).
 
@@ -68,7 +68,7 @@ def _add(a: list[float], b: list[float]) -> list[float]:
 
 
 def _normalize(vec: list[float]) -> list[float]:
-    """L2-normalise, using ``math.sqrt`` and never ``x ** 0.5``.
+    """L2-normalize, using ``math.sqrt`` and never ``x ** 0.5``.
 
     ``x ** 0.5`` is libm's ``pow``, which IEEE 754 does not require to be correctly
     rounded; ``math.sqrt`` is ``sqrt``, which it does. Measured 2026-09-01 on macOS
@@ -110,7 +110,7 @@ def build_table() -> dict[str, object]:
 
 
 def render() -> str:
-    """The exact bytes ``main()`` writes. One serialiser, so ``--check`` cannot drift
+    """The exact bytes ``main()`` writes. One serializer, so ``--check`` cannot drift
     from the writer it is checking."""
     return json.dumps(build_table(), indent=2, sort_keys=True) + "\n"
 

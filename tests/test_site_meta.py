@@ -642,7 +642,7 @@ def test_a_tree_whose_pages_link_nothing_says_the_sweep_read_nothing(site: Path)
 # Every test below breaks one property of a page that states what it is, and
 # asserts the gate says so. The block is the one surface on a published page no
 # human reviewer ever looks at, so "somebody would notice" is not available as a
-# defence: if the gate does not catch it, nothing does.
+# defense: if the gate does not catch it, nothing does.
 
 
 def _replace_ld(site: Path, page: str, block: str) -> Path:

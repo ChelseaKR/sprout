@@ -215,7 +215,7 @@ def test_cohens_kappa() -> None:
 def test_cohens_kappa_over_no_observations_is_undefined_not_perfect() -> None:
     """The two degenerate cases are not the same thing, and this file used to say they were.
 
-    `cohens_kappa([], []) == 1.0` was asserted here as intended behaviour. Degenerate
+    `cohens_kappa([], []) == 1.0` was asserted here as intended behavior. Degenerate
     *expected* agreement (every label identical, above) is an observation whose kappa is
     genuinely 1.0. No labels at all is not an observation, and scoring it 1.0 is what made
     `sprout calibrate --gate` — a merge-blocking CI step — pass over an empty probe file
@@ -299,9 +299,9 @@ def _wilson_interval_pow(successes: int, n: int) -> tuple[float, float]:
     z = Z_95
     phat = successes / n
     denom = 1.0 + z * z / n
-    centre = phat + z * z / (2 * n)
+    center = phat + z * z / (2 * n)
     margin = z * ((phat * (1 - phat) / n + z * z / (4 * n * n)) ** 0.5)
-    return (max(0.0, (centre - margin) / denom), min(1.0, (centre + margin) / denom))
+    return (max(0.0, (center - margin) / denom), min(1.0, (center + margin) / denom))
 
 
 def _wilson_interval_sqrt(successes: int, n: int) -> tuple[float, float]:
@@ -309,9 +309,9 @@ def _wilson_interval_sqrt(successes: int, n: int) -> tuple[float, float]:
     z = Z_95
     phat = successes / n
     denom = 1.0 + z * z / n
-    centre = phat + z * z / (2 * n)
+    center = phat + z * z / (2 * n)
     margin = z * math.sqrt(phat * (1 - phat) / n + z * z / (4 * n * n))
-    return (max(0.0, (centre - margin) / denom), min(1.0, (centre + margin) / denom))
+    return (max(0.0, (center - margin) / denom), min(1.0, (center + margin) / denom))
 
 
 def _wilson_inputs_that_separate_pow_from_sqrt(limit: int = 5) -> list[tuple[int, int]]:

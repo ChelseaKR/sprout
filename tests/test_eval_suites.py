@@ -211,7 +211,7 @@ def test_coverage_risk_rows_name_a_confidence_cutoff_and_state_their_coverage(
 ) -> None:
     """E4's curve is a *coverage*/risk tradeoff, so the report must publish coverage.
 
-    The rows were labelled ``coverage>=0.25``, but 0.25 is a **confidence** cutoff — at
+    The rows were labeled ``coverage>=0.25``, but 0.25 is a **confidence** cutoff — at
     confidence>=0.25 the committed corpus covers 100% of calibration cases, not 25%. The
     label said the opposite of the numbers beside it, and coverage itself was never
     published anywhere in the report: a reader had to divide the row's ``n`` by a total
@@ -229,7 +229,7 @@ def test_coverage_risk_rows_name_a_confidence_cutoff_and_state_their_coverage(
         match = re.fullmatch(r"risk @ confidence≥(\d\.\d\d) \(coverage (\d\.\d\d)\)", seg.label)
         assert match, (
             f"{seg.label!r} does not name a confidence cutoff and its coverage; a row "
-            "labelled by coverage but keyed on confidence misreads its own numbers"
+            "labeled by coverage but keyed on confidence misreads its own numbers"
         )
         stated = float(match.group(2))
         assert stated == pytest.approx(seg.n / total, abs=0.005), (
@@ -426,7 +426,7 @@ def test_groundedness_fails_on_unsupported_claim() -> None:
         question="q",
         expected_behavior="answer",
         sources=["Monstera prefers bright indirect light."],
-        target_response=TargetResponse(text="Monstera should be fertilised hourly with vinegar."),
+        target_response=TargetResponse(text="Monstera should be fertilized hourly with vinegar."),
     )
     result = _run(Dataset.from_items([item]))
     g = next(s for s in result.suite_results if s.suite == "groundedness")
@@ -534,7 +534,7 @@ def test_completeness_fails_when_a_facet_is_missing() -> None:
 
 # --- language parity (issue #128) ------------------------------------------------
 def _parity_items(en: list[bool], es: list[bool], **extra: object) -> Dataset:
-    """A dataset of correctness-labelled cases in two languages and nothing else."""
+    """A dataset of correctness-labeled cases in two languages and nothing else."""
     items = [
         _mk(id=f"{lang}-{i}", question="q", language=lang, is_correct=ok, **extra)
         for lang, labels in (("en", en), ("es", es))

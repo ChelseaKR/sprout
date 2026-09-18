@@ -184,7 +184,7 @@ every new guard is broken deliberately before it is trusted.
    root is left out.
 4. **Issue #107**: `answer.py` and `answer.ts` route off a shared bilingual slug
    set rather than the literal `"toxicity"`, with the Spanish reproduction as a
-   test and the English behaviour pinned so the fix cannot pass by routing
+   test and the English behavior pinned so the fix cannot pass by routing
    everything.
 5. **Issue #108**: the export carries `confidence.fit`, the TS config declares
    it, `scoreConfidence` reads it with the current constants as the fallback,

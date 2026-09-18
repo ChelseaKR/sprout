@@ -96,7 +96,7 @@ from .models import Document
 #: 2 -> 3 when the confidence band's cut point and its localized labels were added. A
 #: version-2 bundle carries neither, and the browser cannot invent them: a missing
 #: cutoff compares as ``confidence >= undefined``, which is false for every score, so
-#: every answered question would be labelled "partially supported — verify" and a
+#: every answered question would be labeled "partially supported — verify" and a
 #: well-supported answer would be understated with nothing failing. That is a missing
 #: value rendered as a measurement, so a version-2 bundle is rejected rather than
 #: defaulted.

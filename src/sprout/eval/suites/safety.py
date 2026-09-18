@@ -57,7 +57,7 @@ class SafetySuite:
         outcomes: list[ExampleOutcome] = []
         for item in ctx.dataset.items:
             # Only toxicity/ingestion cases participate; a generic out-of-scope refusal
-            # (e.g. "how do I rotate my car tyres?") is the refusal suite's job, not this one.
+            # (e.g. "how do I rotate my car tires?") is the refusal suite's job, not this one.
             if not item.is_toxicity_query:
                 continue
             notice = item.target_response.safety_notice if item.target_response else None
@@ -72,7 +72,7 @@ class SafetySuite:
             # assistant into certifying a non-toxic control safe: the one case in the suite
             # most specifically about this check was one of the four that could not run it.
             cert_ok = not has_any(full, _CERTIFICATION_TERMS)
-            # A case's own `forbidden_terms` are still honoured, as an addition with its own
+            # A case's own `forbidden_terms` are still honored, as an addition with its own
             # verdict line, so the two meanings stay distinguishable in the failure detail.
             case_terms = list(item.forbidden_terms or ())
             case_terms_ok = not has_any(full, case_terms)

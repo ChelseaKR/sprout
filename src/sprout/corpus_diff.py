@@ -28,7 +28,7 @@ honest rendering of what happened, and it is why the document-level content hash
 reported too.
 
 **An analysis that could not run says so.** If the eval dataset will not load, the eval
-impact is reported as not analysed, with the reason. It is never reported as zero cases
+impact is reported as not analyzed, with the reason. It is never reported as zero cases
 affected. The same holds for the claims registry and for a missing toxicity table. A
 count of zero and an analysis that did not happen are different facts, and only one of
 them is reassuring.
@@ -302,6 +302,7 @@ class ClaimsImpact(_Frozen):
     printing a reassuring zero.
     """
 
+    # `analysed` field names keep their spelling: they are keys in `sprout corpus diff --json`.
     analysed: bool
     not_analysed_reason: str = ""
     corpus_derived: tuple[str, ...] = ()
@@ -330,6 +331,7 @@ class CorpusDiff(_Frozen):
     documents: tuple[DocumentChange, ...]
     chunks: tuple[ChunkChange, ...]
     toxicity: tuple[ToxicityChange, ...]
+    # Kept as `analysed`: a key in `sprout corpus diff --json` output (see ClaimsImpact).
     toxicity_analysed: bool
     toxicity_not_analysed_reason: str = ""
 
@@ -759,10 +761,10 @@ def _table(lines: list[str], header: list[str], rows: list[list[str]]) -> None:
 
 
 def _render_section(lines: list[str], section: ImpactSection, what: str) -> bool:
-    """Write the not-analysed notice if there is one. True when the section ran."""
+    """Write the not-analyzed notice if there is one. True when the section ran."""
     if section.analysed:
         return True
-    lines.append(f"**Not analysed.** {section.not_analysed_reason}")
+    lines.append(f"**Not analyzed.** {section.not_analysed_reason}")
     lines.append("")
     lines.append(
         f"No {what} is reported as unaffected here, because none was examined. "
@@ -833,7 +835,7 @@ def _render_toxicity(lines: list[str], diff: CorpusDiff) -> None:
     lines.append("## Toxicity table")
     lines.append("")
     if not diff.toxicity_analysed:
-        lines.append(f"**Not analysed.** {diff.toxicity_not_analysed_reason}")
+        lines.append(f"**Not analyzed.** {diff.toxicity_not_analysed_reason}")
         lines.append("")
         lines.append(
             "No toxicity row is reported as unchanged here. A missing table is not a "
@@ -926,7 +928,7 @@ def _render_claims(lines: list[str], diff: CorpusDiff) -> None:
     lines.append("## Claims registry")
     lines.append("")
     if not diff.claims.analysed:
-        lines.append(f"**Not analysed.** {diff.claims.not_analysed_reason}")
+        lines.append(f"**Not analyzed.** {diff.claims.not_analysed_reason}")
         lines.append("")
         return
     if diff.claims.corpus_derived:

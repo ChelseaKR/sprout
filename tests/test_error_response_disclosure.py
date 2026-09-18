@@ -167,7 +167,7 @@ class TestReminders:
 def test_rejections_are_still_triageable_from_the_logs(
     assistant: Assistant, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Genericising the response must not make the failure invisible to the operator.
+    """Genericizing the response must not make the failure invisible to the operator.
 
     ``obs.Logger`` is PII-free by construction, so the exception *message* — free text that
     routinely echoes caller input — is deliberately not logged either. The exception class is,

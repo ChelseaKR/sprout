@@ -1,6 +1,6 @@
 """Pure-Python BM25 (Okapi) lexical index — the lexical half of hybrid retrieval.
 
-Zero dependencies, fully deterministic. It tokenises with the *same* ``content_tokens``
+Zero dependencies, fully deterministic. It tokenizes with the *same* ``content_tokens``
 as the dense embedder and the extractive generator, so a passage that ranks well
 lexically is described by the same vocabulary the generator will quote and the judge
 will check. BM25 catches exact-term matches (species names, "10 days") that a bag-of-
@@ -92,10 +92,10 @@ class BM25Index:
     # --- persistence -------------------------------------------------------------
     # The postings (inverted term -> {doc: tf}, idf, lengths, avg length) are exactly
     # what ``scores``/``ranking`` need; persisting them lets ``from_state`` reconstruct
-    # an index without re-tokenising every document, which is the per-query cost this
+    # an index without re-tokenizing every document, which is the per-query cost this
     # class exists to avoid once the corpus is indexed at ingest time (FIX-07).
     def to_state(self) -> dict[str, object]:
-        """Serialise the fitted postings — everything needed to score without retokenising."""
+        """Serialize the fitted postings — everything needed to score without retokenizing."""
         return {
             "k1": self.k1,
             "b": self.b,
@@ -111,7 +111,7 @@ class BM25Index:
 
     @classmethod
     def from_state(cls, state: dict[str, Any]) -> BM25Index:
-        """Reconstruct an index from ``to_state`` output — no document retokenisation."""
+        """Reconstruct an index from ``to_state`` output — no document retokenization."""
         self = cls.__new__(cls)
         self.k1 = float(state["k1"])
         self.b = float(state["b"])

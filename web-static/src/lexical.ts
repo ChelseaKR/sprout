@@ -1,7 +1,7 @@
 /**
  * Pure-TypeScript BM25 (Okapi) lexical index — a mirror of `src/sprout/lexical.py`.
  *
- * Zero dependencies, fully deterministic, tokenises with the same `contentTokens` as the
+ * Zero dependencies, fully deterministic, tokenizes with the same `contentTokens` as the
  * dense embedder and the extractive generator (see `text.ts`).
  *
  * Mirrors FIX-07's inverted-postings layout (`term -> {doc_index: term_freq}`): the index

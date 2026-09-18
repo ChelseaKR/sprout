@@ -77,7 +77,7 @@ here; per-repo target values live in [`docs/ROADMAP.md`](docs/ROADMAP.md).
   | Reliability | fault tolerance / recoverability — degrade to offline; rebuild from `make ingest` |
   | Security | confidentiality / integrity — no query persistence; content-hashed corpus |
   | Maintainability | modularity / testability — independent ingest·retrieve·generate·guard·eval |
-  | Performance efficiency | time behaviour — first-token + eval-run latency budgets |
+  | Performance efficiency | time behavior — first-token + eval-run latency budgets |
   | Compatibility | interoperability — JSON/SSE API; JUnit + SARIF reports |
   | Usability | accessibility — WCAG 2.2 AA gate; learnability — one question box |
   | Portability | adaptability — point at a different corpus via `config/sprout.yaml` |

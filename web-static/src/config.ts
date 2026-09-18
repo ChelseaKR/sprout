@@ -165,7 +165,7 @@ export function assertBundleIsCurrent(cfg: WebConfig): void {
  *
  * Python hashes the canonical JSON encoding of the sorted id list: sorted keys, compact
  * separators, no ASCII escaping. For a list of hex strings that is exactly what
- * `JSON.stringify` produces, so the two languages agree without a canonicaliser here.
+ * `JSON.stringify` produces, so the two languages agree without a canonicalizer here.
  * `test/bundle-pairing.test.ts` holds that to the digest Python actually wrote into the
  * committed bundle rather than to this paragraph.
  */

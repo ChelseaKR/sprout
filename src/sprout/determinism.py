@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 # Fixed seed used across the eval harness; 1729 is the Hardy-Ramanujan number, used
-# purely as a memorable constant so reviewers recognise it as "the project seed".
+# purely as a memorable constant so reviewers recognize it as "the project seed".
 DEFAULT_SEED = 1729
 
 
@@ -36,7 +36,7 @@ def sha256_of_bytes(data: bytes) -> str:
 
 
 def sha256_of_obj(obj: Any) -> str:
-    """Hex SHA-256 of any JSON-serialisable object via its canonical encoding."""
+    """Hex SHA-256 of any JSON-serializable object via its canonical encoding."""
     return sha256_of_bytes(canonical_bytes(obj))
 
 

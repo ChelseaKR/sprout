@@ -1,7 +1,7 @@
 """EXP-07: bounded multi-turn conversation context, and the adversarial proof that history
 can never override a cited fact.
 
-Three layers are tested: (1) ``SessionMemory``'s bounding/eviction behaviour in isolation,
+Three layers are tested: (1) ``SessionMemory``'s bounding/eviction behavior in isolation,
 (2) ``extract_turn`` never captures answer text, and (3) end-to-end through ``Assistant`` and
 the HTTP API — a follow-up resolves species from history, but a species the current turn
 names explicitly always wins, and an attempted history-injection can never change which

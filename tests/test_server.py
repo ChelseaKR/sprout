@@ -47,7 +47,7 @@ def _gen(config: Config) -> GenerationProvider:
     return build_generator(config)
 
 
-def test_disclosure_localised(assistant: Assistant, config: Config) -> None:
+def test_disclosure_localized(assistant: Assistant, config: Config) -> None:
     c = _client(assistant, config)
     assert "veterinary" in c.get("/api/disclosure?language=en").json()["disclosure"]
     assert "veterinario" in c.get("/api/disclosure?language=es").json()["disclosure"]

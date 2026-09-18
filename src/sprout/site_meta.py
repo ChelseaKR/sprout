@@ -181,7 +181,7 @@ def _check_card(name: str, values: dict[str, str], root: Path, origin: str) -> l
     """A declared card image must be same-origin, absolute, and really published.
 
     An unfurler fetches this URL once and caches whatever came back, so a card
-    pointing at a file the build did not write degrades to the blank grey box the
+    pointing at a file the build did not write degrades to the blank gray box the
     tag was added to prevent — and does it silently, because nothing on the page
     is broken. The same-origin rule was already here; what was missing is the half
     that costs nothing to check and is the half that actually goes wrong.

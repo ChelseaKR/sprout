@@ -73,7 +73,7 @@ def test_derive_smoke_cases_uses_known_topic_templates(
     assert by_case_id["pothos:toxicity:en"].question == "Is my pothos toxic to my cat?"
 
 
-def test_derive_smoke_cases_falls_back_for_an_unmodelled_topic(
+def test_derive_smoke_cases_falls_back_for_an_unmodeled_topic(
     config: Config, tiny_chunks: list[Chunk]
 ) -> None:
     weird = Chunk(
@@ -164,7 +164,7 @@ def test_check_case_flags_a_refusal_on_a_supposedly_in_corpus_question(
     assert any("refused" in r for r in result.reasons)
 
 
-def test_to_markdown_summarises_pass_fail_counts(config: Config, tiny_chunks: list[Chunk]) -> None:
+def test_to_markdown_summarizes_pass_fail_counts(config: Config, tiny_chunks: list[Chunk]) -> None:
     assistant, store = _wire(config, tiny_chunks)
     result = run_smoke(assistant, store, config, language="en")
     md = to_markdown(result)

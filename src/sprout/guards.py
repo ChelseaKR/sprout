@@ -168,10 +168,10 @@ def _fold_homoglyphs(text: str) -> str:
 
 
 def _fold(text: str) -> str:
-    """Normalise for safety matching: lower-case, collapse space, fold accents/hyphens/homoglyphs.
+    """Normalize for safety matching: lower-case, collapse space, fold accents/hyphens/homoglyphs.
 
     Accent- and hyphen-folding keep the deny-list robust to "non-toxic" vs "non toxic" and
-    Spanish accent variants, consistent with how the rest of the pipeline tokenises.
+    Spanish accent variants, consistent with how the rest of the pipeline tokenizes.
     Homoglyph-folding closes the Cyrillic-lookalike bypass found by property-based fuzzing
     (FIX-05); it is intentionally narrow, see ``_HOMOGLYPHS`` above.
     """

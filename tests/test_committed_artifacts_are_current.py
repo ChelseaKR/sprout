@@ -200,7 +200,7 @@ def test_every_committed_audit_artifact_is_covered() -> None:
 def test_static_vector_table_matches_its_generator() -> None:
     """``src/sprout/data/embeddings/static_vectors.json`` vs ``clusters.yaml``.
 
-    Runs the real generator's ``--check`` mode, which renders through the same serialiser
+    Runs the real generator's ``--check`` mode, which renders through the same serializer
     ``main()`` writes with and compares without touching the file. Editing ``clusters.yaml``
     and forgetting to regenerate previously shipped a table the code no longer produces,
     with every gate green.
@@ -216,13 +216,13 @@ def test_static_vector_table_matches_its_generator() -> None:
 
 
 def _reference_normalize(vec: list[float]) -> list[float]:
-    """L2-normalise using ``math.sqrt``, the correctly-rounded IEEE 754 square root."""
+    """L2-normalize using ``math.sqrt``, the correctly-rounded IEEE 754 square root."""
     norm = math.sqrt(sum(v * v for v in vec))
     return [v / norm for v in vec] if norm else vec
 
 
 def _raw_seed(name: str, dim: int) -> list[float]:
-    """A cluster's hashed byte stream *before* normalisation — mirrors ``_seed_vector``."""
+    """A cluster's hashed byte stream *before* normalization — mirrors ``_seed_vector``."""
     vec: list[float] = []
     counter = 0
     while len(vec) < dim:
@@ -235,8 +235,8 @@ def _raw_seed(name: str, dim: int) -> list[float]:
     return vec
 
 
-def _unnormalised_generator_inputs(generator: ModuleType) -> dict[str, list[float]]:
-    """Every vector the generator normalises, before it normalises it.
+def _unnormalized_generator_inputs(generator: ModuleType) -> dict[str, list[float]]:
+    """Every vector the generator normalizes, before it normalizes it.
 
     The per-cluster hash streams and the per-token sums of seed vectors, keyed by a
     label that names which one, so a failure says which vector disagreed.
@@ -262,7 +262,7 @@ def _unnormalised_generator_inputs(generator: ModuleType) -> dict[str, list[floa
 
 
 def test_the_static_vector_table_is_the_same_bytes_on_every_platform() -> None:
-    """The generator normalises with ``math.sqrt``, never with ``x ** 0.5``.
+    """The generator normalizes with ``math.sqrt``, never with ``x ** 0.5``.
 
     A committed table plus a regenerate-and-compare gate is only a gate if two machines
     agree on the arithmetic. ``x ** 0.5`` is libm's ``pow``, which IEEE 754 does not
@@ -274,23 +274,23 @@ def test_the_static_vector_table_is_the_same_bytes_on_every_platform() -> None:
     said "is current" on one machine and "is stale" on the other for a file nobody had
     edited.
 
-    This rebuilds the generator's *un-normalised* inputs from the real ``clusters.yaml``
-    and compares the generator's normalisation of each against a ``math.sqrt``
+    This rebuilds the generator's *un-normalized* inputs from the real ``clusters.yaml``
+    and compares the generator's normalization of each against a ``math.sqrt``
     reference, so it fails on any machine whose ``pow`` disagrees rather than only on
     the one that happened to write the file.
     """
     generator = _load_generator()
-    inputs = _unnormalised_generator_inputs(generator)
+    inputs = _unnormalized_generator_inputs(generator)
     for label, vec in inputs.items():
         assert generator._normalize(vec) == _reference_normalize(vec), (
-            f"{label} normalises differently from math.sqrt; the generator is using a "
+            f"{label} normalizes differently from math.sqrt; the generator is using a "
             "platform-dependent square root, so the committed table is only "
             "reproducible on the machine that wrote it"
         )
 
 
 def test_the_seed_vector_helper_uses_the_same_correctly_rounded_square_root() -> None:
-    """``_seed_vector`` normalises its own hash stream; that step must not regress.
+    """``_seed_vector`` normalizes its own hash stream; that step must not regress.
 
     It delegates to ``_normalize`` today. It carried its own inline ``** 0.5`` before,
     which is how the divergence above got in, so this pins the composed result rather
@@ -304,7 +304,7 @@ def test_the_seed_vector_helper_uses_the_same_correctly_rounded_square_root() ->
         raw = _raw_seed(name, generator.DIM)
         assert generator._seed_vector(name) == _reference_normalize(raw), (
             f"the seed vector for cluster {name!r} is not the correctly-rounded "
-            "normalisation of its hash stream"
+            "normalization of its hash stream"
         )
 
 

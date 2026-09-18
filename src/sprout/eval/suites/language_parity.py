@@ -31,7 +31,7 @@ ledger's declared aggregate does — but a reader who wants to know whether the 
 load-bearing can see the answer in the same table, exactly as the calibration suite
 publishes its report-only coverage/risk curve beside its gated ECE.
 
-Fail-closed: fewer than two language slices carrying labelled cases is a FAIL, never a
+Fail-closed: fewer than two language slices carrying labeled cases is a FAIL, never a
 0.0 gap. "Only one language was evaluated" and "both languages passed equally" are not the
 same result and must not render as the same number.
 """
@@ -130,10 +130,10 @@ class LanguageParitySuite:
     )
 
     def run(self, ctx: EvalContext) -> SuiteResult:
-        labelled = [
+        labeled = [
             item for item in ctx.dataset.items if item.language and item.is_correct is not None
         ]
-        counts = _tally(labelled)
+        counts = _tally(labeled)
         rates = _rates(counts)
         if len(rates) < 2:
             return fail_closed(
@@ -142,7 +142,7 @@ class LanguageParitySuite:
                 dataset_version=ctx.dataset.version,
                 judge=ctx.judge,
                 reason=(
-                    "a pass-rate gap needs at least two language slices carrying labelled "
+                    "a pass-rate gap needs at least two language slices carrying labeled "
                     f"cases; found {sorted(rates) or 'none'}"
                 ),
             )
@@ -168,7 +168,7 @@ class LanguageParitySuite:
                     "to that slice's pass rate, not itself a parity failure"
                 ),
             )
-            for item in labelled
+            for item in labeled
         ]
         slice_segments = [
             SegmentScore(
@@ -201,7 +201,7 @@ class LanguageParitySuite:
             ci_override=(gap_low, gap_high),
             underpowered_override=smallest_slice < UNDERPOWERED_N,
             notes=notes,
-            segments=slice_segments + _diagnostic_segments(labelled),
+            segments=slice_segments + _diagnostic_segments(labeled),
         )
 
 

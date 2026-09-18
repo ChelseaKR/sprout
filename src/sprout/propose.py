@@ -36,7 +36,7 @@ one of three statuses:
     Mechanically clean, and either not safety-bearing or carrying a committed
     ``expert_review`` sign-off artifact.
 
-The representational-harm checklist is not box-ticking: every acknowledgement a machine
+The representational-harm checklist is not box-ticking: every acknowledgment a machine
 *can* falsify is cross-checked. ``no_medicinal_or_edibility_claims`` is checked against a
 deterministic EN/ES claim vocabulary; the never-certify-"safe" rule is checked by running
 the shipped :func:`sprout.guards.asserts_safety` over every proposed sentence, so a
@@ -213,7 +213,7 @@ class ProposalDocument(_Strict):
 class HarmChecklist(_Strict):
     """The representational-harm checklist E5 asks for.
 
-    Every acknowledgement must be ``true``. Where a machine can falsify one it does
+    Every acknowledgment must be ``true``. Where a machine can falsify one it does
     (see :func:`_claim_findings` and :func:`_safety_certification_findings`), so an
     affirmed box that the text contradicts fails the review rather than passing quietly.
     """
@@ -760,7 +760,7 @@ def _safety_certification_findings(config: Config, documents: list[Document]) ->
 
 
 def _claim_findings(proposal: Proposal, documents: list[Document]) -> list[Finding]:
-    """Falsify the ``no_medicinal_or_edibility_claims`` acknowledgement where possible."""
+    """Falsify the ``no_medicinal_or_edibility_claims`` acknowledgment where possible."""
     findings: list[Finding] = []
     for doc, sentence in _sentences(documents):
         match = _CLAIM_RE.search(strip_accents(sentence).lower())

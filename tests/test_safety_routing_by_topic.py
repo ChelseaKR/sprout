@@ -101,7 +101,7 @@ def test_a_spanish_toxicity_chunk_routes_without_a_lexicon_keyword(
     )
     assert answer.is_safety_query, (
         "a rendered toxicity fact must carry the vet / poison-control escort even when "
-        "the question contained no keyword the classifier recognises"
+        "the question contained no keyword the classifier recognizes"
     )
     assert answer.safety_notice, "routing was claimed but no notice was attached"
 
@@ -132,7 +132,7 @@ def test_the_trace_and_the_review_record_report_the_routing_that_happened(
         "the trace must report the routing the answer took, not the classifier's half"
     )
     assert not trace.safety_query_by_keyword, (
-        "this question deliberately contains no keyword the classifier recognises; if it "
+        "this question deliberately contains no keyword the classifier recognizes; if it "
         "did, the test would no longer exercise the content-routed path"
     )
 
@@ -186,7 +186,7 @@ def test_an_ordinary_spanish_care_answer_still_does_not_route(
 def test_the_english_heading_still_routes(
     config: Config, assistant_factory: Callable[..., Assistant]
 ) -> None:
-    """The behaviour that already worked must keep working."""
+    """The behavior that already worked must keep working."""
     assistant = assistant_factory(
         config,
         [

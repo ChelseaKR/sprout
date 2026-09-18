@@ -23,7 +23,7 @@ def test_embed_is_deterministic() -> None:
     assert a == b
 
 
-def test_embed_is_l2_normalised() -> None:
+def test_embed_is_l2_normalized() -> None:
     emb = StaticEmbedding()
     vec = emb.embed("My Pothos leaves are yellowing and drooping.")
     norm = math.sqrt(sum(v * v for v in vec))

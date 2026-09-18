@@ -14,7 +14,7 @@ answer-vs-refuse.
 Two scale properties matter as the corpus grows past a few hundred chunks (FIX-07,
 ``docs/ideation/02-large-scale-fixes.md``): the BM25 index is built **once** per
 ``Retriever`` (from the store's persisted postings when available, or lazily on first
-use otherwise) instead of being retokenised on every query; and the dense vector scan is
+use otherwise) instead of being retokenized on every query; and the dense vector scan is
 bounded — to the named species' chunk-id set when the query scopes to one, or to a
 generous fixed fan-out otherwise — instead of always sorting the entire store.
 """
@@ -132,7 +132,7 @@ class Retriever:
         self._by_chunk_id: dict[str, Chunk] = {c.chunk_id: c for c in self._chunks}
 
         # Pre-group chunk ids by species slug, and precompute each slug's distinctive
-        # token set, once per Retriever — so `_candidates` never re-scans/re-tokenises
+        # token set, once per Retriever — so `_candidates` never re-scans/re-tokenizes
         # the whole corpus on a per-query basis.
         self._chunk_ids_by_slug: dict[str, list[str]] = {}
         self._distinctive_by_slug: dict[str, frozenset[str]] = {}

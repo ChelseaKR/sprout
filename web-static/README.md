@@ -16,9 +16,9 @@ question in anything it sends.
 
 | Python (`src/sprout/`) | TypeScript (`web-static/src/`) | What it does |
 |---|---|---|
-| `text.py` | `text.ts` | Tokenize, stem, stop-word/negation filter, sentence split, coverage, jaccard — the shared vocabulary every other module tokenises through. |
+| `text.py` | `text.ts` | Tokenize, stem, stop-word/negation filter, sentence split, coverage, jaccard — the shared vocabulary every other module tokenizes through. |
 | `lexical.py` | `lexical.ts` | Okapi BM25. |
-| `providers/deterministic.py`'s `HashingEmbedding` | `sha256.ts` + `hashEmbedding.ts` | SHA-256 token hashing → signed, L2-normalised bag-of-tokens vector. |
+| `providers/deterministic.py`'s `HashingEmbedding` | `sha256.ts` + `hashEmbedding.ts` | SHA-256 token hashing → signed, L2-normalized bag-of-tokens vector. |
 | `store.py` | `store.ts` | Flat cosine vector store, loaded from `index.json` (read-only in the browser — there is no ingest path here). |
 | `retrieve.py` | `retrieve.ts` | Hybrid dense+BM25 retrieval via Reciprocal Rank Fusion, species/topic filter, near-duplicate dedup, the `min_score` grounding gate. |
 | `providers/deterministic.py`'s `ExtractiveGenerator` | `generator.ts` | Verbatim sentence selection by query-token overlap. |

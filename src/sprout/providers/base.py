@@ -28,13 +28,13 @@ def l2_normalize(vec: list[float]) -> list[float]:
     runner did not have to give the same vector.
 
     That matters twice over. ``web-static/src/hashEmbedding.ts``, the port that runs the
-    live site, normalises with ``Math.sqrt``: the browser and the CLI were using different
+    live site, normalizes with ``Math.sqrt``: the browser and the CLI were using different
     square roots for the same claimed-identical pipeline. And the committed eval artifacts
     are now byte-compared against a fresh regeneration (#122), which turns any last-bit
     platform difference into a red build on a file nobody edited — as it already did once,
     for ``static_vectors.json``.
 
-    Every embedder normalises through here so there is one square root to be right about.
+    Every embedder normalizes through here so there is one square root to be right about.
     """
     norm = math.sqrt(sum(v * v for v in vec))
     return [v / norm for v in vec] if norm else vec
@@ -42,7 +42,7 @@ def l2_normalize(vec: list[float]) -> list[float]:
 
 @runtime_checkable
 class EmbeddingProvider(Protocol):
-    """Maps text to a fixed-length, L2-normalised dense vector."""
+    """Maps text to a fixed-length, L2-normalized dense vector."""
 
     @property
     def dim(self) -> int: ...

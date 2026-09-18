@@ -118,7 +118,7 @@ def _require_safe_relpath(rel: str, *, prefix: str | None) -> None:
 def parse_manifest(raw_yaml_bytes: bytes) -> BundleManifest:
     """Parse and validate ``manifest.yaml`` bytes. Raises ``BundleError`` on any problem.
 
-    A YAML mapping with an unrecognised top-level key (``guards``, ``config``,
+    A YAML mapping with an unrecognized top-level key (``guards``, ``config``,
     ``routing``, or anything else not in ``BundleManifest``) fails here, by
     construction — that is the enforcement, not a denylist of bad keys.
     """
