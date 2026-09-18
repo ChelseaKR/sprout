@@ -21,22 +21,38 @@ is*, because a wrong one is worse than a missing one:
   whatever it got, so a card naming a missing file is a permanently blank one;
 * every link a page makes to this site -- relative, or written against this
   origin in full -- names a file the build actually wrote;
+* every page carries exactly one ``application/ld+json`` block, in the
+  schema.org vocabulary, whose ``WebPage`` node repeats the address, the
+  description and the title the page itself states -- and whose breadcrumb, if
+  it has one, leads to this page by way of addresses the build actually wrote.
+  No node solicits dataset harvest: a ``Dataset`` descriptor is a request to be
+  listed by dataset catalogs, which is a decision rather than markup, and this
+  refuses it rather than leaving it to a reviewer to notice;
 * ``robots.txt`` exists and advertises the sitemap at the origin;
 * every ``<loc>`` in ``sitemap.xml`` resolves to a file the build actually
-  wrote, and every built page appears in the sitemap.
+  wrote, and every built page appears in the sitemap;
+* every ``<lastmod>`` in ``sitemap.xml`` is a well-formed ``YYYY-MM-DD`` date that
+  is not in the future, and at least one entry carries one. ``<lastmod>`` is
+  optional, so an entry without one is fine and a page this build could not date
+  is meant to have none -- but a sitemap in which *nothing* is dated means the
+  build had no history to read (a shallow checkout, a lost ``fetch-depth: 0``),
+  and that is a silent regression to exactly the state this gate was added for.
 
 It reads only the built tree. It makes no network call, here or anywhere.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from collections import defaultdict
+from datetime import date
 from html import unescape as html_unescape
 from pathlib import Path, PurePosixPath
+from typing import Any
 from urllib.parse import urlsplit
 
-__all__ = ["check_site", "page_url"]
+__all__ = ["check_site", "lastmod_coverage", "page_url"]
 
 # Read with a regex rather than an XML parser. The file is one this build just
 # wrote, but a gate that parses XML is still a gate that parses XML, and the
@@ -44,6 +60,14 @@ __all__ = ["check_site", "page_url"]
 # the addresses in a urlset.
 _URLSET = re.compile(r"<urlset\b", re.IGNORECASE)
 _LOC = re.compile(r"<loc>\s*(.*?)\s*</loc>", re.IGNORECASE | re.DOTALL)
+_URL_ENTRY = re.compile(r"<url>(.*?)</url>", re.IGNORECASE | re.DOTALL)
+_LASTMOD = re.compile(r"<lastmod>\s*(.*?)\s*</lastmod>", re.IGNORECASE | re.DOTALL)
+
+#: The one shape a published ``<lastmod>`` may take here. The sitemaps protocol
+#: allows a full W3C datetime as well, and the builder emits a date, so anything
+#: else in the file is a value that came from somewhere this gate does not know
+#: about and has not checked.
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 # Both of these are quote-aware on purpose. A description is prose, and prose has
@@ -290,14 +314,87 @@ def _check_robots(root: Path, origin: str) -> list[str]:
     return problems
 
 
-def _check_sitemap(root: Path, origin: str, pages: list[Path]) -> list[str]:
+def _entries(text: str) -> list[tuple[str, str | None]]:
+    """Each ``<url>`` in a sitemap as its address and its ``<lastmod>``, if any."""
+    found: list[tuple[str, str | None]] = []
+    for entry in _URL_ENTRY.finditer(text):
+        block = entry.group(1)
+        loc = _LOC.search(block)
+        if loc is None:
+            continue
+        stamp = _LASTMOD.search(block)
+        found.append(
+            (html_unescape(loc.group(1)), html_unescape(stamp.group(1)) if stamp else None)
+        )
+    return found
+
+
+def lastmod_coverage(root: Path) -> tuple[int, int]:
+    """How many published sitemap entries state when the page last changed, of how many.
+
+    Both numbers, never just the first. A build that dated nothing prints the same
+    reassuring line as one that dated everything unless the denominator is beside it.
+    """
+    sitemap = root / "sitemap.xml"
+    if not sitemap.is_file():
+        return (0, 0)
+    entries = _entries(sitemap.read_text(encoding="utf-8"))
+    return (sum(1 for _, stamp in entries if stamp), len(entries))
+
+
+def _check_lastmod(entries: list[tuple[str, str | None]], today: date) -> list[str]:
+    """Every way a published ``<lastmod>`` is not a fact about the content.
+
+    ``<lastmod>`` is optional, and that is the point: a page whose change date this
+    build could not read is supposed to carry none, because an omitted element says
+    nothing while a stamped one is a claim. So a missing element is never a problem
+    here and a malformed or impossible one always is.
+
+    A date in the future is treated as broken rather than fresh, for the reason a
+    future timestamp always is: it is a wrong clock or a wrong record, and every
+    "is this recent" comparison it is fed into answers yes forever.
+    """
+    problems: list[str] = []
+    dated = 0
+    for url, stamp in entries:
+        if stamp is None:
+            continue
+        dated += 1
+        if not _ISO_DATE.match(stamp):
+            problems.append(
+                f"sitemap lastmod for {url} is {stamp!r}, which is not a YYYY-MM-DD date"
+            )
+            continue
+        try:
+            stamped = date.fromisoformat(stamp)
+        except ValueError:
+            problems.append(f"sitemap lastmod for {url} is {stamp!r}, which is not a real date")
+            continue
+        if stamped > today:
+            problems.append(
+                f"sitemap lastmod for {url} is {stamp}, which is in the future. "
+                "A page cannot have changed after now; that is a clock or a record, "
+                "not freshness."
+            )
+    if entries and dated == 0:
+        problems.append(
+            f"not one of the {len(entries)} sitemap entries says when its page last "
+            "changed. <lastmod> is optional per entry on purpose, but none at all means "
+            "the build could read no history -- a shallow checkout, or a lost "
+            "`fetch-depth: 0` -- rather than a site with nothing to date."
+        )
+    return problems
+
+
+def _check_sitemap(root: Path, origin: str, pages: list[Path], today: date) -> list[str]:
     sitemap = root / "sitemap.xml"
     if not sitemap.is_file():
         return ["sitemap.xml was not published"]
     text = sitemap.read_text(encoding="utf-8")
     if not _URLSET.search(text):
         return ["sitemap.xml is not a urlset"]
-    listed = [html_unescape(loc) for loc in _LOC.findall(text)]
+    entries = _entries(text)
+    listed = [url for url, _ in entries]
     if not listed:
         return ["sitemap.xml lists no URL at all"]
 
@@ -308,6 +405,7 @@ def _check_sitemap(root: Path, origin: str, pages: list[Path]) -> list[str]:
             problems.append(f"sitemap lists {url}, which this build did not write")
     for url in sorted(built - set(listed)):
         problems.append(f"{url} was built but is in neither the sitemap nor a noindex")
+    problems.extend(_check_lastmod(entries, today))
     return problems
 
 
@@ -328,13 +426,249 @@ def _indexable(pages: list[Path], root: Path) -> list[Path]:
     return kept
 
 
-def check_site(root: Path, origin: str) -> list[str]:
+#: The `<script>` element, matched as an element with its attributes intact.
+#:
+#: Matched rather than searched for. The portfolio audit that asked for this
+#: markup scored a sibling project as carrying structured data because the
+#: string `application/ld+json` appeared on its page -- the single occurrence
+#: turned out to be the `accept` attribute of a file picker. A count of a string
+#: scores an upload widget as a schema.org node, and equally misses a real one
+#: written with unusual spacing. So the type is read off the element's own
+#: attributes, the same quote-aware way `_TAG` reads a meta tag.
+_SCRIPT = re.compile(
+    r"""<script\b((?:[^>"']|"[^"]*"|'[^']*')*)>(.*?)</script\s*>""",
+    re.IGNORECASE | re.DOTALL,
+)
+
+#: Nodes that describe what a page is about. Anything outside this set is either
+#: a mistake or a decision, and either way should not arrive unnoticed.
+_ALLOWED_TYPES = frozenset(
+    {"WebSite", "WebPage", "BreadcrumbList", "ListItem", "SoftwareApplication"}
+)
+
+#: Vocabulary that solicits dataset harvest rather than describing a page.
+#:
+#: A `Dataset` node, or DCAT beside it, is not a description -- it is an
+#: invitation. It exists so that dataset search engines and open-data catalogs
+#: pick the thing up and list it as a dataset of record, and a catalog listing is
+#: far easier to acquire than to withdraw. Whether this project should solicit
+#: that over its corpus is an open question with an owner's name on it. This gate
+#: is here so the difference stays a decision somebody makes rather than a line
+#: somebody adds.
+_HARVEST_TYPES = frozenset({"Dataset", "DataCatalog", "DataDownload", "DataFeed"})
+_HARVEST_WORDS = ("dcat:", "dct:", "void:", '"distribution"')
+
+
+def _ld_blocks(doc: str) -> list[str]:
+    """The body of every `application/ld+json` element on the page."""
+    blocks = []
+    for found in _SCRIPT.finditer(doc):
+        attrs = _attributes(f"<script{found.group(1)}>")
+        if attrs.get("type", "").strip().lower() == "application/ld+json":
+            blocks.append(found.group(2))
+    return blocks
+
+
+def _nodes(graph: object) -> list[dict[str, Any]]:
+    """Every node anywhere in a payload, including items nested in a list."""
+    found: list[dict[str, Any]] = []
+    if isinstance(graph, dict):
+        if "@type" in graph:
+            found.append(graph)
+        for value in graph.values():
+            found.extend(_nodes(value))
+    elif isinstance(graph, list):
+        for value in graph:
+            found.extend(_nodes(value))
+    return found
+
+
+def _check_structured_data(
+    name: str, doc: str, title: str, description: str, url: str, page: Path, root: Path
+) -> list[str]:
+    """The page's machine-readable claim about itself must be the page's claim.
+
+    Every page here already said what it was to a person -- a title, a
+    description, a canonical, a card -- and said nothing at all to a machine.
+    The block that fixes that is the one surface on the page a human reviewer
+    never looks at, which makes it the one most likely to go quietly stale: a
+    title changed in the template and not in the node publishes two different
+    answers to "what is this page", and the one a search result shows is the
+    wrong one.
+
+    So nothing below compares the node to a literal. Each value is held against
+    the tag, the file or the address it was supposed to have been derived from,
+    and a node that stopped being derived fails here while still saying
+    something perfectly plausible.
+    """
+    blocks = _ld_blocks(doc)
+    if not blocks:
+        return [
+            f"{name}: carries no application/ld+json block, so it states what it is "
+            "to a reader and nothing to a crawler"
+        ]
+    if len(blocks) > 1:
+        return [f"{name}: carries {len(blocks)} ld+json blocks; a page makes one statement"]
+
+    try:
+        payload = json.loads(blocks[0])
+    except ValueError as error:
+        return [f"{name}: its ld+json block is not valid JSON: {error}"]
+
+    problems: list[str] = []
+    if payload.get("@context") != "https://schema.org":
+        problems.append(
+            f"{name}: ld+json @context is {payload.get('@context')!r}, not "
+            "'https://schema.org'; nothing resolves its terms"
+        )
+    graph = payload.get("@graph")
+    if not isinstance(graph, list) or not graph:
+        return [*problems, f"{name}: ld+json carries no @graph of nodes"]
+
+    nodes = _nodes(graph)
+    problems.extend(_check_vocabulary(name, blocks[0], nodes))
+    problems.extend(_check_references(name, nodes))
+
+    # The tags carry HTML and the node carries text, so the comparison is made
+    # on decoded values. Comparing raw would fail every page whose title or
+    # description holds an ampersand, and would fail it for being correct.
+    problems.extend(
+        _check_page_node(name, nodes, html_unescape(title), html_unescape(description), url)
+    )
+    problems.extend(_check_breadcrumb(name, nodes, url, page, root))
+    return problems
+
+
+def _check_vocabulary(name: str, raw: str, nodes: list[dict[str, Any]]) -> list[str]:
+    """Only nodes that describe the page, and none that ask to be harvested."""
+    problems = [
+        f"{name}: ld+json carries {word!r}. Harvest vocabulary asks catalogs to "
+        "list this as a dataset of record, which is a decision, not markup."
+        for word in _HARVEST_WORDS
+        if word in raw
+    ]
+    for node in nodes:
+        kind = node.get("@type")
+        if kind in _HARVEST_TYPES:
+            problems.append(
+                f"{name}: ld+json declares a {kind} node. That solicits dataset harvest "
+                "rather than describing the page, and is not this gate's to allow."
+            )
+        elif kind not in _ALLOWED_TYPES:
+            problems.append(f"{name}: ld+json declares an unexpected node type {kind!r}")
+        problems.extend(
+            f"{name}: ld+json {kind}.{key} is empty"
+            for key, value in node.items()
+            if isinstance(value, str) and not value.strip()
+        )
+    return problems
+
+
+def _check_references(name: str, nodes: list[dict[str, Any]]) -> list[str]:
+    """Every `@id` a node points at must be an `@id` the graph defines.
+
+    A dangling reference is the quietest failure available here: consumers drop
+    it without complaint, so the page reads as described and is not.
+    """
+    declared = {node["@id"] for node in nodes if "@id" in node}
+    return [
+        f"{name}: ld+json {node.get('@type')}.{key} points at "
+        f"{value['@id']!r}, which this graph does not define"
+        for node in nodes
+        for key, value in node.items()
+        if isinstance(value, dict) and set(value) == {"@id"} and value["@id"] not in declared
+    ]
+
+
+def _check_page_node(
+    name: str, nodes: list[dict[str, Any]], title: str, description: str, url: str
+) -> list[str]:
+    """The WebPage node repeats the page, and the WebSite node exists."""
+    pages = [node for node in nodes if node.get("@type") == "WebPage"]
+    if len(pages) != 1:
+        return [f"{name}: ld+json declares {len(pages)} WebPage nodes, expected 1"]
+    if not any(node.get("@type") == "WebSite" for node in nodes):
+        return [f"{name}: ld+json names no WebSite this page is part of"]
+    page_node = pages[0]
+
+    problems = []
+    if page_node.get("url") != url:
+        problems.append(
+            f"{name}: ld+json says the page is at {page_node.get('url')!r}, but it "
+            f"answers on {url!r}"
+        )
+    if page_node.get("description") != description:
+        problems.append(f"{name}: ld+json description is not the page's meta description")
+    node_name = page_node.get("name", "")
+    if not node_name or not title.startswith(node_name):
+        # mkdocs-material renders `<title>` as the page title followed by the
+        # site name, so the node's name is a prefix of it rather than equal to
+        # it. A node naming some other page fails this; a rendering convention
+        # change fails it loudly, which is the right way round.
+        problems.append(
+            f"{name}: ld+json names the page {node_name!r}, which is not how its "
+            f"<title> {title!r} begins"
+        )
+    return problems
+
+
+def _check_breadcrumb(
+    name: str, nodes: list[dict[str, Any]], url: str, page: Path, root: Path
+) -> list[str]:
+    """A trail must lead to this page, and every step of it must exist.
+
+    A breadcrumb is the one node here that makes a claim about somewhere else,
+    and a trail pointing at a page the build did not write is the same defect
+    as a dead link -- with none of a dead link's symptoms, because no reader
+    ever clicks it.
+    """
+    trails = [node for node in nodes if node.get("@type") == "BreadcrumbList"]
+    if not trails:
+        return []
+    if len(trails) > 1:
+        return [f"{name}: ld+json declares {len(trails)} breadcrumb trails"]
+    items = trails[0].get("itemListElement", [])
+    if not items:
+        return [f"{name}: ld+json declares an empty breadcrumb trail"]
+
+    problems = []
+    for expected, item in enumerate(items, start=1):
+        if item.get("position") != expected:
+            problems.append(
+                f"{name}: ld+json breadcrumb step {expected} claims position "
+                f"{item.get('position')!r}"
+            )
+        target = item.get("item")
+        if not target:
+            continue
+        if not target.startswith("https://"):
+            problems.append(f"{name}: ld+json breadcrumb names a relative address {target!r}")
+            continue
+        path = target.partition("//")[2].partition("/")[2]
+        if not _resolves(f"/{path}", page, root):
+            problems.append(
+                f"{name}: ld+json breadcrumb names {target!r}, which this build did not "
+                "write. A trail to nowhere has no symptom a reader would report."
+            )
+    if items[-1].get("item") != url:
+        problems.append(
+            f"{name}: ld+json breadcrumb ends at {items[-1].get('item')!r} rather than "
+            f"at this page, {url!r}"
+        )
+    return problems
+
+
+def check_site(root: Path, origin: str, *, today: date | None = None) -> list[str]:
     """Every problem with the published metadata of the built site at ``root``.
 
     ``origin`` is a bare https origin with no trailing slash. Returns an empty
     list when the site's claims about where its pages live are all true.
+
+    ``today`` is the day the sitemap's dates are read against, and exists so a test
+    can pin it. It defaults to the real one.
     """
     origin = origin.rstrip("/")
+    today = today or date.today()
     built = sorted(root.rglob("*.html"))
     pages = _indexable(built, root)
     if not pages:
@@ -362,6 +696,7 @@ def check_site(root: Path, origin: str) -> list[str]:
 
         problems.extend(_check_canonical(name, canonicals, url))
         problems.extend(_check_social(name, values, title, url, root, origin))
+        problems.extend(_check_structured_data(name, doc, title, description, url, page, root))
 
     for shared, names in sorted(titles.items()):
         if len(names) > 1:
@@ -374,5 +709,5 @@ def check_site(root: Path, origin: str) -> list[str]:
 
     problems.extend(_check_links(built, root, origin))
     problems.extend(_check_robots(root, origin))
-    problems.extend(_check_sitemap(root, origin, pages))
+    problems.extend(_check_sitemap(root, origin, pages, today))
     return problems

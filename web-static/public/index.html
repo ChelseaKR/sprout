@@ -52,6 +52,68 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <script src="analytics.js"></script>
     <meta name="theme-color" content="#12442b" />
+    <!--
+      What this page is, and what it is about, for the readers that are not people.
+      The tags above say it to a browser and to a link unfurler; nothing said it in a
+      vocabulary a crawler reads, here or on any of the 52 documentation pages.
+
+      Those 52 get this block written for them by `docs_hooks/structured_data.py`
+      out of the title, description, canonical and nav mkdocs already holds. This
+      page is not built by mkdocs -- it is copied over mkdocs' own index.html at the
+      site root -- so there is no render to derive it from and it is written once,
+      here. What keeps it from drifting is `sprout site-check`, which holds every
+      value below against this page's own `<title>`, `<meta name=description>` and
+      canonical, over the deployed tree. Change the title above without changing the
+      node and the gate fails, which is the same protection the generated pages get
+      by a different route.
+
+      The `@id` values are the ones the generated pages use, deliberately: a crawler
+      reading this page and a documentation page sees one site and one piece of
+      software, not two of each.
+
+      There is no `Dataset` node here and none on any other page. A dataset
+      descriptor is not a description, it is a request to be harvested and listed by
+      dataset search engines and open-data catalogs, and a listing is far easier to
+      acquire than to withdraw. That is a decision with an owner's name on it, not a
+      line to add quietly. `sprout site-check` fails if the vocabulary appears.
+    -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://sprout.chelseakr.com/#website",
+      "url": "https://sprout.chelseakr.com/",
+      "name": "Sprout",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://sprout.chelseakr.com/#webpage",
+      "url": "https://sprout.chelseakr.com/",
+      "name": "Sprout \u2014 inspect a grounded answer",
+      "description": "Try Sprout's cited plant-care pipeline in your browser and inspect the evaluation evidence behind it.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://sprout.chelseakr.com/#website"
+      },
+      "about": {
+        "@id": "https://github.com/ChelseaKR/sprout#software"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://github.com/ChelseaKR/sprout#software",
+      "name": "Sprout",
+      "description": "A grounded, evaluated, multilingual plant-care assistant and eval harness.",
+      "url": "https://sprout.chelseakr.com/",
+      "sameAs": "https://github.com/ChelseaKR/sprout",
+      "inLanguage": "en"
+    }
+  ]
+}
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#try">Skip to the live reference</a>

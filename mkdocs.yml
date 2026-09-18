@@ -7,6 +7,10 @@ copyright: Copyright 2026 Chelsea Kelly-Reif — Apache-2.0
 
 theme:
   name: material
+  # Holds one file: sitemap.xml. mkdocs' own template stamps every <lastmod> with
+  # the build date; this one emits the date docs_hooks/sitemap_lastmod.py derived
+  # from the page's own history, and omits the element where there is none.
+  custom_dir: theme_overrides
   palette:
     primary: green
     accent: green
@@ -18,8 +22,18 @@ theme:
 # carried one identical sentence. The hook gives each page the description its own
 # opening paragraph already states; it writes no new copy and leaves a page that
 # declares its own description alone.
+# Every sitemap entry carried <lastmod>{build date}, so a page untouched since
+# August advertised itself as changed this morning, on all 53 URLs, every day. The
+# hook dates each page from the commit that last changed its source and publishes
+# no date where there is none to publish.
 hooks:
   - docs_hooks/page_description.py
+  - docs_hooks/sitemap_lastmod.py
+  # Every page said what it was to a person and nothing to a machine.
+  # This writes one schema.org block per page out of the title, description,
+  # canonical and nav mkdocs already has — no new copy, and no `Dataset`
+  # node, which would be a request to be harvested rather than a description.
+  - docs_hooks/structured_data.py
   # Google Analytics 4 on every handbook page, with the footer opt-out (ADR 0023). The
   # loader itself is web-static/public/analytics.js, published at the site root.
   - docs_hooks/analytics.py

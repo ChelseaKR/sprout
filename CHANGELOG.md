@@ -118,6 +118,62 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   that triggered the run instead of creating one, and `publish-pypi` names the
   environment's url so the `pypi` required reviewer can see what they are approving.
 
+- **The sitemap told every crawler that all 53 pages changed today, every day.** mkdocs
+  fills `<lastmod>` from `get_build_date()`, so a docs site rebuilt from every push to
+  `main` published the day of the build as the day of the content: measured live on
+  2026-09-13, all 53 of 53 entries read `2026-09-13`, including `/PUBLICATION-READINESS/`,
+  whose source had not been touched since 2026-08-16. `<lastmod>` is the one element in a
+  sitemap that is a factual claim about the content, and this one was a claim about the
+  CI runner — the same "absence rendered as a value" shape as a failed read published as a
+  measurement, here as *"we did not measure this per page"* published as today's date.
+
+  `docs_hooks/sitemap_lastmod.py` now dates each page from the commit that last changed
+  its own source (`git log -1 --format=%cs`), and `theme_overrides/sitemap.xml` emits the
+  element **only** for a page it could date. The same build now publishes 52 dates across
+  16 distinct days from 2026-06-22 to 2026-09-07, and none of them is the build's own.
+
+  **`/` is deliberately left undated.** `docs-pages` copies `web-static/public/` over the
+  mkdocs output, so the document served at the root is the zero-server reference surface
+  and not `docs/index.md`. Dating that URL from `docs/index.md`'s history would publish a
+  change date for a document nobody receives, which is the defect wearing different
+  clothes.
+
+  **A shallow checkout is refused rather than trusted.** `git log -1 -- <path>` does not
+  fail in a depth-1 clone: it answers for *every* path with the tip commit's date, because
+  relative to no parent that single commit introduces the whole tree. Nothing about the
+  reply is malformed, so a reader that asks and then sanity-checks the answer would have
+  reinstated the build date under a new name. The hook therefore asks
+  `git rev-parse --is-shallow-repository` first, once, and publishes nothing at all from a
+  checkout that cannot answer. `tests/test_sitemap_lastmod.py` proves both halves against a
+  real depth-1 clone: that the naive question does come back with the wrong date there, and
+  that the hook refuses it.
+
+  **The count is checked against the file rather than trusted.** The hook computes
+  dates and the template publishes them, and the first cannot see the second. Measured
+  while writing this: with the override removed and the hook left in place, the build
+  printed `52 of 53 pages state when they last changed` while the file it had just
+  written carried the build date on all 53 — a reassuring number beside the exact
+  artifact it was wrong about. `on_post_build` now reads the written sitemap back and
+  fails the build (a warning, and `mkdocs build --strict` is how the docs are built)
+  unless its dates are precisely the derived ones, compared as multisets so a fallback
+  that repeats one date cannot pass on a count.
+
+  **Two voices, because an omission is honest and silent.** The build prints
+  `52 of 53 pages state when they last changed` and names every page it could not date;
+  `sprout site-check` — a merge gate, and a step of `docs-pages` — fails when a published
+  `<lastmod>` is malformed, impossible, or in the future, and when *none* of the entries
+  carries one at all, which is exactly what a lost `fetch-depth: 0` produces. The three
+  jobs that build the docs (`ci.yml`'s `docs`, `pages.yml`, `live-integrity.yml`) now
+  check out with full history, and say in place why.
+
+  **And the live check can now see it.** `scripts/verify_live_site.py` used to strip every
+  `<lastmod>` before comparing the deployed `sitemap.xml`, because those elements were the
+  build's own date and moved on their own. They are now a property of the commit, so the
+  file is compared byte for byte, dates included — the elements the old exclusion removed
+  are precisely the ones this change corrects, and a sentinel blind to them could not have
+  told an honest deployed sitemap from a build-stamped one. `sitemap.xml.gz` keeps its one
+  documented exclusion (a gzip MTIME) and is still checked by decompressing it.
+
 - **The only required status check could not name the gate that failed, and could pass
   having checked nothing.** `ci-gate` is the single required check for branch
   protection, so it is the one place a reader looks when a merge is blocked. It joined

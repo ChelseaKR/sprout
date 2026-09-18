@@ -1,0 +1,26 @@
+{#-
+  mkdocs' own sitemap template, with one element changed.
+
+  Upstream emits `<lastmod>{{ file.page.update_date }}</lastmod>`, and
+  `Page.update_date` is `mkdocs.utils.get_build_date()` -- the day the build ran.
+  That put today's date on all 53 URLs, every day, including pages untouched for
+  months. Here the element is emitted only for a page `docs_hooks/sitemap_lastmod.py`
+  could date from the commit that last changed its source, and omitted entirely for
+  one it could not: `<lastmod>` is optional in the sitemaps protocol, and an absent
+  element is a valid sitemap that says nothing false.
+
+  `update_date` itself is deliberately left alone. mkdocs also reads it to set the
+  gzip MTIME on sitemap.xml.gz, and `max()` over an empty date string there is a
+  ValueError, so the build date keeps that job and only the published claim changes.
+-#}
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{%- for file in pages -%}
+    {% if not file.page.is_link and (file.page.abs_url or file.page.canonical_url) %}
+    <url>
+         <loc>{% if file.page.canonical_url %}{{ file.page.canonical_url|e }}{% else %}{{ file.page.abs_url|e }}{% endif %}</loc>{% if file.page.meta.lastmod %}
+         <lastmod>{{ file.page.meta.lastmod|e }}</lastmod>{% endif %}
+    </url>
+    {%- endif -%}
+{% endfor %}
+</urlset>
