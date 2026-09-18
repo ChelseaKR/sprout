@@ -23,7 +23,13 @@ is*, because a wrong one is worse than a missing one:
   origin in full -- names a file the build actually wrote;
 * ``robots.txt`` exists and advertises the sitemap at the origin;
 * every ``<loc>`` in ``sitemap.xml`` resolves to a file the build actually
-  wrote, and every built page appears in the sitemap.
+  wrote, and every built page appears in the sitemap;
+* every ``<lastmod>`` in ``sitemap.xml`` is a well-formed ``YYYY-MM-DD`` date that
+  is not in the future, and at least one entry carries one. ``<lastmod>`` is
+  optional, so an entry without one is fine and a page this build could not date
+  is meant to have none -- but a sitemap in which *nothing* is dated means the
+  build had no history to read (a shallow checkout, a lost ``fetch-depth: 0``),
+  and that is a silent regression to exactly the state this gate was added for.
 
 It reads only the built tree. It makes no network call, here or anywhere.
 """
@@ -32,11 +38,12 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from datetime import date
 from html import unescape as html_unescape
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
-__all__ = ["check_site", "page_url"]
+__all__ = ["check_site", "lastmod_coverage", "page_url"]
 
 # Read with a regex rather than an XML parser. The file is one this build just
 # wrote, but a gate that parses XML is still a gate that parses XML, and the
@@ -44,6 +51,14 @@ __all__ = ["check_site", "page_url"]
 # the addresses in a urlset.
 _URLSET = re.compile(r"<urlset\b", re.IGNORECASE)
 _LOC = re.compile(r"<loc>\s*(.*?)\s*</loc>", re.IGNORECASE | re.DOTALL)
+_URL_ENTRY = re.compile(r"<url>(.*?)</url>", re.IGNORECASE | re.DOTALL)
+_LASTMOD = re.compile(r"<lastmod>\s*(.*?)\s*</lastmod>", re.IGNORECASE | re.DOTALL)
+
+#: The one shape a published ``<lastmod>`` may take here. The sitemaps protocol
+#: allows a full W3C datetime as well, and the builder emits a date, so anything
+#: else in the file is a value that came from somewhere this gate does not know
+#: about and has not checked.
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 # Both of these are quote-aware on purpose. A description is prose, and prose has
@@ -290,14 +305,87 @@ def _check_robots(root: Path, origin: str) -> list[str]:
     return problems
 
 
-def _check_sitemap(root: Path, origin: str, pages: list[Path]) -> list[str]:
+def _entries(text: str) -> list[tuple[str, str | None]]:
+    """Each ``<url>`` in a sitemap as its address and its ``<lastmod>``, if any."""
+    found: list[tuple[str, str | None]] = []
+    for entry in _URL_ENTRY.finditer(text):
+        block = entry.group(1)
+        loc = _LOC.search(block)
+        if loc is None:
+            continue
+        stamp = _LASTMOD.search(block)
+        found.append(
+            (html_unescape(loc.group(1)), html_unescape(stamp.group(1)) if stamp else None)
+        )
+    return found
+
+
+def lastmod_coverage(root: Path) -> tuple[int, int]:
+    """How many published sitemap entries state when the page last changed, of how many.
+
+    Both numbers, never just the first. A build that dated nothing prints the same
+    reassuring line as one that dated everything unless the denominator is beside it.
+    """
+    sitemap = root / "sitemap.xml"
+    if not sitemap.is_file():
+        return (0, 0)
+    entries = _entries(sitemap.read_text(encoding="utf-8"))
+    return (sum(1 for _, stamp in entries if stamp), len(entries))
+
+
+def _check_lastmod(entries: list[tuple[str, str | None]], today: date) -> list[str]:
+    """Every way a published ``<lastmod>`` is not a fact about the content.
+
+    ``<lastmod>`` is optional, and that is the point: a page whose change date this
+    build could not read is supposed to carry none, because an omitted element says
+    nothing while a stamped one is a claim. So a missing element is never a problem
+    here and a malformed or impossible one always is.
+
+    A date in the future is treated as broken rather than fresh, for the reason a
+    future timestamp always is: it is a wrong clock or a wrong record, and every
+    "is this recent" comparison it is fed into answers yes forever.
+    """
+    problems: list[str] = []
+    dated = 0
+    for url, stamp in entries:
+        if stamp is None:
+            continue
+        dated += 1
+        if not _ISO_DATE.match(stamp):
+            problems.append(
+                f"sitemap lastmod for {url} is {stamp!r}, which is not a YYYY-MM-DD date"
+            )
+            continue
+        try:
+            stamped = date.fromisoformat(stamp)
+        except ValueError:
+            problems.append(f"sitemap lastmod for {url} is {stamp!r}, which is not a real date")
+            continue
+        if stamped > today:
+            problems.append(
+                f"sitemap lastmod for {url} is {stamp}, which is in the future. "
+                "A page cannot have changed after now; that is a clock or a record, "
+                "not freshness."
+            )
+    if entries and dated == 0:
+        problems.append(
+            f"not one of the {len(entries)} sitemap entries says when its page last "
+            "changed. <lastmod> is optional per entry on purpose, but none at all means "
+            "the build could read no history -- a shallow checkout, or a lost "
+            "`fetch-depth: 0` -- rather than a site with nothing to date."
+        )
+    return problems
+
+
+def _check_sitemap(root: Path, origin: str, pages: list[Path], today: date) -> list[str]:
     sitemap = root / "sitemap.xml"
     if not sitemap.is_file():
         return ["sitemap.xml was not published"]
     text = sitemap.read_text(encoding="utf-8")
     if not _URLSET.search(text):
         return ["sitemap.xml is not a urlset"]
-    listed = [html_unescape(loc) for loc in _LOC.findall(text)]
+    entries = _entries(text)
+    listed = [url for url, _ in entries]
     if not listed:
         return ["sitemap.xml lists no URL at all"]
 
@@ -308,6 +396,7 @@ def _check_sitemap(root: Path, origin: str, pages: list[Path]) -> list[str]:
             problems.append(f"sitemap lists {url}, which this build did not write")
     for url in sorted(built - set(listed)):
         problems.append(f"{url} was built but is in neither the sitemap nor a noindex")
+    problems.extend(_check_lastmod(entries, today))
     return problems
 
 
@@ -328,13 +417,17 @@ def _indexable(pages: list[Path], root: Path) -> list[Path]:
     return kept
 
 
-def check_site(root: Path, origin: str) -> list[str]:
+def check_site(root: Path, origin: str, *, today: date | None = None) -> list[str]:
     """Every problem with the published metadata of the built site at ``root``.
 
     ``origin`` is a bare https origin with no trailing slash. Returns an empty
     list when the site's claims about where its pages live are all true.
+
+    ``today`` is the day the sitemap's dates are read against, and exists so a test
+    can pin it. It defaults to the real one.
     """
     origin = origin.rstrip("/")
+    today = today or date.today()
     built = sorted(root.rglob("*.html"))
     pages = _indexable(built, root)
     if not pages:
@@ -374,5 +467,5 @@ def check_site(root: Path, origin: str) -> list[str]:
 
     problems.extend(_check_links(built, root, origin))
     problems.extend(_check_robots(root, origin))
-    problems.extend(_check_sitemap(root, origin, pages))
+    problems.extend(_check_sitemap(root, origin, pages, today))
     return problems
