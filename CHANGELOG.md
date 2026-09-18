@@ -10,6 +10,20 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **The published site now loads Google Analytics 4, and a `/privacy/` page says what it
+  records ([ADR 0023](docs/adr/0023-google-analytics-4-on-the-published-site.md)).** Per the
+  owner's 2026-09-17 decision to run GA4 on every public site in the portfolio.
+  `web-static/public/analytics.js` holds the measurement ID (`G-GS5D3FB3XL`) and every guard;
+  the reference page loads it from `<head>`, and `docs_hooks/analytics.py` adds it and the
+  footer block to every handbook page. It loads only on `sprout.chelseakr.com`, and never under
+  Global Privacy Control, Do Not Track, or the new footer "Opt out of analytics" control
+  (`localStorage` `sprout:analytics-opt-out`). Google signals and ad personalization are off,
+  the three advertising consent settings are denied everywhere, and `analytics_storage` is
+  denied by default in the EEA, the UK and Switzerland. The page address is cut to origin, path
+  and `utm_*`. A question typed into the reference is never in anything GA receives. The CLI, the
+  local server and the eval harness carry no analytics. README, `web-static/README.md` ("no
+  telemetry") and `docs/RESPONSIBLE-TECH-AUDITS.md` §C were changed to match.
+
 - **The threat model claimed a PII redaction the cloud path does not perform.** Three
   documents stated redaction at the network boundary as a property of *cloud mode*:
   `docs/THREAT-MODEL.md`'s STRIDE info-disclosure row and its T5 mitigation bullet, and

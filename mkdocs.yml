@@ -20,6 +20,12 @@ theme:
 # declares its own description alone.
 hooks:
   - docs_hooks/page_description.py
+  # Google Analytics 4 on every handbook page, with the footer opt-out (ADR 0023). The
+  # loader itself is web-static/public/analytics.js, published at the site root.
+  - docs_hooks/analytics.py
+
+extra_css:
+  - assets/analytics.css
 
 markdown_extensions:
   - admonition
@@ -51,6 +57,7 @@ nav:
   - Adapt to your domain: ADAPT.md
   - Roadmap: ROADMAP.md
   - Responsible-tech audits: RESPONSIBLE-TECH-AUDITS.md
+  - Privacy: privacy.md
   - ASVS L2 integration review: audits/asvs-l2-review-2026-07-12.md
   - Accessibility:
       - Statement: a11y/STATEMENT.md
