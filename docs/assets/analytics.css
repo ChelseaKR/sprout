@@ -1,0 +1,21 @@
+/* The GA4 disclosure and the footer's analytics opt-out on the handbook pages
+   (docs_hooks/analytics.py, docs/adr/0023-google-analytics-4-on-the-published-site.md).
+   The toggle is a <button>, because it changes a setting, dressed as a link. */
+.analytics-footer p {
+  margin-block: 0.25rem;
+}
+
+.analytics-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.analytics-choice[hidden],
+.analytics-toggle[hidden] {
+  display: none;
+}

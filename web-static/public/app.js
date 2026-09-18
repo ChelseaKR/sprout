@@ -1,5 +1,6 @@
 // Thin UI glue over the deterministic TypeScript pipeline. The only requests this
-// page makes are for same-origin, static corpus assets; questions never leave the tab.
+// module makes are for same-origin, static corpus assets; questions never leave the tab.
+// (The page's Google Analytics 4 loader, analytics.js, is separate and never sees one.)
 import { loadAssistant, answerCitations } from "./assets/index.js";
 
 const loadStatus = document.getElementById("load-status");

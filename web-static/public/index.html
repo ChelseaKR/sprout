@@ -50,6 +50,7 @@
     />
     <link rel="stylesheet" href="styles.css" />
     <link rel="manifest" href="manifest.webmanifest" />
+    <script src="analytics.js"></script>
     <meta name="theme-color" content="#12442b" />
   </head>
   <body>
@@ -104,7 +105,7 @@
           <h2 id="try-title">Ask the corpus, not a profile.</h2>
           <p>
             The complete deterministic pipeline runs in this tab. Your question is not sent,
-            saved, or logged. Household care belongs in Family Greenhouse.
+            saved, or logged, and the page's analytics never see it. Household care belongs in Family Greenhouse.
           </p>
         </div>
 
@@ -273,6 +274,16 @@
     <footer role="contentinfo">
       <p><strong>Sprout</strong> is an independent open-source reference implementation.</p>
       <p>Synthetic CC0 corpus · Apache-2.0 · Not veterinary or medical advice.</p>
+      <div class="analytics-footer">
+        <p>
+          Pages on this site use Google Analytics 4 to count visits, with its advertising features off. It does not load when your browser sends Global Privacy Control or Do Not Track, and it never sees a question you type into the reference.
+          <a href="/privacy/">Privacy: what it records and how to turn it off</a>.
+        </p>
+        <p class="analytics-choice" data-analytics-choice hidden>
+          <button type="button" class="analytics-toggle">Opt out of analytics</button>
+          <span class="analytics-status" role="status"></span>
+        </p>
+      </div>
     </footer>
 
     <script type="module" src="app.js"></script>
