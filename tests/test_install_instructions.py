@@ -67,21 +67,6 @@ IMPORT_NAME = "sprout"
 #: read all of it, so the population is asserted rather than assumed.
 MIN_CODE_FILES = 150
 
-#: The one occurrence this change could not correct, named rather than quietly skipped.
-#:
-#: `src/sprout/providers/` is `TUNABLE_SURFACE`, and `tuning_scope._python_fingerprint`
-#: builds its comparison from `ast.dump`, where a **docstring is a statement**. So a
-#: correction confined to a module docstring — text nothing in `src/` reads, measured:
-#: `__doc__` appears nowhere in the package — is indistinguishable to that gate from a
-#: change to retrieval ranking, and it demands a `Tunes-Against:` trailer citing a
-#: committed eval failure. There is no honest trailer for a comment, and writing a false
-#: one to get past a gate is worse than the wrong sentence it would fix.
-#:
-#: This is an exemption, so it is self-limiting: `test_the_known_gap_is_still_a_gap`
-#: fails the day the file is corrected or the gate learns to ignore docstrings, and the
-#: entry has to be deleted then. It cannot outlive its reason quietly.
-KNOWN_GAP = frozenset({"src/sprout/providers/__init__.py"})
-
 
 def _git(*args: str) -> str | None:
     executable = shutil.which("git")
@@ -144,8 +129,8 @@ def test_no_install_command_in_code_names_a_package_this_project_does_not_publis
     Ten occurrences in seven files, two of them exception messages raised at runtime
     telling a user the exact command to run to get an optional extra — the loudest
     possible place to name the wrong package, and the only place in the repository
-    nobody re-reads on the way past. Nine are corrected; the tenth is in `KNOWN_GAP`
-    above with its reason and its expiry.
+    nobody re-reads on the way past. All ten are corrected; the last waited on #174, a
+    tuning-scope gate that counted a docstring as code.
     """
     distribution = declared_distribution()
     files = _tracked_code_files()
@@ -156,8 +141,6 @@ def test_no_install_command_in_code_names_a_package_this_project_does_not_publis
     )
     problems: list[str] = []
     for path in files:
-        if str(path.relative_to(ROOT)) in KNOWN_GAP:
-            continue
         text = path.read_text(encoding="utf-8")
         for line_number, line in enumerate(text.splitlines(), 1):
             for target in wrongly_named_installs(line, distribution):
@@ -168,33 +151,6 @@ def test_no_install_command_in_code_names_a_package_this_project_does_not_publis
         "The bare import name on PyPI belongs to an unrelated library, so each of these "
         "succeeds against somebody else's code rather than failing."
     )
-
-
-def test_the_known_gap_is_still_a_gap() -> None:
-    """An exemption that has stopped exempting anything reads as coverage.
-
-    Every entry above has to still contain the thing it is excused for. The day the
-    docstring is corrected — or the day `tuning_scope` stops treating one as a behavior
-    change — this fails and the entry goes, rather than sitting in the tuple looking like
-    a considered decision about a file nobody has looked at in a year.
-
-    It also pins the count, because an exemption list is the one list where growth is the
-    signal: a second entry means somebody widened an excuse instead of fixing a file.
-    """
-    distribution = declared_distribution()
-    assert len(KNOWN_GAP) == 1, (
-        f"the exemption list has grown to {sorted(KNOWN_GAP)}. Adding an entry here excuses a "
-        "file from naming the right package; it is not a place to put a file that is merely "
-        "inconvenient to fix."
-    )
-    for name in sorted(KNOWN_GAP):
-        path = ROOT / name
-        assert path.is_file(), f"{name} is exempted here and is not in the tree"
-        assert wrongly_named_installs(path.read_text(encoding="utf-8"), distribution), (
-            f"{name} is exempted from the scan above and no longer contains an install "
-            "command naming the wrong package. Delete the entry — an exemption that exempts "
-            "nothing is an exemption nobody can see the cost of."
-        )
 
 
 def test_the_package_derives_its_version_from_the_distribution_the_manifest_declares() -> None:

@@ -23,6 +23,9 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   `test_package_never_reads_a_docstring` fails the day something does. Controls in both
   directions run on every fingerprint path: a docstring-only edit passes, and a same-size
   edit to the statement beside it still fails, with or without a docstring edit alongside.
+  The motivating docstring, which told readers to `pip install sprout` (an unrelated
+  library), is corrected. Its `KNOWN_GAP` entry and `test_the_known_gap_is_still_a_gap` in
+  `tests/test_install_instructions.py` are removed with it, as that entry said they should be.
 
 - **The published site now loads Google Analytics 4, and a `/privacy/` page says what it
   records ([ADR 0023](docs/adr/0023-google-analytics-4-on-the-published-site.md)).** Per the

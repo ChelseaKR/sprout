@@ -1,7 +1,7 @@
 """Provider factory: config strings -> concrete embedder/generator, lazily imported.
 
 Lazy imports keep the offline default free of heavy dependencies — ``boto3`` is only
-imported when ``provider: bedrock`` is actually selected, so ``pip install sprout`` with
+imported when ``provider: bedrock`` is actually selected, so ``pip install sprout-plantcare`` with
 no extras still runs end to end. ``build_entailment_verifier`` follows the identical
 pattern for the ``sprout[nli]`` extra (EXP-04): ``onnxruntime``/``tokenizers`` are only
 imported when ``generation.support_verifier: nli`` is actually configured.
