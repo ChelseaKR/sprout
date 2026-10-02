@@ -318,8 +318,9 @@ a real URL.*
 - Done: tuning only against committed eval failures is mechanically enforced by `sprout
   check-tuning-scope`, a required CI job. Changes to retrieval, generation, guards,
   calibration, lexical logic, or config must cite a case already recorded in the committed
-  eval baseline via a `Tunes-Against:` commit trailer. Comment-only YAML and the exact named
-  operational lifecycle wrapper are excluded by semantic/AST comparison. The initial lifecycle
+  eval baseline via a `Tunes-Against:` commit trailer. Comment-only YAML, comment- and
+  docstring-only Python, and the exact named operational lifecycle wrapper are excluded by
+  semantic/AST comparison. The initial lifecycle
   module is pinned to one reviewed bootstrap digest; all later lifecycle hunks are gated.
   Authorization comes from the merge-base baseline, and adversarial tests keep model, prompt,
   decoding, real-config, retrieval/guard, lifecycle-output, and unknown provider edits fail-closed.

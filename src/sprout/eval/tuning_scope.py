@@ -24,7 +24,8 @@ The initial lifecycle module is admitted once by an exact reviewed digest becaus
 exist at the branch's merge base; every later lifecycle or unknown provider hunk fails closed.
 So are the ``Assistant`` methods an eval run never executes (``Assistant.trace``, the ``--debug``
 dump): a gate on *eval outcomes* has nothing to say about code the eval never runs, and demanding
-a ``Tunes-Against`` citation for it would only be satisfiable by writing a false one.
+a ``Tunes-Against`` citation for it would only be satisfiable by writing a false one. Docstrings
+are dropped from every Python comparison for the same reason: nothing in the package reads one.
 """
 
 from __future__ import annotations
@@ -117,6 +118,53 @@ def tunable_paths(changed: list[str]) -> list[str]:
     return sorted(p for p in changed if is_tunable_path(p))
 
 
+class _DropDocstrings(ast.NodeTransformer):
+    """Erase only docstrings: the leading ``str`` constant of a module, class or function body.
+
+    ``ast`` already discards ``#`` comments, but a docstring is an ``Expr(Constant(str))``
+    statement, so without this a one-word prose correction moves the fingerprint exactly as a
+    ranking constant does. No module under ``src/sprout/`` reads ``__doc__`` (pinned by
+    ``tests/test_tuning_scope.py::test_package_never_reads_a_docstring``), so a docstring
+    cannot reach a prompt, a ranking, a guard or a threshold. A bare string anywhere other than
+    the first statement of a body, an f-string, and a bytes literal are not docstrings and stay
+    in the tree.
+    """
+
+    @staticmethod
+    def _strip(body: list[ast.stmt]) -> list[ast.stmt]:
+        if (
+            body
+            and isinstance(body[0], ast.Expr)
+            and isinstance(body[0].value, ast.Constant)
+            and isinstance(body[0].value.value, str)
+        ):
+            return body[1:] or [ast.Pass()]
+        return body
+
+    def visit_Module(self, node: ast.Module) -> ast.AST:
+        node.body = self._strip(node.body)
+        return self.generic_visit(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> ast.AST:
+        node.body = self._strip(node.body)
+        return self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:
+        node.body = self._strip(node.body)
+        return self.generic_visit(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> ast.AST:
+        node.body = self._strip(node.body)
+        return self.generic_visit(node)
+
+
+def _parse_without_docstrings(source: str, *, type_comments: bool = False) -> ast.Module:
+    """Parse ``source`` and drop its docstrings; every fingerprint below starts here."""
+    tree = ast.parse(source, type_comments=type_comments)
+    _DropDocstrings().visit(tree)  # in place: visit_Module returns the same node
+    return tree
+
+
 class _LifecycleWrapperNormalizer(ast.NodeTransformer):
     """Erase only the mechanically constrained operational wrapper seam.
 
@@ -164,7 +212,7 @@ class _LifecycleWrapperNormalizer(ast.NodeTransformer):
 
 
 def _provider_factory_fingerprint(source: str) -> str:
-    tree = ast.parse(source)
+    tree = _parse_without_docstrings(source)
     normalized = _LifecycleWrapperNormalizer().visit(tree)
     ast.fix_missing_locations(normalized)
     return ast.dump(normalized, include_attributes=False)
@@ -221,21 +269,23 @@ class _DropEvalInvisibleAssistantMethods(ast.NodeTransformer):
 
 
 def _answer_without_eval_invisible_methods(source: str) -> str:
-    tree = _DropEvalInvisibleAssistantMethods().visit(ast.parse(source))
+    tree = _DropEvalInvisibleAssistantMethods().visit(_parse_without_docstrings(source))
     ast.fix_missing_locations(tree)
     return ast.dump(tree, include_attributes=False)
 
 
 def _config_without_eval_invisible_classes(source: str) -> str:
-    tree = _DropEvalInvisibleConfigClasses().visit(ast.parse(source))
+    tree = _DropEvalInvisibleConfigClasses().visit(_parse_without_docstrings(source))
     ast.fix_missing_locations(tree)
     return ast.dump(tree, include_attributes=False)
 
 
 def _python_fingerprint(source: str) -> str:
-    """Return a formatting- and comment-insensitive Python syntax fingerprint."""
+    """Return a formatting-, comment- and docstring-insensitive Python syntax fingerprint."""
 
-    return ast.dump(ast.parse(source, type_comments=True), include_attributes=False)
+    tree = _parse_without_docstrings(source, type_comments=True)
+    ast.fix_missing_locations(tree)
+    return ast.dump(tree, include_attributes=False)
 
 
 def _source_at(ref: str, path: str, *, cwd: str | Path) -> str | None:
