@@ -10,6 +10,20 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **A docstring-only change to a tunable module can land without a `Tunes-Against:` trailer
+  (#174).** `tuning_scope._python_fingerprint` described itself as comment-insensitive, and it
+  was for `#` comments, which `ast` discards. A docstring is an `Expr(Constant(str))` statement,
+  though, so it was in the `ast.dump` and a one-word prose correction in
+  `src/sprout/providers/__init__.py` failed `sprout check-tuning-scope` exactly as a ranking
+  change would. There is no honest trailer for prose. Every Python comparison the gate makes
+  (the default one and the `answer.py`, `config.py` and provider-factory ones) now drops the
+  leading string of each module, class and function body first. A bare string anywhere else,
+  an f-string, and a bytes literal are still code. The exemption has the same standard as the
+  existing ones: nothing in the package reads `__doc__`, and
+  `test_package_never_reads_a_docstring` fails the day something does. Controls in both
+  directions run on every fingerprint path: a docstring-only edit passes, and a same-size
+  edit to the statement beside it still fails, with or without a docstring edit alongside.
+
 - **The published site now loads Google Analytics 4, and a `/privacy/` page says what it
   records ([ADR 0023](docs/adr/0023-google-analytics-4-on-the-published-site.md)).** Per the
   owner's 2026-09-17 decision to run GA4 on every public site in the portfolio.

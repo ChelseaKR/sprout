@@ -144,7 +144,11 @@ failures** — never against results only visible from a private/local run. Mech
   executes — today just `Assistant.trace`, the `--debug` retrieval dump — because `sprout eval`
   replays `Assistant.answer` and never calls them, so nothing inside them can move an eval
   outcome; `tests/test_tuning_scope.py::test_eval_visible_modules_never_call_debug_only_methods`
-  fails the moment an eval-visible module calls one. Model literals, prompts, decoding parameters,
+  fails the moment an eval-visible module calls one. Python files are compared as syntax trees, so
+  `#` comments and docstrings (the leading string of a module, class or function body) are not
+  tuning either: nothing in the package reads `__doc__`, and
+  `tests/test_tuning_scope.py::test_package_never_reads_a_docstring` fails the day something does.
+  A bare string anywhere else is still code. Model literals, prompts, decoding parameters,
   real config values, retrieval/guard edits, module-level code in `answer.py`, every later
   lifecycle edit, and every unknown provider hunk remain fail-closed and require a real
   pre-existing case.

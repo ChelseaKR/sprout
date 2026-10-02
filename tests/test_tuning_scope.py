@@ -713,3 +713,172 @@ def test_commit_messages_reads_full_body(repo: Path) -> None:
 def test_bad_ref_raises_tuning_scope_error(repo: Path) -> None:
     with pytest.raises(TuningScopeError):
         check_tuning_scope(base_ref="does-not-exist", repo_root=repo)
+
+
+# --- docstrings are prose, not tunable surface (#174) ------------------------------------
+#
+# A docstring is an `Expr(Constant(str))` statement, so `ast.dump` carries it and editing one
+# used to move the fingerprint exactly as editing a ranking constant does. Nothing in the
+# package reads a docstring (pinned below), so it cannot move an eval outcome: the same
+# standard the config-class and debug-method exemptions meet.
+
+# Every path with its own fingerprint function, plus one that takes the default
+# `_python_fingerprint`, so the exemption is proven on each comparison the gate makes.
+_DOCSTRING_PATHS = (
+    "src/sprout/guards.py",
+    "src/sprout/answer.py",
+    "src/sprout/config.py",
+    "src/sprout/providers/__init__.py",
+)
+
+
+def _documented_module(doc: str, floor: str = "0.30") -> str:
+    # Module, class, method, async method, and a function whose body is only a docstring.
+    return (
+        f'"""Module {doc}."""\n'
+        "\n"
+        f"FLOOR = {floor}\n"
+        "\n"
+        "\n"
+        "class Ranker:\n"
+        f'    """Class {doc}."""\n'
+        "\n"
+        "    def rank(self, score):\n"
+        f'        """Method {doc}."""\n'
+        "        return score >= FLOOR\n"
+        "\n"
+        "    async def arank(self, score):\n"
+        f'        """Async method {doc}."""\n'
+        "        return score >= FLOOR\n"
+        "\n"
+        "\n"
+        "def only_a_docstring():\n"
+        f'    """Function {doc}."""\n'
+    )
+
+
+def _seed_main(repo: Path, rel: str, text: str) -> None:
+    """Land ``text`` at ``rel`` on main and start ``work`` from there, so the next commit on
+    ``work`` is compared against exactly this content."""
+    _git(["checkout", "-q", "main"], repo)
+    (repo / rel).write_text(text, encoding="utf-8")
+    _git(["commit", "-q", "-am", "chore: seed documented module"], repo)
+    _git(["checkout", "-q", "work"], repo)
+    _git(["reset", "-q", "--hard", "main"], repo)
+
+
+@pytest.mark.parametrize("rel", _DOCSTRING_PATHS)
+def test_docstring_only_change_passes_without_trailer(repo: Path, rel: str) -> None:
+    _seed_main(repo, rel, _documented_module("names the wrong package"))
+    (repo / rel).write_text(_documented_module("names the package this project publishes"))
+    _git(["commit", "-q", "-am", "docs: correct the install name in a docstring"], repo)
+    assert check_tuning_scope(base_ref="main", repo_root=repo) == []
+
+
+@pytest.mark.parametrize("rel", _DOCSTRING_PATHS)
+def test_adjacent_statement_edit_still_requires_real_case(repo: Path, rel: str) -> None:
+    # The control: the same module, the same size of edit, one line away from the
+    # docstrings, and it is a statement. It must still fail with and without a docstring
+    # edit riding along.
+    _seed_main(repo, rel, _documented_module("v1"))
+    (repo / rel).write_text(_documented_module("v1", floor="0.35"))
+    _git(["commit", "-q", "-am", "fix: move the floor"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert rel in issues[0]
+
+    (repo / rel).write_text(_documented_module("v2", floor="0.35"))
+    _git(["commit", "-q", "-am", "docs: and reword the docstrings"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert rel in issues[0]
+
+
+def test_bare_string_outside_docstring_position_is_still_code(repo: Path) -> None:
+    # Only the *leading* string of a body is a docstring. A bare string anywhere else is a
+    # statement somebody wrote for a reason, and editing it is not exempt.
+    def source(note: str) -> str:
+        return (
+            '"""Guards."""\n'
+            "\n"
+            "def check(text):\n"
+            '    """Return True when text is allowed."""\n'
+            f'    "{note}"\n'
+            "    return text not in DENIED\n"
+        )
+
+    _seed_main(repo, "src/sprout/guards.py", source("note v1"))
+    (repo / "src" / "sprout" / "guards.py").write_text(source("note v2"), encoding="utf-8")
+    _git(["commit", "-q", "-am", "chore(guards): edit a bare string"], repo)
+    issues = check_tuning_scope(base_ref="main", repo_root=repo)
+    assert len(issues) == 1
+    assert "src/sprout/guards.py" in issues[0]
+
+
+@pytest.mark.parametrize(
+    ("base", "head"),
+    [
+        # A docstring moved below a statement is no longer a docstring.
+        ('"""Doc."""\nFLOOR = 0.30\n', 'FLOOR = 0.30\n"""Doc."""\n'),
+        # Same-length value edit beside an untouched docstring.
+        ('"""Doc."""\nFLOOR = 0.30\n', '"""Doc."""\nFLOOR = 0.35\n'),
+        # An f-string and a bytes literal in leading position are not docstrings.
+        ('f"{FLOOR}"\nFLOOR = 0.30\n', 'f"{FLOOR}!"\nFLOOR = 0.30\n'),
+        ("b'x'\nFLOOR = 0.30\n", "b'y'\nFLOOR = 0.30\n"),
+        # Removing a function body down to its docstring changes behavior.
+        ('def f():\n    """Doc."""\n    return 1\n', 'def f():\n    """Doc."""\n'),
+    ],
+)
+def test_python_fingerprint_still_moves_for_code(base: str, head: str) -> None:
+    from sprout.eval.tuning_scope import _python_fingerprint
+
+    assert _python_fingerprint(base) != _python_fingerprint(head)
+
+
+@pytest.mark.parametrize(
+    ("base", "head"),
+    [
+        ('"""Old."""\nFLOOR = 0.30\n', '"""New, and longer."""\nFLOOR = 0.30\n'),
+        ("FLOOR = 0.30\n", '"""Added."""\nFLOOR = 0.30\n'),
+        ("class C:\n    x = 1\n", 'class C:\n    """Added."""\n    x = 1\n'),
+        ('def f():\n    """Old."""\n', 'def f():\n    """New."""\n'),
+        ("def f():\n    pass\n", 'def f():\n    """Only a docstring now."""\n'),
+    ],
+)
+def test_python_fingerprint_ignores_docstrings(base: str, head: str) -> None:
+    from sprout.eval.tuning_scope import _python_fingerprint
+
+    assert _python_fingerprint(base) == _python_fingerprint(head)
+
+
+def test_package_never_reads_a_docstring() -> None:
+    # The invariant that keeps the docstring exemption sound: no module in the package
+    # reads one, so no docstring can reach a prompt, a ranking, a guard or a threshold. The
+    # day one does, this fails and the exemption must be narrowed before the change lands,
+    # instead of quietly covering a prompt. Pydantic's attribute-docstring and JSON-schema
+    # paths are named too, because both turn a class docstring into data. (Typer reads the
+    # docstrings of the CLI commands in `cli.py` as `--help` text; `cli.py` is not tunable
+    # surface and an eval run never calls it.)
+    import ast as _ast
+
+    readers = {"__doc__", "getdoc", "get_docstring", "model_json_schema"}
+    modules = sorted(Path("src/sprout").rglob("*.py"))
+    assert len(modules) >= 20, "the scan stopped finding the package"
+    offenders = []
+    for module in modules:
+        tree = _ast.parse(module.read_text(encoding="utf-8"))
+        for node in _ast.walk(tree):
+            name = (
+                node.attr
+                if isinstance(node, _ast.Attribute)
+                else node.id
+                if isinstance(node, _ast.Name)
+                else node.value
+                if isinstance(node, _ast.Constant) and isinstance(node.value, str)
+                else node.arg
+                if isinstance(node, _ast.keyword)
+                else None
+            )
+            if name in readers or name == "use_attribute_docstrings":
+                offenders.append(f"{module}:{getattr(node, 'lineno', '?')}")
+    assert not offenders, f"package module(s) read a docstring: {offenders}"
