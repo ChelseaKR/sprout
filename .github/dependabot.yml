@@ -8,6 +8,20 @@ updates:
     groups:
       python-deps:
         patterns: ["*"]
+    # This root job also parses infra/requirements.txt: its dependency snapshot
+    # lists aws-cdk-lib and constructs, which exist nowhere else in the repo. That
+    # put two unpinned pip ranges in the same group as the uv.lock packages, and
+    # Dependabot keeps a group change only when every member has a requirements
+    # change or every member has a previous version. The uv.lock bumps have a
+    # previous version and, since the 2026-09-10 run switched them to
+    # widen_ranges, no requirements change; the CDK ranges have a requirements
+    # change and no previous version. Mixed, the group was dropped on every run
+    # from 2026-09-10 to 2026-10-08 ("Skipping change to group python-deps ...
+    # Previous version was not provided for: 'aws-cdk-lib'") and opened nothing.
+    # The pip entry for /infra below owns those two pins; this job ignores them.
+    ignore:
+      - dependency-name: "aws-cdk-lib"
+      - dependency-name: "constructs"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
