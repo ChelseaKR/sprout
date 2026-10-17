@@ -1118,6 +1118,9 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   GitHub Release publication.
 
 ### Changed
+- **The repository takes no money, on purpose.** A committed `.github/FUNDING.yml` with every
+  key empty overrides the account-wide Ko-fi default, which this repository had inherited
+  without any document saying so (owner decision 2026-10-17).
 - Moved the offline deterministic quickstart into the README's opening screen,
   before the product and safety deep dive.
 
