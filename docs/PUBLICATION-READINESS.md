@@ -1,10 +1,11 @@
 # Publication readiness
 
 **Audit date:** 2026-08-16 · **Commit audited:** `main` @ `ff6fb5b`, plus all 39
-other branches (163 commits reachable from all refs) · **Current visibility:**
-PRIVATE · **Recorded publication state:** none. No decision to publish has been
-made, and **this document does not make one.** Changing the repository's
-visibility is a separate, deliberate act reserved to the maintainer.
+other branches (163 commits reachable from all refs) · **Visibility at audit:**
+PRIVATE · **Current visibility:** PUBLIC (verified 2026-10-17; see
+[Status update](#status-update-2026-10-17)). The decision to publish was the
+maintainer's, made after this audit; **this document did not make it** and does
+not record when it was made.
 
 **Verdict: the working tree is ready. The history is not, and will not be until
 the prepared rewrite runs.** Every finding below is either fixed here or stated
@@ -14,6 +15,24 @@ commit on every branch, not the tip of `main`.
 
 This document exists to make the publication decision cheap and safe to make.
 It does not make it.
+
+## Status update — 2026-10-17
+
+- **The repository is public.** `gh api repos/ChelseaKR/sprout` reports
+  `"visibility": "public"` and `"private": false`, and the same endpoint answers an
+  unauthenticated request. Everything below the line is the 2026-08-16 audit as
+  written; where it says "private" it describes the repository on that date.
+- **The audited commit is no longer reachable from `main`.** `ff6fb5b` does not
+  resolve in a full (unshallowed) clone of `main`, while the initial commit
+  `a3938d8` — which the rehearsal predicted would keep its id — does. That is
+  consistent with the prepared history rewrite having run before publication.
+  **It is not proof that it removed every name:** this update did not re-run the
+  seven-check verification plan, which needs the out-of-tree kit. Re-running it
+  against the public history is the check that would settle it.
+- **Not re-audited here:** pull-request bodies (which a rewrite does not touch),
+  the vendored `genai_telemetry` README regression risk, or the CI billing state
+  described below. Each is as the audit left it unless a later commit says
+  otherwise.
 
 ---
 
@@ -48,7 +67,7 @@ pin two already-public sibling repositories use.
 
 ### One exposure is already live and predates this audit
 
-The docs site at `sprout.chelseakr.com` is served publicly from this private
+The docs site at `sprout.chelseakr.com` was served publicly from this then-private
 repository (GitHub Pages, `"public": true`). One of the five names was therefore
 **already readable on the public internet**, in the rendered ADR, and listed in
 the published sitemap. The scrub removes it from the next build; a rebuild is
@@ -174,8 +193,9 @@ upstream copy too, or the next routine sync silently undoes this scrub.
 
 ## What a reader should not infer
 
-- **Not that this repository is, or is about to become, public.** It is private
-  as of the audit date and the decision is unmade.
+- **Not that this audit decided publication.** The repository was private on the
+  audit date and the decision was then unmade; it has since been made by the
+  maintainer (public as of 2026-10-17, per the status update above).
 - **Not that the history is clean.** It is not, until the prepared rewrite runs
   and is verified. This document is explicit about that because a readiness note
   that overstates its own findings is worse than none.
