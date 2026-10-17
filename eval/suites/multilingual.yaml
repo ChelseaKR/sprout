@@ -25,7 +25,10 @@ cases:
     license: CC0-1.0
     added: '2026-06-22'
   rationale: Spanish mirror of the Monstera watering question that must preserve the
-    English watering facts and cite the parallel Spanish passage.
+    English watering facts and cite the parallel Spanish passage. Also the regression
+    case for issue 168 - the question names the Latin binomial the English passage
+    shares, which once let an English sentence render into this Spanish answer; the
+    suite's per-sentence language check fails the case if that recurs.
 - id: multilingual-pothos-light-en
   pair_id: ml-pothos-light
   question: What light conditions does a Pothos need to thrive indoors?

@@ -127,7 +127,7 @@ class Assistant:
         threshold to decide what counts as training signal for a new one would be
         circular).
         """
-        retrieved = self._retriever.retrieve(query, history_species=history_species)
+        retrieved = self._retriever.retrieve(query, history_species=history_species, language=lang)
         if not self._retriever.has_grounding(query, retrieved):
             return retrieved, [], False
 
@@ -414,7 +414,7 @@ class Assistant:
     ) -> AnswerTrace:
         """Return the full retrieval+generation trace for debugging (``--debug``)."""
         lang = self._resolve_language(query, language)
-        retrieved = self._retriever.retrieve(query)
+        retrieved = self._retriever.retrieve(query, language=lang)
         boost_terms = self._context_boost_terms(season, light)
         candidates = self._generator.generate(
             query, retrieved, self._config.generation.max_sentences, boost_terms

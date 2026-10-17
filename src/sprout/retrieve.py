@@ -180,6 +180,21 @@ class Retriever:
             token_set(name) and token_set(name) <= q_tokens for name in UNCOVERED_SPECIES_GAZETTEER
         )
 
+    def _language_scoped(self, chunks: list[Chunk], language: str | None) -> list[Chunk]:
+        """Keep only ``language`` passages (issue #168), unless the filter is off.
+
+        ``language`` is the answer language the caller already resolved. The offline
+        generator is extractive — it copies whole sentences — so any passage in the
+        candidate set is a sentence that can be rendered verbatim. Scoping here, before
+        ranking, is what keeps a Spanish answer from quoting an English passage that only
+        matched on a shared Latin binomial. A species with no passage in ``language``
+        yields no candidates and the assistant refuses in that language rather than
+        answering in another one.
+        """
+        if language is None or not self._config.retrieval.language_filter:
+            return chunks
+        return [c for c in chunks if c.language == language]
+
     def _candidates(self, query: str, history_species: str | None = None) -> list[Chunk]:
         if not self._config.retrieval.topic_filter:
             return list(self._chunks)
@@ -195,21 +210,27 @@ class Retriever:
         ids = [cid for slug in named for cid in self._chunk_ids_by_slug.get(slug, [])]
         return [self._by_chunk_id[cid] for cid in ids]
 
-    def retrieve(self, query: str, history_species: str | None = None) -> list[RetrievedChunk]:
+    def retrieve(
+        self, query: str, history_species: str | None = None, language: str | None = None
+    ) -> list[RetrievedChunk]:
         rcfg = self._config.retrieval
-        candidates = self._candidates(query, history_species)
+        species_candidates = self._candidates(query, history_species)
+        candidates = self._language_scoped(species_candidates, language)
         if not candidates:
             return []
         candidate_ids = {c.chunk_id for c in candidates}
-        topic_scoped = len(candidates) < len(self._chunks)
+        topic_scoped = len(species_candidates) < len(self._chunks)
 
         qvec = self._embedder.embed(query)
         if topic_scoped:
             # Bounded to exactly the named species' chunks — the common case at scale.
             dense = self._store.search(qvec, top_k=len(candidates), candidate_ids=candidate_ids)
         else:
-            bound = min(len(self._store), max(rcfg.top_k * _DENSE_FANOUT, _DENSE_MIN_CANDIDATES))
-            dense = self._store.search(qvec, top_k=bound)
+            bound = min(len(candidates), max(rcfg.top_k * _DENSE_FANOUT, _DENSE_MIN_CANDIDATES))
+            language_scoped = len(candidates) < len(self._chunks)
+            dense = self._store.search(
+                qvec, top_k=bound, candidate_ids=candidate_ids if language_scoped else None
+            )
         cosine: dict[str, float] = {rc.chunk.chunk_id: rc.score for rc in dense}
         dense_ranking = [rc.chunk.chunk_id for rc in dense if rc.chunk.chunk_id in candidate_ids]
 
