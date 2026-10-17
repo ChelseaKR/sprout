@@ -20,6 +20,8 @@ export interface RetrievalConfig {
   rrf_k: number;
   dedup_threshold: number;
   topic_filter: boolean;
+  /** Issue #168: scope candidates to the answer language — mirrors `RetrievalConfig.language_filter`. */
+  language_filter: boolean;
   species_aliases: Record<string, string>;
 }
 
