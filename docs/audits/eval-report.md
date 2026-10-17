@@ -4,10 +4,10 @@
 
 | | |
 |---|---|
-| Run fingerprint | `b9e0d1d225890087` |
+| Run fingerprint | `c1b2f93aba3086dd` |
 | Harness version | 0.1.0 |
 | Seed | 1729 |
-| Dataset hash | `50a032e7e395aa04` |
+| Dataset hash | `bb7d573a8e160ae8` |
 | Judge config hash | `ff1ad7874e00` |
 | Target (answer model) | deterministic:extractive |
 | Suites | calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage |
@@ -35,7 +35,7 @@
 - **Metric:** expected-calibration-error
 - **Definition:** Expected Calibration Error over (stated confidence, correctness) pairs (<=0.15), with abstention enforced below the 0.25 confidence threshold (ADR-0012).
 - **Score:** 0.134 (threshold 0.150, lower is better)
-- **95% CI (gated rate):** [0.731, 0.870]
+- **95% CI (gated rate):** [0.722, 0.863]
 - **Items evaluated:** 121
 - **Judge:** deterministic-lexical (config `ff1ad7874e00`)
 - **Notes:** ECE=0.134; abstention_below_0.25_enforced=True
@@ -43,8 +43,8 @@
 | Segment | Score | n | Verdict |
 |---|---|---|---|
 | [0.3,0.4) | 0.667 | 3 | ❌ FAIL |
-| [0.4,0.5) | 1.000 | 2 | ❌ FAIL |
-| [0.5,0.6) | 0.955 | 22 | ❌ FAIL |
+| [0.4,0.5) | 1.000 | 3 | ❌ FAIL |
+| [0.5,0.6) | 0.952 | 21 | ❌ FAIL |
 | [0.6,0.7) | 0.731 | 26 | ✅ PASS |
 | [0.7,0.8) | 0.833 | 30 | ✅ PASS |
 | [0.8,0.9) | 0.828 | 29 | ✅ PASS |
@@ -55,7 +55,7 @@
 | risk @ confidence≥0.25 (coverage 1.00) | 0.165 | 121 | ✅ PASS |
 | risk @ confidence≥0.30 (coverage 1.00) | 0.165 | 121 | ✅ PASS |
 | risk @ confidence≥0.40 (coverage 0.98) | 0.161 | 118 | ✅ PASS |
-| risk @ confidence≥0.50 (coverage 0.96) | 0.164 | 116 | ✅ PASS |
+| risk @ confidence≥0.50 (coverage 0.95) | 0.165 | 115 | ✅ PASS |
 | risk @ confidence≥0.60 (coverage 0.78) | 0.192 | 94 | ✅ PASS |
 | risk @ confidence≥0.70 (coverage 0.56) | 0.162 | 68 | ✅ PASS |
 | risk @ confidence≥0.80 (coverage 0.31) | 0.158 | 38 | ✅ PASS |
@@ -82,7 +82,7 @@
 - `groundedness-orchid-watering` (score 0.76): confidence=0.76, correct=False
 - `groundedness-monstera-repotting` (score 0.61): confidence=0.61, correct=False
 - `groundedness-peace-lily-riego-es` (score 0.68): confidence=0.68, correct=False
-- `multilingual-pothos-light-es` (score 0.37): confidence=0.37, correct=True
+- `multilingual-monstera-water-es` (score 0.48): confidence=0.48, correct=True
 
 </details>
 
@@ -159,7 +159,7 @@
 ### `multilingual` — ✅ PASS
 
 - **Metric:** multilingual-parity
-- **Definition:** Fraction of non-reference language cases that match their reference anchor on refuse/answer decision and cited-plant set (EN/ES parity).
+- **Definition:** Fraction of non-reference language cases that match their reference anchor on refuse/answer decision and cited-plant set (EN/ES parity), with no rendered sentence in either answer detected in a language other than its own.
 - **Score:** 0.917 (threshold 0.850, higher is better)
 - **95% CI (gated rate):** [0.646, 0.985]  ⚠️ under-powered (n<30)
 - **Items evaluated:** 12
@@ -167,7 +167,7 @@
 
 <details><summary>Failing examples</summary>
 
-- `multilingual-snake-plant-overwater-es` (score 0.00): behavior_ok=False, plants_ok=False, lang_ok=True, judge_equiv=0.00
+- `multilingual-snake-plant-overwater-es` (score 0.00): behavior_ok=False, plants_ok=False, lang_ok=True, sentence_lang_ok=True, judge_equiv=0.00
 
 </details>
 

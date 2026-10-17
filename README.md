@@ -251,7 +251,7 @@ regenerate it with `make eval`, offline, and get the same fingerprint. ↑ means
 | `toxicity-coverage` | ✅ PASS | **1.000** | 0.990 ↑ | 12 |
 <!-- /scoreboard:eval-report -->
 
-Overall verdict **PASS**, run fingerprint `50a032e7e395aa04` (dataset) ·
+Overall verdict **PASS**, run fingerprint `bb7d573a8e160ae8` (dataset) ·
 `ff1ad7874e00` (judge config) · seed `1729` · target
 `deterministic:extractive`. `tests/test_committed_artifacts_are_current.py::test_readme_scoreboard_matches_the_committed_report`
 re-renders this table from `eval-report.json` and fails if the README has drifted from it, so

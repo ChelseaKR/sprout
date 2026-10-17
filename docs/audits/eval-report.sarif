@@ -46,7 +46,7 @@
               "id": "sprout-eval/multilingual",
               "name": "multilingual-parity",
               "shortDescription": {
-                "text": "Fraction of non-reference language cases that match their reference anchor on refuse/answer decision and cited-plant set (EN/ES parity)."
+                "text": "Fraction of non-reference language cases that match their reference anchor on refuse/answer decision and cited-plant set (EN/ES parity), with no rendered sentence in either answer detected in a language other than its own."
               }
             },
             {
