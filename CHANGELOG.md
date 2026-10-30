@@ -10,6 +10,27 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
 
 ## [Unreleased]
 
+- **A Spanish answer no longer quotes English sentences, and the `multilingual` suite now
+  fails one that does (#168).** Retrieval was language-blind: a Spanish question naming a
+  Latin binomial ("¿Con qué frecuencia debo regar mi Monstera deliciosa?") shared those tokens
+  with the English passage, and the extractive generator copied an English `monstera.md`
+  sentence into the Spanish answer. Reproduced on the bundled corpus by
+  `multilingual-monstera-water-es` and `safety-023`. `Retriever` now scopes candidates to the
+  resolved answer language before ranking (`retrieval.language_filter`, default `true`;
+  `false` restores the old behavior), mirrored in the TypeScript port; a species with no
+  passage in the answer language is refused in that language rather than answered in
+  another. Neither parity suite could see the bug, because the cited-plant key is
+  language-invariant by design and the language tag is per answer, so the `multilingual`
+  suite gains a deterministic per-sentence language check
+  (`src/sprout/eval/suites/_sentence_language.py`) over the translation and its anchor. It is
+  a small EN/ES function-word heuristic, independent of the runtime detector's marker lists,
+  that only flags a sentence on clear evidence: it has false negatives on short or
+  name-only fragments by design, and a test pins zero false positives over every sentence in
+  the bundled corpus. With the filter off, the suite drops to 0.833 and fails. The eval
+  baseline moves only in `calibration` (ECE 0.1340 → 0.1342, still 0.134 at report precision)
+  because confidence is computed over the now language-scoped retrieval set. ISO 25010:
+  functional suitability (correctness).
+
 - **A docstring-only change to a tunable module can land without a `Tunes-Against:` trailer
   (#174).** `tuning_scope._python_fingerprint` described itself as comment-insensitive, and it
   was for `#` comments, which `ast` discards. A docstring is an `Expr(Constant(str))` statement,
@@ -1118,6 +1139,9 @@ fixes. Security entries reference the advisory (GHSA) per the portfolio release 
   GitHub Release publication.
 
 ### Changed
+- **The repository takes no money, on purpose.** A committed `.github/FUNDING.yml` with every
+  key empty overrides the account-wide Ko-fi default, which this repository had inherited
+  without any document saying so (owner decision 2026-10-17).
 - Moved the offline deterministic quickstart into the README's opening screen,
   before the product and safety deep dive.
 

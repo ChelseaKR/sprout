@@ -806,10 +806,15 @@ def freshness_check(
             help="Also HEAD/GET every cited URL (network, opt-in; off by default).",
         ),
     ] = False,
+    today: Annotated[
+        str | None,
+        typer.Option("--today", help="ISO date to evaluate freshness against (default: today)."),
+    ] = None,
 ) -> None:
     """Flag stale ``fetch_date``s (stricter for toxicity citations); optionally check links.
 
-    Offline and deterministic by default: only parses the manifest against today's date.
+    Offline and deterministic by default: only parses the manifest against today's date
+    (or ``--today``, so a check can be pinned to a fixed date).
     ``--check-links`` additionally fetches every cited URL over the network (skipping the
     synthetic corpus's ``example.invalid`` host) to catch dead or redirected citations.
     """
@@ -819,11 +824,16 @@ def freshness_check(
     from .freshness import check_freshness, check_liveness, summarize
     from .ingest import load_manifest
 
+    try:
+        as_of = date.fromisoformat(today) if today else date.today()
+    except ValueError as exc:
+        raise typer.BadParameter(f"not an ISO date: {today!r}", param_hint="--today") from exc
+
     cfg = _load(config)
     manifest = load_manifest(resources.locate(cfg.corpus.manifest))
     findings = check_freshness(
         manifest,
-        today=date.today(),
+        today=as_of,
         max_age_days=cfg.corpus.freshness.max_age_days,
         toxicity_max_age_days=cfg.corpus.freshness.toxicity_max_age_days,
     )
