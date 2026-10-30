@@ -196,45 +196,126 @@ def test_a11y_check(tmp_path: Path) -> None:
     assert missing.exit_code == 2
 
 
+def _manifest_cfg(tmp_path: Path, name: str, documents: list[dict[str, str]]) -> Path:
+    """Write a manifest-only config for ``sprout freshness`` and return its path."""
+    manifest_path = tmp_path / f"{name}-manifest.yaml"
+    manifest_path.write_text(yaml.safe_dump({"documents": documents}), encoding="utf-8")
+    cfg_path = tmp_path / f"{name}.yaml"
+    cfg_path.write_text(
+        yaml.safe_dump({"corpus": {"manifest": str(manifest_path)}}), encoding="utf-8"
+    )
+    return cfg_path
+
+
+def _freshness_doc(file: str, topic: str, fetch_date: str) -> dict[str, str]:
+    return {
+        "file": file,
+        "title": f"{file} notes",
+        "source_name": "Synthetic Notes",
+        "url": f"https://example.invalid/{file}",
+        "license": "CC0-1.0",
+        "fetch_date": fetch_date,
+        "language": "en",
+        "topic": topic,
+    }
+
+
 def test_freshness_check(tmp_path: Path) -> None:
+    """The gate is evaluated against a pinned ``--today``, never the wall clock, so the
+    fixture's fixed ``fetch_date`` cannot age out of the window and turn the test red on
+    a calendar date. Both sides of the toxicity threshold (180d) are asserted."""
     from datetime import date, timedelta
 
     cfg = _project(tmp_path)
-    fresh = runner.invoke(app, ["freshness", "--config", str(cfg)])
-    assert fresh.exit_code == 0
+    fetched = date.fromisoformat(_MANIFEST["documents"][1]["fetch_date"])  # pothos, toxicity
+    last_fresh = (fetched + timedelta(days=180)).isoformat()
+    first_stale = (fetched + timedelta(days=181)).isoformat()
+
+    fresh = runner.invoke(app, ["freshness", "--config", str(cfg), "--today", last_fresh])
+    assert fresh.exit_code == 0, fresh.output
     assert "none stale or dead" in fresh.stdout
     # The pass carries its own denominator, so a manifest that lost rows is visible in
     # the weekly log rather than reading exactly like a clean one.
-    assert "citation(s) checked" in fresh.stdout
+    assert "2 citation(s) checked" in fresh.stdout
 
-    stale_date = (date.today() - timedelta(days=900)).isoformat()
-    stale_manifest = {
-        "documents": [
-            {
-                "file": "monstera.md",
-                "title": "Monstera care",
-                "source_name": "Synthetic Notes",
-                "url": "https://example.invalid/monstera",
-                "license": "CC0-1.0",
-                "fetch_date": stale_date,
-                "language": "en",
-                "topic": "toxicity",
-            }
-        ]
-    }
-    manifest_path = tmp_path / "stale-manifest.yaml"
-    manifest_path.write_text(yaml.safe_dump(stale_manifest), encoding="utf-8")
-    stale_cfg = tmp_path / "stale.yaml"
-    stale_cfg.write_text(
-        yaml.safe_dump({"corpus": {"manifest": str(manifest_path)}}), encoding="utf-8"
+    aged = runner.invoke(app, ["freshness", "--config", str(cfg), "--today", first_stale])
+    assert aged.exit_code == 1, aged.output
+    assert "[high] pothos.md" in aged.output
+    assert "toxicity citation is 181d old (max 180d)" in aged.output
+    assert "monstera.md" not in aged.output  # care citation is well inside its 365d window
+
+    pinned = date(2026, 6, 1)
+    stale_cfg = _manifest_cfg(
+        tmp_path,
+        "stale",
+        [_freshness_doc("monstera.md", "toxicity", (pinned - timedelta(days=900)).isoformat())],
     )
-    stale = runner.invoke(app, ["freshness", "--config", str(stale_cfg)])
+    stale = runner.invoke(
+        app, ["freshness", "--config", str(stale_cfg), "--today", pinned.isoformat()]
+    )
     assert stale.exit_code == 1
     assert "high" in stale.output.lower()
     assert "monstera.md" in stale.output
 
-    linked = runner.invoke(app, ["freshness", "--config", str(stale_cfg), "--check-links"])
+    linked = runner.invoke(
+        app,
+        ["freshness", "--config", str(stale_cfg), "--check-links", "--today", pinned.isoformat()],
+    )
     assert linked.exit_code == 1  # the stale finding alone still fails the gate offline
+
+
+def test_freshness_check_care_threshold_warns_without_failing(tmp_path: Path) -> None:
+    """Both sides of the general-care threshold (365d): one day past it is a reported
+    warning, which (by the documented policy in ``freshness_check``) does not fail."""
+    from datetime import date, timedelta
+
+    fetched = date(2026, 5, 1)
+    cfg = _manifest_cfg(tmp_path, "care", [_freshness_doc("monstera.md", "care", "2026-05-01")])
+
+    inside = runner.invoke(
+        app,
+        ["freshness", "--config", str(cfg), "--today", (fetched + timedelta(days=365)).isoformat()],
+    )
+    assert inside.exit_code == 0, inside.output
+    assert "none stale or dead" in inside.stdout
+
+    past = runner.invoke(
+        app,
+        ["freshness", "--config", str(cfg), "--today", (fetched + timedelta(days=366)).isoformat()],
+    )
+    assert past.exit_code == 0, past.output
+    assert "[warning] monstera.md" in past.output
+    assert "citation is 366d old (max 365d)" in past.output
+    assert "0 high, 1 warning" in past.output
+
+
+def test_freshness_check_defaults_to_the_real_clock(tmp_path: Path) -> None:
+    """Without ``--today`` the gate reads today's date: fixture dates are computed relative
+    to it, so this stays meaningful (and green) on any calendar day."""
+    from datetime import date, timedelta
+
+    today = date.today()
+    fresh_cfg = _manifest_cfg(
+        tmp_path, "today-fresh", [_freshness_doc("pothos.md", "toxicity", today.isoformat())]
+    )
+    fresh = runner.invoke(app, ["freshness", "--config", str(fresh_cfg)])
+    assert fresh.exit_code == 0, fresh.output
+
+    stale_cfg = _manifest_cfg(
+        tmp_path,
+        "today-stale",
+        [_freshness_doc("pothos.md", "toxicity", (today - timedelta(days=181)).isoformat())],
+    )
+    stale = runner.invoke(app, ["freshness", "--config", str(stale_cfg)])
+    assert stale.exit_code == 1, stale.output
+    assert "[high] pothos.md" in stale.output
+
+
+def test_freshness_check_rejects_a_malformed_today(tmp_path: Path) -> None:
+    cfg = _project(tmp_path)
+    bad = runner.invoke(app, ["freshness", "--config", str(cfg), "--today", "10/29/2026"])
+    assert bad.exit_code == 2
+    assert "not an ISO date" in bad.output
 
 
 def test_slo_check(tmp_path: Path) -> None:
