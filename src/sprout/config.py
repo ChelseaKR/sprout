@@ -60,6 +60,12 @@ class RetrievalConfig(_Model):
     rrf_k: int = Field(default=60, ge=1)
     dedup_threshold: float = Field(default=0.92, ge=0.0, le=1.0)
     topic_filter: bool = True
+    # Issue #168: scope candidates to the answer's language, so a Spanish answer can only
+    # quote Spanish passages. The extractive generator copies sentences verbatim, so a
+    # language-blind candidate set let an English passage that shared a Latin binomial
+    # ("Monstera deliciosa") with a Spanish question render an English sentence into a
+    # Spanish answer. ``false`` restores the language-blind behavior (rollback switch).
+    language_filter: bool = True
     # Maps a common/alternate name (e.g. a Spanish name) to a corpus species slug, so the
     # species filter scopes "¿es tóxico el potos?" to the pothos passages. Matched on
     # accent-folded, stemmed tokens.

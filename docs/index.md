@@ -10,6 +10,8 @@ English and Spanish with enforced parity.
   [Architecture](ARCHITECTURE.md) and the [Threat model](THREAT-MODEL.md).
 - **The eval harness is the headline** — 9 suites<!-- claim:index-eval-suite-count --> (calibration, completeness, conversation, groundedness, language-parity, multilingual, refusal, safety, toxicity-coverage)<!-- claim:index-eval-suite-names -->, deterministic checks blended
   with an LLM judge whose model differs from the answer model. See the [Evaluation report](audits/eval-report.md).
+- **Case study** — a one-page summary of what the committed evidence shows and its
+  limits, including a failure the harness missed. See the [Case study](case-study.md).
 - **Responsible by construction** — see the [responsible-tech audits](RESPONSIBLE-TECH-AUDITS.md),
   the [model card](cards/model-card.md), the [data card](cards/data-card-corpus.md), and
   the [accessibility conformance report](accessibility/ACR.md).

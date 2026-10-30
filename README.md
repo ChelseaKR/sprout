@@ -53,8 +53,16 @@ independently, looking for each rendered sentence verbatim in the corpus documen
 that sentence cites. Its suites also run at a per-case threshold rather than an
 aggregate one, which is a different instrument: the first run surfaced
 [#168](https://github.com/ChelseaKR/sprout/issues/168), an English sentence
-rendered into a Spanish answer, which both parity suites here pass over because
-neither compares the language of a rendered sentence.
+rendered into a Spanish answer, which both parity suites here passed over because
+neither compared the language of a rendered sentence. The cause was language-blind
+retrieval: a Spanish question naming a Latin binomial ("Monstera deliciosa") also
+matched the English passage, and the extractive generator quoted it. Retrieval is
+now scoped to the answer language (`retrieval.language_filter`, on by default), and
+the `multilingual` suite now runs a deterministic per-sentence language check, so a
+mixed-language answer fails it. The check is a small EN/ES function-word
+heuristic: it only flags a sentence when the evidence is clear, so it can miss
+short fragments (false negatives), and a test pins it at zero false positives over
+every sentence in the bundled corpus.
 
 ## Quickstart (offline, no cloud account)
 
@@ -243,7 +251,7 @@ regenerate it with `make eval`, offline, and get the same fingerprint. ↑ means
 | `toxicity-coverage` | ✅ PASS | **1.000** | 0.990 ↑ | 12 |
 <!-- /scoreboard:eval-report -->
 
-Overall verdict **PASS**, run fingerprint `50a032e7e395aa04` (dataset) ·
+Overall verdict **PASS**, run fingerprint `bb7d573a8e160ae8` (dataset) ·
 `ff1ad7874e00` (judge config) · seed `1729` · target
 `deterministic:extractive`. `tests/test_committed_artifacts_are_current.py::test_readme_scoreboard_matches_the_committed_report`
 re-renders this table from `eval-report.json` and fails if the README has drifted from it, so

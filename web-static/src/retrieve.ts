@@ -126,6 +126,18 @@ export class Retriever {
     });
   }
 
+  /**
+   * Keep only `language` passages (issue #168), unless the filter is off — mirrors
+   * `_language_scoped`. The generator is extractive, so every candidate passage is a
+   * sentence that can be rendered verbatim into the answer.
+   */
+  private languageScoped(chunks: Chunk[], language: string | null): Chunk[] {
+    if (language === null || !this.config.language_filter) {
+      return chunks;
+    }
+    return chunks.filter((c) => c.language === language);
+  }
+
   private candidates(query: string): Chunk[] {
     if (!this.config.topic_filter) {
       return [...this.chunks];
@@ -137,15 +149,16 @@ export class Retriever {
     return this.chunks.filter((c) => named.has(canonicalSlug(c.source)));
   }
 
-  retrieve(query: string): RetrievedChunk[] {
+  retrieve(query: string, language: string | null = null): RetrievedChunk[] {
     const rcfg = this.config;
-    const candidates = this.candidates(query);
+    const speciesCandidates = this.candidates(query);
+    const candidates = this.languageScoped(speciesCandidates, language);
     if (candidates.length === 0) {
       return [];
     }
 
     const candidateIds = new Set(candidates.map((c) => c.chunk_id));
-    const topicScoped = candidates.length < this.chunks.length;
+    const topicScoped = speciesCandidates.length < this.chunks.length;
 
     const qvec = this.embedder.embed(query);
     let dense: RetrievedChunk[];
@@ -154,10 +167,11 @@ export class Retriever {
       dense = this.store.search(qvec, candidates.length, candidateIds);
     } else {
       const bound = Math.min(
-        this.store.length,
+        candidates.length,
         Math.max(rcfg.top_k * DENSE_FANOUT, DENSE_MIN_CANDIDATES),
       );
-      dense = this.store.search(qvec, bound);
+      const languageScoped = candidates.length < this.chunks.length;
+      dense = this.store.search(qvec, bound, languageScoped ? candidateIds : undefined);
     }
     const cosine = new Map<string, number>();
     for (const rc of dense) {

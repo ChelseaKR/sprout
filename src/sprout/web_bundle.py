@@ -165,6 +165,7 @@ def settings_payload(cfg: Config) -> dict[str, Any]:
             "rrf_k": cfg.retrieval.rrf_k,
             "dedup_threshold": cfg.retrieval.dedup_threshold,
             "topic_filter": cfg.retrieval.topic_filter,
+            "language_filter": cfg.retrieval.language_filter,
             "species_aliases": cfg.retrieval.species_aliases,
         },
         "generation": {

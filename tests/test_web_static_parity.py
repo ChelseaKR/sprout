@@ -258,3 +258,47 @@ def test_the_exported_bundle_carries_the_band_cutoff_and_labels(tmp_path: Path) 
         labels = bundle["prompts"]["confidence_band_labels"].get(band, {})
         missing = [lang for lang in cfg.languages.supported if not labels.get(lang)]
         assert not missing, f"band {band!r} has no label in {missing}"
+
+
+def test_the_typescript_port_scopes_retrieval_to_the_answer_language() -> None:
+    """Issue #168: the language filter has to exist in the port and be driven by `lang`.
+
+    The conformance fixtures would catch a divergence on today's corpus, but only for
+    questions whose language-blind candidate set happens to contain an other-language
+    sentence; this pins the mechanism itself.
+    """
+    config_src = _TS_CONFIG.read_text(encoding="utf-8")
+    assert re.search(r"interface RetrievalConfig\s*\{[^}]*\blanguage_filter\b", config_src, re.S)
+    retrieve_src = (_ROOT / "web-static" / "src" / "retrieve.ts").read_text(encoding="utf-8")
+    assert "this.config.language_filter" in retrieve_src
+    answer_src = (_ROOT / "web-static" / "src" / "answer.ts").read_text(encoding="utf-8")
+    assert "this.retriever.retrieve(query, lang)" in answer_src, (
+        "the port retrieves without the resolved answer language, so a Spanish answer "
+        "in the browser can still quote an English passage"
+    )
+
+
+def test_the_exported_bundle_carries_the_language_filter(tmp_path: Path) -> None:
+    out = tmp_path / "public" / "data"
+    built_index = tmp_path / "index.json"
+    cfg = load_config(_ROOT / "config" / "sprout.yaml")
+    build_index(cfg).save(built_index)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_EXPORT),
+            "--config",
+            str(_ROOT / "config" / "sprout.yaml"),
+            "--index",
+            str(built_index),
+            "--out",
+            str(out),
+        ],
+        cwd=_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    bundle = json.loads((out / "config.json").read_text(encoding="utf-8"))
+    assert bundle["retrieval"]["language_filter"] is cfg.retrieval.language_filter is True

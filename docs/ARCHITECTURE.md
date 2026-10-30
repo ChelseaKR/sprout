@@ -326,7 +326,7 @@ an ADR requirement; see the [README "Hard guardrails"](https://github.com/Chelse
 | **I9** | **Judge ≠ answer model**, and judge config is part of run identity. | `llm_judge.DEFAULT_JUDGE_MODEL` (Sonnet) vs answer Haiku; `config_hash` in fingerprint |
 | **I10** | **Provenance is mandatory.** No corpus passage without source + license + fetch_date. | `ingest.load_corpus` raises on a file with no manifest entry |
 | **I11** | **PII-free logs by construction.** Only whitelisted low-cardinality fields are logged; question text never is. | `obs.Logger._ALLOWED_FIELDS` |
-| **I12** | **EN/ES parity.** One resolved-language variable drives every user-facing string; the multilingual suite gates *per-case* structural parity (same refuse/answer decision + same cited-plant set as the English anchor) at ≥ 0.85, and the `language-parity` suite gates the aggregate `\|EN−ES\|` pass-rate delta — a different quantity, scoring the English anchors too — at ≤ 0.05. | `answer._resolve_language`; `multilingual` + `language-parity` suites |
+| **I12** | **EN/ES parity.** One resolved-language variable drives every user-facing string *and scopes retrieval*, so an answer quotes only passages in its own language (`retrieval.language_filter`, issue #168); the multilingual suite gates *per-case* structural parity (same refuse/answer decision + same cited-plant set as the English anchor, and no rendered sentence detected in another language) at ≥ 0.85, and the `language-parity` suite gates the aggregate `\|EN−ES\|` pass-rate delta — a different quantity, scoring the English anchors too — at ≤ 0.05. | `answer._resolve_language`; `Retriever._language_scoped`; `multilingual` (with `_sentence_language`) + `language-parity` suites |
 
 ---
 

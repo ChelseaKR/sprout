@@ -2,7 +2,7 @@
   "fingerprint": {
     "harness_version": "0.1.0",
     "seed": 1729,
-    "dataset_hash": "50a032e7e395aa04cd3aab042f9cff50d8a96c3f8a9eccb7e442d273ccd4c28e",
+    "dataset_hash": "bb7d573a8e160ae835e21fccda970548c08908af7a10d2734dd1d8d45502f4b9",
     "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
     "target": "deterministic:extractive",
     "suite_names": [
@@ -27,13 +27,13 @@
         "threshold": 0.15,
         "higher_is_better": false
       },
-      "score": 0.134,
+      "score": 0.1342,
       "verdict": "pass",
       "n_items": 121,
-      "ci_low": 0.7309,
-      "ci_high": 0.8699,
+      "ci_low": 0.7218,
+      "ci_high": 0.8629,
       "underpowered": false,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "ECE=0.134; abstention_below_0.25_enforced=True",
@@ -47,13 +47,13 @@
         {
           "label": "[0.4,0.5)",
           "score": 1.0,
-          "n": 2,
+          "n": 3,
           "verdict": "fail"
         },
         {
           "label": "[0.5,0.6)",
-          "score": 0.9545,
-          "n": 22,
+          "score": 0.9524,
+          "n": 21,
           "verdict": "fail"
         },
         {
@@ -117,9 +117,9 @@
           "verdict": "pass"
         },
         {
-          "label": "risk @ confidence≥0.50 (coverage 0.96)",
-          "score": 0.1638,
-          "n": 116,
+          "label": "risk @ confidence≥0.50 (coverage 0.95)",
+          "score": 0.1652,
+          "n": 115,
           "verdict": "pass"
         },
         {
@@ -175,7 +175,7 @@
         {
           "item_id": "calibration-009",
           "passed": false,
-          "score": 0.5749,
+          "score": 0.5655,
           "detail": "confidence=0.57, correct=False"
         },
         {
@@ -263,10 +263,10 @@
           "detail": "confidence=0.68, correct=False"
         },
         {
-          "item_id": "multilingual-pothos-light-es",
+          "item_id": "multilingual-monstera-water-es",
           "passed": false,
-          "score": 0.3691,
-          "detail": "confidence=0.37, correct=True"
+          "score": 0.4845,
+          "detail": "confidence=0.48, correct=True"
         }
       ]
     },
@@ -284,7 +284,7 @@
       "ci_low": 0.4385,
       "ci_high": 1.0,
       "underpowered": true,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -305,7 +305,7 @@
       "ci_low": 0.7009,
       "ci_high": 1.0,
       "underpowered": true,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -326,7 +326,7 @@
       "ci_low": 0.9692,
       "ci_high": 1.0,
       "underpowered": false,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -347,7 +347,7 @@
       "ci_low": 0.0,
       "ci_high": 0.1267,
       "underpowered": false,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "gap=0.0114 (es 0.8378 n=37 vs en 0.8264 n=121); 95% CI on the gap [0.0000, 0.1267] (Newcombe); smallest slice n=37. The language case sets are not matched, so the pooled gap carries a case-mix component; the report-only segment rows recompute it within common strata.",
@@ -510,7 +510,7 @@
       "suite": "multilingual",
       "metric": {
         "name": "multilingual-parity",
-        "definition": "Fraction of non-reference language cases that match their reference anchor on refuse/answer decision and cited-plant set (EN/ES parity).",
+        "definition": "Fraction of non-reference language cases that match their reference anchor on refuse/answer decision and cited-plant set (EN/ES parity), with no rendered sentence in either answer detected in a language other than its own.",
         "threshold": 0.85,
         "higher_is_better": true
       },
@@ -520,7 +520,7 @@
       "ci_low": 0.6461,
       "ci_high": 0.9851,
       "underpowered": true,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -530,7 +530,7 @@
           "item_id": "multilingual-snake-plant-overwater-es",
           "passed": false,
           "score": 0.0,
-          "detail": "behavior_ok=False, plants_ok=False, lang_ok=True, judge_equiv=0.00"
+          "detail": "behavior_ok=False, plants_ok=False, lang_ok=True, sentence_lang_ok=True, judge_equiv=0.00"
         }
       ]
     },
@@ -548,7 +548,7 @@
       "ci_low": 0.7968,
       "ci_high": 0.9735,
       "underpowered": false,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "over-refusal rate 8% (1/12 answerable cases)",
@@ -588,7 +588,7 @@
       "ci_low": 0.9162,
       "ci_high": 1.0,
       "underpowered": false,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
@@ -609,7 +609,7 @@
       "ci_low": 0.7575,
       "ci_high": 1.0,
       "underpowered": true,
-      "dataset_version": "sha256:50a032e7e395",
+      "dataset_version": "sha256:bb7d573a8e16",
       "judge_method": "deterministic-lexical",
       "judge_config_hash": "ff1ad7874e001677c189c1b895cdc236bf09b5b55760fd8ac30b4aafe6174c17",
       "notes": "",
