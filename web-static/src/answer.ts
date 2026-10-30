@@ -54,7 +54,7 @@ export class Assistant {
   answer(query: string, language: string | null = null): Answer {
     const lang = this.resolveLanguage(query, language);
     const safety = isSafetyQuery(query, lang, this.config.guards);
-    const retrieved = this.retriever.retrieve(query);
+    const retrieved = this.retriever.retrieve(query, lang);
 
     if (safety && this.retriever.namesUncoveredSpecies(query)) {
       return this.refuse(query, lang, safety, "species_not_covered", false, 0.0, retrieved);

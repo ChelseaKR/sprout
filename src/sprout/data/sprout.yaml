@@ -21,6 +21,7 @@ retrieval:
   rrf_k: 60
   dedup_threshold: 0.92
   topic_filter: true              # scope to the named species when the question names one
+  language_filter: true           # scope to the answer language: a Spanish answer quotes only Spanish passages (#168)
   species_aliases:                # common/Spanish names -> corpus species slug
     potos: pothos
     potho: pothos

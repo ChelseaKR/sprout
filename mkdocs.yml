@@ -80,6 +80,7 @@ nav:
       - Model card: cards/model-card.md
       - Data card (corpus): cards/data-card-corpus.md
   - Evaluation report: audits/eval-report.md
+  - Case study: case-study.md
   - ADRs:
       - Record decisions: adr/0000-record-architecture-decisions.md
       - Family Greenhouse integration: adr/0013-family-greenhouse-first-party-integration.md
