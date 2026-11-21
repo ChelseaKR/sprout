@@ -36,7 +36,7 @@ jobs:
       # No caching in this deploy job: it holds pages: write + id-token: write, and a
       # poisoned/stale cache is the standard's canonical cache-poisoning exposure for a
       # credentialed deploy job (CI-CD-STANDARD §8c, CICD-24) — same reasoning as release.yml.
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           enable-cache: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
